@@ -1,33 +1,20 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>Bancada</title>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>PAT</title>
+<link rel="icon" type="image/png" href="img/pat-icon.png">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Nunito+Sans:opsz,wght@6..12,400..800&display=swap">
 <style>
 /* Layout: app de celular no centro; ao lado, atalhos do protótipo e a legenda dos três tipos de post */
+/* identidade PAT: verde-limão #CEFB14 como cor principal, fundo #000000 e texto #FFFFFF (tema único, escuro) */
 :root{
-  --bg:#F2F3F7; --surface:#FFFFFF; --sunk:#F2F3F7; --ink:#151925; --muted:#5E6577; --line:#E1E3EA;
-  --pri:#2F5BFF; --pri-ink:#FFFFFF; --pri-soft:#E8EDFF;
-  --demo:#F2A21B; --aprox:#11A398; --need:#8B5CF6;
-  --ok:#139A47; --ok-soft:#DDF7E6; --bad:#E0393E; --bad-soft:#FDE4E4;
-  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
-  --body:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    color-scheme:dark;
-    --bg:#0D1016; --surface:#161A23; --sunk:#1F2430; --ink:#ECEEF4; --muted:#9BA2B4; --line:#2A303E;
-    --pri:#7A93FF; --pri-ink:#0B0F1A; --pri-soft:#222A47;
-    --demo:#F6B547; --aprox:#2CC5B9; --need:#A88BFA;
-    --ok:#3CCB78; --ok-soft:#163723; --bad:#FF6B70; --bad-soft:#3D1D21;
-  }
-}
-:root[data-theme="dark"]{
   color-scheme:dark;
-  --bg:#0D1016; --surface:#161A23; --sunk:#1F2430; --ink:#ECEEF4; --muted:#9BA2B4; --line:#2A303E;
-  --pri:#7A93FF; --pri-ink:#0B0F1A; --pri-soft:#222A47;
+  --bg:#000000; --surface:#141414; --sunk:#1F1F1F; --ink:#FFFFFF; --muted:#A3A3A3; --line:#2E2E2E;
+  --pri:#CEFB14; --pri-ink:#000000; --pri-soft:rgba(206,251,20,.14);
   --demo:#F6B547; --aprox:#2CC5B9; --need:#A88BFA;
   --ok:#3CCB78; --ok-soft:#163723; --bad:#FF6B70; --bad-soft:#3D1D21;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
@@ -59,12 +46,12 @@ button,input,textarea{font:inherit;color:inherit}
 
 /* aparelho */
 .device{--b1:#F2A21B;--b1i:#141414;--b2:#151925;--b2i:#FFFFFF;position:relative;width:400px;height:min(860px,100%);background:var(--bg);border-radius:40px;
-  box-shadow:0 0 0 10px #10131B,0 30px 70px -24px rgba(10,20,40,.5);overflow:hidden;display:flex;flex-direction:column}
+  box-shadow:0 0 0 10px #1F1F1F,0 30px 70px -24px rgba(206,251,20,.12);overflow:hidden;display:flex;flex-direction:column}
 .top{display:flex;align-items:center;gap:10px;padding:18px 18px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
 .top .back{all:unset;cursor:pointer;width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--sunk)}
-.top .who{flex:1;min-width:0;display:flex;flex-direction:column}
-.top .store{font-family:var(--display);font-weight:800;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
-.top .meta{font-size:13px;color:var(--muted);font-weight:600}
+.top .app{flex:1;display:flex;align-items:center;min-height:36px}
+.top .app img{height:34px;width:auto;display:block}
+.brand-logo{width:260px;max-width:100%;height:auto;display:block}
 .scr{flex:1;overflow-y:auto;padding:20px 18px 28px;display:flex;flex-direction:column;gap:18px}
 .tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--surface);border-top:1px solid var(--line);padding:8px 6px calc(10px + env(safe-area-inset-bottom,0px))}
 .tabs button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;white-space:nowrap;font-weight:700;color:var(--muted);position:relative}
@@ -103,6 +90,9 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .full{width:100%}
 .link{all:unset;cursor:pointer;font-weight:700;font-size:15px;color:var(--pri)}
 
+.perks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.perks li{display:flex;align-items:center;gap:12px;font-weight:700;font-size:15px}
+.perks .ic{width:32px;height:32px;padding:7px;border-radius:10px;background:var(--pri-soft);color:var(--pri)}
 .niches{display:grid;gap:12px}
 .niche{all:unset;cursor:pointer;box-sizing:border-box;display:grid;grid-template-columns:56px 1fr 20px;gap:14px;align-items:center;padding:18px;border-radius:20px;background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--line)}
 .niche:hover{box-shadow:inset 0 0 0 2px var(--pri)}
@@ -391,8 +381,7 @@ details.cap p{white-space:pre-line;font-size:15px;margin:10px 0 0;padding:14px;b
 
 <div class="stage">
   <aside class="side">
-    <div class="brand"><span class="logo-mark"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Bancada</div>
-    <p>Protótipo de um app que cria o mês inteiro de postagens. O dono do negócio responde tocando em botões e só aprova.</p>
+    <img class="brand-logo" src="img/pat-logo.png" alt="PAT – Presença Ativa">
     <div class="side-grp">
       <span class="label">Ver exemplo pronto</span>
       <div class="niche-pick">
@@ -421,7 +410,7 @@ details.cap p{white-space:pre-line;font-size:15px;margin:10px 0 0;padding:14px;b
   </aside>
 
   <div class="device" id="device">
-    <header class="top"><button class="back" id="topback" aria-label="Voltar" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="who"><span class="store" id="store">Bancada</span><span class="meta" id="meta"></span></div></header>
+    <header class="top"><button class="back" id="topback" aria-label="Voltar" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="app"><img src="img/pat-logo.png" alt="PAT – Presença Ativa"></div></header>
     <main class="scr" id="scr"></main>
     <nav class="tabs" id="tabs" hidden></nav>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -559,7 +548,7 @@ const NICHES = {
     lib:TOOLS_LIB, aprox:TOOLS_APROX, tags:['#ferramentas','#ferragem'], ptags:{demo:'#dicadeferramenta',need:'#reparoemcasa',aprox:'#bastidores'},
     convite:{proximo:'"Quer descobrir qual modelo combina com sua necessidade? Fale com nossa equipe!"', tecnico:'"Dúvida sobre potência, voltagem ou acessório? Nossa equipe explica."', promo:'"Passa na loja ou chama no WhatsApp: tem condição especial esta semana."'},
     leve:'"Bora resolver isso de uma vez? Chama a gente!"',
-    def:{nome:'Ferragens Martins',tipo:'bairro',publico:['casa','pro'],datas:['bf','oferta']},
+    def:{nome:'Ferragens Martins',tipo:['bairro'],publico:['casa','pro'],datas:['bf','oferta']},
     sample:{fmt:'Post', pillar:'demo', img:'furadeira', title:'Por que ter uma furadeira em casa?', f:[['Gancho','"Precisou instalar uma prateleira e não tinha a ferramenta certa?"'],['Demonstração',''],['Benefício','"Uma ferramenta versátil para montagens e reparos em casa."']]},
     title:p=>{ const pub=S.a.publico, l=(pub.length&&!pub.includes('casa'))?'na obra':'em casa'; return p.art?`Por que ter ${p.art} ${p.curto} ${l}?`:`Por que ter ${p.curto} ${l}?`; },
     gen:(nome,c)=>({gancho:`Já precisou de ${c} e não tinha na hora?`, demo:`Mostrar ${c} em uso numa situação real, do começo ao resultado.`, beneficio:'A ferramenta certa economiza tempo e evita retrabalho.', dor:`O que dá errado quando se improvisa sem ${c}`, dorG:'Já tentou improvisar e o serviço ficou pior?', dorT:'Improvisar com a ferramenta errada costuma estragar material e tomar o dobro do tempo.', sol:`Mostrar ${c} resolvendo o mesmo serviço do jeito certo.`}),
@@ -575,7 +564,7 @@ const NICHES = {
     lib:TRIP_LIB, aprox:TRIP_APROX, tags:['#viagem','#turismo'], ptags:{demo:'#destinosincriveis',need:'#planejamentodeviagem',aprox:'#bastidores'},
     convite:{proximo:'"Quer montar essa viagem do seu jeito? Chama nossa equipe!"', tecnico:'"Datas, valores e o que está incluso: nossa equipe explica tudo."', promo:'"Vagas limitadas nessa condição. Chama no WhatsApp."'},
     leve:'"Bora tirar essa viagem do papel? Chama a gente!"',
-    def:{nome:'Mar & Serra Viagens',tipo:'agencia',publico:['familias','casais'],datas:['bf','feriado','ferias']},
+    def:{nome:'Mar & Serra Viagens',tipo:['agencia'],publico:['familias','casais'],datas:['bf','feriado','ferias']},
     sample:{fmt:'Post', pillar:'demo', img:'porto', title:'Por que Porto de Galinhas precisa estar na sua lista?', f:[['Gancho','"Já imaginou nadar com peixinhos numa piscina natural?"'],['Demonstração',''],['Benefício','"Água morna e clara quase o ano todo."']]},
     title:p=>p.titulo || `Por que conhecer ${p.curto}?`,
     gen:(nome,c)=>({gancho:`Já pensou em viver ${c}?`, demo:`Mostrar os melhores momentos de ${c}: a chegada, a experiência e o rosto de quem está curtindo.`, beneficio:'Uma experiência organizada, sem se preocupar com os detalhes.', dor:'Viagem sem planejamento sai mais cara', dorG:'Deixou tudo para a última hora e pagou mais caro?', dorT:'Comprar perto da data costuma custar mais e limita as opções.', sol:`Mostrar ${c} com tudo organizado e as condições de pagamento.`}),
@@ -587,16 +576,16 @@ const N = () => NICHES[S.niche||'ferramentas'];
 function questions(){
   const n=N();
   return [
-    {k:'nome', type:'text', t:'Qual é o nome do seu negócio?', h:'Este é o único campo de digitar. O resto é só tocar.', sug:n.sug},
-    {k:'tipo', type:'single', t:'Qual destes combina mais com você?', o:n.tipo},
+    {k:'nome', type:'text', t:'Qual é o nome do seu negócio?', sug:n.sug},
+    {k:'tipo', type:'multi', t:'Quais destes combinam com você?', h:'Pode marcar mais de um.', o:n.tipo},
     {k:'publico', type:'multi', t:'Quem são seus clientes?', h:'Pode marcar mais de um.', o:n.publico},
     {k:'redes', type:'multi', t:'Onde você quer postar?', h:'Pode marcar mais de um.', o:[['ig','Instagram'],['fb','Facebook'],['tt','TikTok'],['wa','Status do WhatsApp']]},
     {k:'freq', type:'single', t:'Quantos posts por semana?', o:[['3','3 por semana','Segunda, quarta e sexta'],['5','5 por semana','De segunda a sexta'],['7','Todo dia','Inclui sábado e domingo']]},
-    {k:'mix', type:'single', t:'O que você quer este mês?', h:'A barrinha mostra a mistura dos três tipos de post.', mixbar:true, o:[['vendas','Vender mais','Mais posts mostrando o produto'],['equilibrio','Um pouco de tudo','Mistura equilibrada'],['relacao','Ficar mais próximo do cliente','Mais bastidores e conversa']]},
+    {k:'mix', type:'single', t:'O que você quer este mês?', mixbar:true, o:[['vendas','Vender mais','Mais posts mostrando o produto'],['equilibrio','Um pouco de tudo','Mistura equilibrada'],['relacao','Ficar mais próximo do cliente','Mais bastidores e conversa']]},
     {k:'gravar', type:'single', t:'Alguém pode gravar vídeos?', o:[['eu','Sim, eu mesmo','Gravo pelo celular'],['equipe','Sim, alguém da equipe','Um colega topa aparecer'],['ninguem','Ainda não','Usar só fotos e carrosséis']]},
     {k:'tom', type:'single', t:'Como você gosta de falar com o cliente?', o:[['proximo','Leve e bem-humorado','Como um amigo'],['tecnico','Explicando tudo','Com detalhes e segurança'],['promo','Direto ao ponto','Foco em oferta']]},
-    {k:'logo', type:'logo', t:'Envie a sua logo', h:'Ela aparece no cantinho de todos os posts e vídeos.'},
-    {k:'cores', type:'colors', t:'Escolha as cores da sua marca', h:'Os posts ficam com a cara do seu negócio.'},
+    {k:'logo', type:'logo', t:'Envie a sua logo'},
+    {k:'cores', type:'colors', t:'Escolha as cores da sua marca'},
     {k:'datas', type:'multi', t:'Tem alguma data especial em novembro?', h:'Pode marcar mais de uma.', o:n.datas},
     {k:'horario', type:'single', t:'Que horas seus clientes mais usam o celular?', o:[['07:00','De manhã cedo','Por volta das 7h'],['12:00','Na hora do almoço','Por volta do meio-dia'],['19:00','À noite','Por volta das 19h']]},
   ];
@@ -609,7 +598,7 @@ const STL = {aprovado:'Aprovado', reprovado:'Reprovado', pendente:'Aguardando'};
 
 const S = {
   niche:null, view:'intro', q:0,
-  a:{nome:'', tipo:null, publico:[], redes:[], freq:null, mix:null, gravar:null, tom:null, datas:[], horario:null, logo:null, cor1:'#F2A21B', cor2:'#151925'},
+  a:{nome:'', tipo:[], publico:[], redes:[], freq:null, mix:null, gravar:null, tom:null, datas:[], horario:null, logo:null, cor1:'#F2A21B', cor2:'#151925'},
   products:[], posts:[], cur:null, sel:null, editing:null, stopped:false,
   vid:{postId:null, url:null, name:null, stage:'setup', o:{formato:'9:16', cortes:true, legenda:'auto', estilo:'marca', musica:'leve', extras:['gancho','logo']}}
 };
@@ -734,9 +723,6 @@ function render(){
   applyProdPhotos();
   normalize();
   const inApp=['calendario','aprovar','video','produtos','baixar'].includes(S.view) && S.posts.length;
-  const QS=questions();
-  $('#store').textContent = S.a.nome || 'Bancada';
-  $('#meta').textContent = ({intro:'Vamos começar', quiz:`Pergunta ${S.q+1} de ${QS.length}`, produtos:inApp?'Meu negócio':N().itens, gerando:'Criando seus posts…', calendario:'Calendário de novembro', aprovar:'Aprovar posts', video:'Editar vídeo', baixar:'Baixar posts'})[S.view] + (S.niche&&S.view!=='intro'?` · ${N().nome}`:'');
   const tb=$('#topback'); tb.hidden = !['quiz','produtos'].includes(S.view) || inApp;
   $('#tabs').hidden=!inApp;
   if(inApp){
@@ -754,15 +740,16 @@ function render(){
 
 function vIntro(){
   scr().innerHTML = `
-    <div class="stack"><h1 class="h-xl">Posts prontos para o mês inteiro.</h1><p class="muted">Você responde tocando nos botões e só aprova o que gostar.</p></div>
+    <div class="stack"><h1 class="h-l">Sua empresa tem muito a mostrar. Bora fazer acontecer? ✨</h1><p class="muted">Conte um pouquinho sobre seu negócio. O PAT cria seu mês de posts, com artes e legendas no estilo da sua empresa. Você só revisa e aprova!</p></div>
+    <ul class="perks">
+      <li>${ic('star')}Conteúdos feitos para o seu negócio</li>
+      <li>${ic('cal')}Seu mês de publicações organizado</li>
+      <li>${ic('check')}Você escolhe o que vai ao ar</li>
+    </ul>
     <div class="stack" style="gap:10px"><span class="label">Qual é o seu ramo?</span>
       <div class="niches">${Object.entries(NICHES).map(([k,n])=>`<button class="niche" data-niche="${k}"><span class="nic ${n.tone}">${ic(n.icon)}</span><span><b>${n.nome}</b><small>${k==='turismo'?'Agências, pousadas e passeios':'Ferragens e material de construção'}</small></span>${ic('arrow')}</button>`).join('')}</div>
     </div>
-    <div class="box stack" style="gap:8px"><span class="label">Como funciona</span>
-      <p class="small"><b>1.</b> Responda 12 perguntas rápidas.</p>
-      <p class="small"><b>2.</b> Envie sua lista de ${'produtos ou pacotes'}.</p>
-      <p class="small"><b>3.</b> Aprove os posts um por um. Pode parar e continuar depois.</p>
-    </div>`;
+`;
   $$('[data-niche]').forEach(b=>b.onclick=()=>{
     if(S.niche!==b.dataset.niche){ Object.assign(S, JSON.parse(FRESH)); S.niche=b.dataset.niche; }
     S.view='quiz'; S.q=0; render();
@@ -774,7 +761,7 @@ function vQuiz(){
   let body='';
   if(Q.type==='text'){
     body=`<input class="input" id="nome" value="${esc(v)}" placeholder="Ex.: ${esc(Q.sug[0])}" autocomplete="organization" aria-label="Nome do negócio">
-      <div class="stack" style="gap:8px"><span class="label">Ou toque em um exemplo</span><div class="chips">${Q.sug.map(s=>`<button class="chip" data-sug="${esc(s)}" aria-pressed="${v===s}">${esc(s)}</button>`).join('')}</div></div>`;
+      <div class="stack" style="gap:8px"><span class="label">Exemplos</span><div class="chips">${Q.sug.map(s=>`<button class="chip" data-sug="${esc(s)}" aria-pressed="${v===s}">${esc(s)}</button>`).join('')}</div></div>`;
   } else if(Q.type==='logo'||Q.type==='colors'){
     body=brandHTML(Q.type);
   } else {
@@ -790,12 +777,12 @@ function vQuiz(){
     <div class="stack"><h2 class="h-l">${esc(Q.t)}</h2>${Q.h?`<p class="muted small">${esc(Q.h)}</p>`:''}</div>
     ${body}
     <div style="flex:1"></div>
-    ${Q.type!=='single'?`<button class="btn btn-pri full" id="next" ${canNext?'':'disabled'}>${Q.type==='logo'&&!S.a.logo?'Pular por agora':'Continuar'} ${ic('arrow')}</button>`:`<p class="muted small" style="text-align:center;margin:0">Toque em uma opção para continuar</p>`}`;
+    ${Q.type!=='single'?`<button class="btn btn-pri full" id="next" ${canNext?'':'disabled'}>${Q.type==='logo'&&!S.a.logo?'Pular por agora':'Continuar'} ${ic('arrow')}</button>`:''}`;
   const next=()=>{ if(S.q<QS.length-1){S.q++; render(); scr().scrollTop=0;} else {S.view='produtos'; render(); scr().scrollTop=0;} };
   if($('#next')) $('#next').onclick=next;
   if(Q.type==='text'){
     const inp=$('#nome');
-    inp.oninput=()=>{ S.a.nome=inp.value; $('#next').disabled=!inp.value.trim(); $('#store').textContent=inp.value||'Bancada'; };
+    inp.oninput=()=>{ S.a.nome=inp.value; $('#next').disabled=!inp.value.trim(); };
     inp.onkeydown=e=>{ if(e.key==='Enter'&&inp.value.trim()) next(); };
     $$('[data-sug]').forEach(b=>b.onclick=()=>{ S.a.nome=b.dataset.sug; next(); });
   } else if(isBrand){ bindBrand(); }
@@ -816,11 +803,11 @@ function vQuiz(){
 function vProdutos(){
   const n=N(), avail=n.lib.filter(l=>!S.products.some(p=>p.k===l.k)), hasPosts=S.posts.length>0;
   scr().innerHTML=`
-    ${hasPosts?`<div class="stack"><h2 class="h-l">Sua marca</h2><p class="muted small">Mudou a logo ou as cores? Todos os posts mudam junto.</p></div>${brandHTML('all')}<div class="stack" style="margin-top:8px"><h2 class="h-l">${n.itens}</h2></div>`
-      :`<div class="progress"><i style="width:100%"></i></div><div class="stack"><h2 class="h-l">${esc(n.itensQ)}</h2><p class="muted small">Envie sua planilha ou toque nos itens abaixo. A estrela marca os destaques do mês.</p></div>`}
-    <label class="drop" for="csv"><span class="nic">${ic('upload')}</span><span><b>Enviar minha lista</b><br><span class="muted small">Planilha CSV ou TXT, uma linha por item: <code>nome;categoria</code></span></span></label>
+    ${hasPosts?`<div class="stack"><h2 class="h-l">${esc(S.a.nome)}</h2></div>${brandHTML('all')}<div class="stack" style="margin-top:8px"><h2 class="h-l">${n.itens}</h2></div>`
+      :`<div class="progress"><i style="width:100%"></i></div><div class="stack"><h2 class="h-l">${esc(n.itensQ)}</h2><p class="muted small">A estrela marca os destaques.</p></div>`}
+    <label class="drop" for="csv"><span class="nic">${ic('upload')}</span><span><b>Enviar minha lista</b><br><span class="muted small">CSV ou TXT: <code>nome;categoria</code></span></span></label>
     <input type="file" id="csv" class="sr" accept=".csv,.txt,text/csv,text/plain">
-    <label class="drop" for="pfotos"><span class="nic">${ic('image')}</span><span><b>Enviar as fotos ${S.niche==='turismo'?'dos pacotes':'dos produtos'}</b><br><span class="muted small">Dê a cada foto o mesmo nome do item na planilha, como <code>${esc(S.products[0]?.nome||n.lib[0].nome)}.jpg</code>. Pode mandar todas de uma vez. Com as fotos, o app monta os posts sozinho.</span></span></label>
+    <label class="drop" for="pfotos"><span class="nic">${ic('image')}</span><span><b>Enviar as fotos ${S.niche==='turismo'?'dos pacotes':'dos produtos'}</b><br><span class="muted small">Nome do arquivo igual ao do item</span></span></label>
     <input type="file" id="pfotos" class="sr" accept="image/*" multiple>
     ${orphan.length?`<div class="req"><div class="req-h">${ic('image')} ${orphan.length} foto${orphan.length>1?'s':''} sem item com o mesmo nome</div>
       <p class="small" style="margin:0">${orphan.map(f=>`<code>${esc(f.name)}</code>`).join(' ')}</p>
@@ -903,7 +890,7 @@ function postCard(p){
     </div>
     <h3><em>${p.fmt}:</em> ${esc(p.title)}</h3>
     ${reqBox(p)}
-    <div class="stack" style="gap:8px">${p.media&&p.media.url?`<span class="prev-lbl own">${ic('check')} ${p.media.type==='video'?'Prévia com o seu vídeo':p.fmt==='Reels'?'Vídeo montado com a sua foto do produto':p.media.auto?'Prévia com a sua foto do produto':'Prévia com a sua foto'}</span>`:`<span class="prev-lbl demo">${ic('image')} Prévia com ${p.fmt==='Reels'?'imagem':'foto'} de exemplo${reqs(p).some(x=>x.k!=='precos')?'. Envie o seu arquivo':''}</span>`}${creative(p)}</div>
+    <div class="stack" style="gap:8px">${p.media&&p.media.url?`<span class="prev-lbl own">${ic('check')} ${p.media.type==='video'?'Seu vídeo':'Sua foto'}</span>`:`<span class="prev-lbl demo">${ic('image')} Imagem de exemplo</span>`}${creative(p)}</div>
     <div class="tools">
       <label class="btn btn-soft btn-sm" for="mf-${p.id}">${ic('image')} ${p.media?'Trocar minha foto/vídeo':'Usar minha foto ou vídeo'}</label>
       ${p.media?`<button class="btn btn-soft btn-sm" data-unmedia="${p.id}">${ic('undo')} Voltar à sugestão</button>`:''}
@@ -913,7 +900,7 @@ function postCard(p){
     ${p.promo?promoPanel(p):''}
     ${ed?editPanel(p):`<dl class="rot">${p.f.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     <details class="cap"><summary>Ver legenda para ${esc(net)}</summary><p>${esc(caption(p))}\n\n<span class="hash">${esc(p.tags.join(' '))}</span></p></details>`}
-    ${p.fmt==='Reels'?`<div class="vidline"><span>${p.media?.type==='video'?'<b>Seu vídeo está no post.</b> Quer mudar legenda ou música?':p.media?.type==='image'?'<b>O app montou o vídeo com a sua foto.</b> Prefere gravar? Envie seu vídeo.':'<b>Quer ajustar o vídeo antes?</b> Use o editor do app.'}</span><button class="btn btn-soft btn-sm" data-vid="${p.id}">${ic('video')} Editor</button></div>`:''}
+    ${p.fmt==='Reels'?`<div class="vidline"><span><b>Ajustar o vídeo</b></span><button class="btn btn-soft btn-sm" data-vid="${p.id}">${ic('video')} Editor</button></div>`:''}
   </article>`;
 }
 const QUICK=[['forte','Começo mais chamativo'],['curto','Legenda mais curta'],['leve','Mais descontraído'],['produto','Trocar o item'],['hora','Mudar horário'],['nova','Outra ideia']];
@@ -1115,6 +1102,7 @@ async function orphansAsProducts(){
   applyProdPhotos(); render(); toast('Itens novos criados com as fotos');
 }
 async function restoreMedia(){
+  if(logoInIdb&&!S.a.logo){ const v=await IDB.get('logo'); if(v){ S.a.logo=v; logoIdb=v; } }
   for(const pr of S.products) for(const k of pr.fotos||[]) if(!PHOTO[k]){ const v=await IDB.get(k); if(v) PHOTO[k]=v; }
   for(const p of S.posts){
     if(p.media&&p.media.key&&!p.media.url){ const v=await IDB.get(p.media.key); if(v) p.media.url=typeof v==='string'?v:URL.createObjectURL(v); else p.media=null; }
@@ -1138,7 +1126,6 @@ function vCal(){
     <div class="stack"><h2 class="h-l">${S.posts.length} posts em novembro</h2>
       <div class="counts"><span class="cnt ok">${ic('check')} ${count('aprovado')} prontos</span><span class="cnt warn">${ic('upload')} ${S.posts.filter(p=>p.status==='pendente'&&missing(p).length).length} faltam arquivos</span><span class="cnt bad">${ic('x')} ${count('reprovado')} reprovados</span></div></div>
     <div class="cal" role="group" aria-label="Novembro de 2026">${cells}</div>
-    <div class="keys"><span><span class="stb ok">${ic('check')}</span>Pronto para baixar</span><span><span class="stb warn">${ic('upload')}</span>Falta enviar</span><span><span class="stb bad">${ic('x')}</span>Reprovado</span><span>Sem sinal: falta aprovar</span></div>
     <div class="mixsum">
       <div class="bar"><i class="d-demo" style="flex:${cnt.demo}"></i><i class="d-aprox" style="flex:${cnt.aprox}"></i><i class="d-need" style="flex:${cnt.need}"></i></div>
       <div class="keys"><span><i class="dot d-demo"></i>${cnt.demo} demonstração</span><span><i class="dot d-aprox"></i>${cnt.aprox} aproximação</span><span><i class="dot d-need"></i>${cnt.need} necessidade</span></div>
@@ -1251,7 +1238,7 @@ function vVideo(){
   const v=S.vid, p=S.posts.find(x=>x.id===v.postId);
   if(!p){
     const list=S.posts.filter(x=>x.fmt==='Reels');
-    scr().innerHTML=`<div class="stack"><h2 class="h-l">Grave do seu jeito. O app edita.</h2><p class="muted small">Escolha o post. O roteiro dele vira a frase de abertura, as legendas e o final.</p></div>
+    scr().innerHTML=`<div class="stack"><h2 class="h-l">Seus vídeos</h2></div>
       ${list.length?`<div class="stack" style="gap:8px">${list.map(x=>`<button class="plink" data-vid="${x.id}"><span class="date-chip">${x.date.getDate()}<br>nov</span><b>${esc(x.title)}</b>${x.media?.type==='video'?`<span class="cnt ok">${ic('check')} Enviado</span>`:`<span class="cnt warn">Falta vídeo</span>`}</button>`).join('')}</div>`
       :`<p class="muted">Nenhum Reels no calendário. Na pergunta sobre vídeos, escolha "Sim, eu mesmo" ou "Sim, alguém da equipe".</p>`}`;
     bindCard(); return;
@@ -1259,7 +1246,7 @@ function vVideo(){
   const head=`<div class="stack"><button class="link" id="vback" style="align-self:flex-start">← Todos os vídeos</button><span class="small muted">${fmtDate(p.date)} · ${PILLAR[p.pillar]}</span><h2 class="h-m">${esc(p.title)}</h2></div>`;
   if(v.stage==='setup'){
     scr().innerHTML=`${head}
-      <label class="drop" for="vfile"><span class="nic">${ic('upload')}</span><span><b>${v.name?esc(v.name):'Enviar meu vídeo'}</b><br><span class="muted small">${v.name?'Toque para trocar':'Da galeria ou da câmera. Até 3 minutos, sem precisar cortar.'}</span></span></label>
+      <label class="drop" for="vfile"><span class="nic">${ic('upload')}</span><span><b>${v.name?esc(v.name):'Enviar meu vídeo'}</b><br><span class="muted small">${v.name?'Toque para trocar':'Até 3 minutos'}</span></span></label>
       <input type="file" id="vfile" class="sr" accept="video/*">
       <div class="box stack"><span class="label">O que gravar</span><p class="small">${esc(unq(p.f[1][1]))}</p></div>
       ${VOPT.map(g=>`<div class="stack" style="gap:8px"><span class="label">${g.l}</span><div class="chips">${g.o.map(([k,l])=>`<button class="chip" data-vo="${g.k}" data-val="${k}" aria-pressed="${v.o[g.k]===k}">${l}</button>`).join('')}</div></div>`).join('')}
@@ -1324,7 +1311,7 @@ function swatches(k,list){
   return `<div class="sw">${list.map(c=>`<button data-sw="${k}" data-c="${c}" style="background:${c}" aria-pressed="${cur===c.toLowerCase()}" aria-label="Cor ${c}"></button>`).join('')}<label class="pick" title="Outra cor">+<input type="color" data-pick="${k}" value="${S.a[k].toLowerCase()}" aria-label="Escolher outra cor"></label></div>`;
 }
 function brandHTML(which){
-  const logo=`<label class="drop logo-box" for="logof"><span class="lg-img">${S.a.logo?`<img src="${S.a.logo}" alt="Sua logo">`:ic('upload')}</span><span><b>${S.a.logo?'Trocar logo':'Enviar logo'}</b><br><span class="muted small">PNG com fundo transparente fica melhor.</span></span></label>
+  const logo=`<label class="drop logo-box" for="logof"><span class="lg-img">${S.a.logo?`<img src="${S.a.logo}" alt="Sua logo">`:ic('upload')}</span><span><b>${S.a.logo?'Trocar logo':'Enviar logo'}</b><br><span class="muted small">PNG sem fundo</span></span></label>
     <input type="file" id="logof" class="sr" accept="image/*">${S.a.logo?'<button class="link" id="logorm" style="align-self:flex-start">Remover logo</button>':''}`;
   const cores=`<div class="stack" style="gap:8px"><span class="label">Cor principal</span>${swatches('cor1',P1)}</div><div class="stack" style="gap:8px"><span class="label">Cor de fundo</span>${swatches('cor2',P2)}</div>`;
   const prev=`<div class="stack" style="gap:8px"><span class="label">Como fica</span><div class="prev-w">${creative(N().sample)}</div></div>`;
@@ -1663,7 +1650,7 @@ function legendaTxt(p){
 }
 function readme(list){
   const used=[...new Set(list.flatMap(p=>[p.media?.type==='image'||p.media?.type==='video'?null:p.img, p.fmt==='Carrossel'?p.img2:null]).filter(Boolean))];
-  return [`POSTS DE NOVEMBRO DE 2026 · ${S.a.nome}`, `Gerado pelo app Bancada em ${new Date().toLocaleDateString('pt-BR')}.`, '',
+  return [`POSTS DE NOVEMBRO DE 2026 · ${S.a.nome}`, `Gerado pelo PAT (Presença Ativa) em ${new Date().toLocaleDateString('pt-BR')}.`, '',
     'COMO USAR', '1. Cada pasta é um post. O nome começa com a data e o horário, por exemplo: 2026-11-02_seg_19h_reels_...',
     '2. Dentro da pasta estão o vídeo (video.mp4 ou video.webm) ou as imagens (01.jpg a 05.jpg no carrossel), prontos para postar.',
     '3. O arquivo legenda.txt traz o texto para copiar e colar, as hashtags e as redes onde postar.',
@@ -1693,7 +1680,7 @@ function vBaixar(){
   const secs=n.Reels*12+list.length, rest=[...S.posts].sort((a,b)=>a.date-b.date).filter(p=>p.status!=='reprovado'&&!ready(p));
   const faltaArq=rest.filter(p=>missing(p).length).length;
   const row=(p,extra)=>`<button class="plink" data-open="${p.id}"><span class="date-chip">${p.date.getDate()}<br>nov</span><span><b>${esc(p.title)}</b><br><span class="small muted">${p.fmt} · ${p.time.replace(':00','h')}</span>${extra}</span>${ic('arrow')}</button>`;
-  scr().innerHTML=`<div class="stack"><h2 class="h-l">Baixar meus posts</h2><p class="muted small">Só entram os posts prontos para postar: aprovados e com fotos, vídeos e informações enviados.</p></div>
+  scr().innerHTML=`<div class="stack"><h2 class="h-l">Baixar meus posts</h2><p class="muted small">Só entram os posts aprovados e completos.</p></div>
     <div class="stat"><div class="ok"><b>${list.length}</b><span>prontos</span></div><div><b>${faltaArq}</b><span>faltam arquivos</span></div><div><b>${rest.length-faltaArq}</b><span>falta aprovar</span></div></div>
     <button class="btn btn-pri full" id="gox" ${list.length&&window.JSZip?'':'disabled'}>${ic('dl')} Baixar ${list.length} post${list.length===1?'':'s'} pronto${list.length===1?'':'s'}</button>
     ${list.length?`<p class="muted small" style="margin:0">Tempo estimado: ${secs<60?'menos de 1 minuto':`cerca de ${Math.ceil(secs/60)} minutos`}. Nesta versão os vídeos saem sem música.</p>`:''}
@@ -1760,15 +1747,23 @@ async function offerZip(){
 
 /* ---------- salvar no aparelho ---------- */
 const KEY='bancada-v4';
+/* a logo é o único item grande: se não couber no localStorage, vai para o IndexedDB */
+let logoInIdb=false, logoIdb=null, saveWarned=false;
 function save(){
-  const pack=keepImg=>JSON.stringify({niche:S.niche, view:S.view==='gerando'?'produtos':S.view, q:S.q, a:S.a, products:S.products, sel:S.sel, cur:S.cur, stopped:S.stopped, vo:S.vid.o,
+  if(!mediaReady) return; // antes de restaurar logo e fotos, não sobrescreve o que está salvo
+  const pack=keepLogo=>JSON.stringify({niche:S.niche, view:S.view==='gerando'?'produtos':S.view, q:S.q, a:keepLogo?S.a:{...S.a, logo:null}, logoIdb:!keepLogo&&!!S.a.logo,
+    products:S.products, sel:S.sel, cur:S.cur, stopped:S.stopped, vo:S.vid.o,
     posts:S.posts.map(p=>({...p, date:p.date.toISOString(), media:p.media&&p.media.key?{type:p.media.type,name:p.media.name,key:p.media.key,auto:!!p.media.auto}:null}))});
-  try{ localStorage.setItem(KEY, pack(true)); }catch(e){ try{ localStorage.setItem(KEY, pack(false)); }catch(_){} }
+  try{ localStorage.setItem(KEY, pack(true)); return; }catch(e){}
+  if(S.a.logo&&S.a.logo!==logoIdb){ logoIdb=S.a.logo; IDB.put('logo',S.a.logo); }
+  try{ localStorage.setItem(KEY, pack(false)); }
+  catch(e){ if(!saveWarned){ saveWarned=true; toast('Não consegui salvar o progresso neste aparelho'); } }
 }
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(!d) return;
-    S.niche=d.niche||null; Object.assign(S.a, d.a||{}); S.products=d.products||[];
+    S.niche=d.niche||null; Object.assign(S.a, d.a||{}); S.products=d.products||[]; logoInIdb=!!d.logoIdb;
+    if(!Array.isArray(S.a.tipo)) S.a.tipo=S.a.tipo?[S.a.tipo]:[]; // versões antigas guardavam uma opção só
     S.posts=(d.posts||[]).map(p=>({...p, date:new Date(p.date)}));
     S.q=d.q||0; S.sel=d.sel; S.cur=d.cur; S.stopped=!!d.stopped; if(d.vo) S.vid.o=d.vo;
     S.view=d.view||'intro';
