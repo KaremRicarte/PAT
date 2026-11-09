@@ -48,5 +48,5 @@ export async function novaAdmin() {
 
 export async function limpar(ids) {
   const s = servico()
-  for (const id of ids) await s.auth.admin.deleteUser(id)
+  for (const id of ids) if (id) await s.auth.admin.deleteUser(id)
 }
