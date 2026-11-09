@@ -1,0 +1,32 @@
+{
+  "name": "pat",
+  "version": "1.0.0",
+  "description": "PAT – Presença Ativa (v2)",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:int": "vitest run --config vitest.int.config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KaremRicarte/PAT.git"
+  },
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/KaremRicarte/PAT/issues"
+  },
+  "homepage": "https://github.com/KaremRicarte/PAT#readme",
+  "devDependencies": {
+    "supabase": "^3.1.0",
+    "vite": "^6.4.6",
+    "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0"
+  },
+  "private": true
+}
