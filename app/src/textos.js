@@ -31,6 +31,7 @@ const pt = {
   // comum
   'comum.sair': 'Sair',
   'comum.carregando': 'Carregando…',
+  'comum.tentar': 'Tentar de novo',
 
   // administração
   'admin.soadmin': 'Esta área é só para a administração.',
