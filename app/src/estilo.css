@@ -34,3 +34,37 @@ button:disabled { opacity: .6; cursor: default; }
 .muted { color: var(--muted); }
 form .acoes button[type=submit] { flex: 1 1 auto; }
 [hidden] { display: none !important; }
+
+/* ===== Painel de administração ===== */
+main.largo { max-width: 1040px; }
+.topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 32px; }
+.topo .logo { margin: 0; }
+.titulo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.titulo h1 { margin: 0; }
+form.novo { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-bottom: 16px; max-width: 480px; }
+form.novo h2 { font-size: 20px; }
+.aviso:empty { display: none; }
+.aviso { margin-bottom: 16px; }
+.quadro-senha { background: var(--pri-soft); border: 1px solid var(--pri); border-radius: 16px; padding: 16px 20px; }
+.quadro-senha .senha { margin: 0 0 4px; font-size: 18px; }
+.quadro-senha strong { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .06em; color: var(--pri); }
+.quadro-senha .muted { margin: 0 0 12px; }
+button.pequeno { padding: 8px 14px; font-size: 14px; }
+.selo { display: inline-block; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 2px 10px; margin: 2px 6px 2px 0; white-space: nowrap; }
+.selo.bom { background: var(--ok-soft); color: var(--ok); }
+.selo.ruim { background: var(--bad-soft); color: var(--bad); }
+.selo.neutro { background: var(--sunk); color: var(--muted); }
+table.clientes { width: 100%; border-collapse: collapse; }
+table.clientes th { text-align: left; font-size: 13px; font-weight: 700; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line); }
+table.clientes td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: middle; overflow-wrap: anywhere; }
+.acoes-linha { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* No celular, cada cliente vira um cartão */
+@media (max-width: 720px) {
+  table.clientes thead { display: none; }
+  table.clientes, table.clientes tbody, table.clientes tr, table.clientes td { display: block; width: 100%; }
+  table.clientes tr { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; margin-bottom: 12px; }
+  table.clientes td { border: 0; padding: 4px 0; }
+  table.clientes td[data-rotulo]::before { content: attr(data-rotulo); display: block; font-size: 12px; color: var(--muted); }
+  .acoes-linha { justify-content: flex-start; padding-top: 12px !important; }
+}
