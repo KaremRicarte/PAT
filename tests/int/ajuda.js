@@ -46,6 +46,23 @@ export async function novaAdmin() {
   return { id: u.id, db: await entrarComo(u.email, u.senha) }
 }
 
+// Cliente pronto para gerar: ramo ferramentas, negócio e 2 produtos (gravados com a chave de serviço).
+export async function novoNegocio(cliente, extra = {}) {
+  const s = servico()
+  const r1 = await s.from('clientes').update({ ramo: 'ferramentas' }).eq('id', cliente.id)
+  if (r1.error) throw r1.error
+  const r2 = await s.from('negocios').insert({
+    cliente_id: cliente.id, nome: 'Ferragens Teste', cor1: '#F2A21B', cor2: '#151925', ...extra,
+  })
+  if (r2.error) throw r2.error
+  const { data: produtos, error } = await s.from('produtos').insert([
+    { cliente_id: cliente.id, nome: 'Furadeira de impacto', preco: 299.9, ordem: 0 },
+    { cliente_id: cliente.id, nome: 'Trena a laser', ordem: 1 },
+  ]).select('id,nome')
+  if (error) throw error
+  return { produtos }
+}
+
 export async function limpar(ids) {
   const s = servico()
   for (const id of ids) if (id) await s.auth.admin.deleteUser(id)
