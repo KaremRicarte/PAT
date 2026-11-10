@@ -45,3 +45,13 @@ test('validarMes acusa falta de stories', () => {
   expect(validarMes(ok, agenda)).toEqual([])
   expect(validarMes([post(), post({ rede: 'facebook' })], agenda)).not.toEqual([])
 })
+
+import { temPromocao } from '../../supabase/functions/_shared/modelos/validar.ts'
+test.each([
+  ['Psicoterapia 100% online', false], ['Sessões para promover autoconhecimento', false], ['Ofertamos acolhimento', false],
+  ['Promoção de inverno', true], ['promoções', true], ['50% off', true], ['Consulta R$ 200', true],
+  ['com desconto', true], ['Oferta da semana', true], ['Black Friday', true], ['preço promocional', true],
+])('temPromocao(%j) → %s', (s, esperado) => expect(temPromocao(s)).toBe(esperado))
+test('"100% online" e "promover" passam em psicologia', () => {
+  expect(validarPost(post({ titulo: 'Psicoterapia 100% online', legenda: 'Para promover autoconhecimento.' }), RAMOS.psicologia)).toEqual([])
+})

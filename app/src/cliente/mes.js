@@ -37,6 +37,12 @@ export function agruparPorDia(posts) {
   })
 }
 
+// Mês mostrado: o escolhido (ou recém-gerado), senão o de hoje, senão o mais recente.
+export function escolherMes(meses, hoje, preferido) {
+  return meses.find((m) => m.ano_mes === preferido) ?? meses.find((m) => m.ano_mes === hoje.slice(0, 7)) ?? meses[0]
+}
+let mesPreferido = null // guarda o mês recém-gerado ou escolhido nos botões
+
 export function textoParaCopiar(post) {
   return post.hashtags.length ? `${post.legenda}\n\n${post.hashtags.join(' ')}` : post.legenda
 }
@@ -74,9 +80,12 @@ async function telaGerando({ supabase, atualizar, estrategia, voltar }) {
   let i = 0
   const tique = setInterval(() => { if (i < passos.length) passos[i++].classList.add('feito') }, 700)
 
-  const { error } = await supabase.functions.invoke('gerar-mes', { body: { estrategia } })
+  const { data, error } = await supabase.functions.invoke('gerar-mes', { body: { estrategia } })
   clearInterval(tique)
-  if (!error) return atualizar()
+  if (!error) {
+    mesPreferido = data?.anoMes ?? null // mostra o mês que acabou de ser gerado
+    return atualizar()
+  }
 
   let msg = t('erro.geral'), status = 0
   try {
@@ -93,8 +102,7 @@ export async function telaMes(ctx, editarNegocio) {
   const { supabase, cliente, meses, atualizar } = ctx
   const ramo = RAMOS[cliente.ramo]
   const hoje = hojeEmSaoPaulo()
-  // mostra o mês de hoje se existir; senão, o mais recente
-  const mes = meses.find((m) => m.ano_mes === hoje.slice(0, 7)) ?? meses[0]
+  const mes = escolherMes(meses, hoje, mesPreferido)
 
   carregando()
   const { data: posts, error } = await supabase.from('posts')
@@ -112,8 +120,17 @@ export async function telaMes(ctx, editarNegocio) {
     : null
   const editar = el('button', { type: 'button', class: 'secundario', texto: t('mes.editar'), onclick: () => editarNegocio(ctx) })
 
+  // botões para alternar entre os meses mais recentes (ex.: o atual e o próximo já gerado)
+  const trocaMes = meses.length > 1
+    ? el('div', { class: 'chips' }, meses.slice(0, 3).map((m) => el('button', {
+      type: 'button', class: m.id === mes.id ? 'chip ativo' : 'chip', 'aria-pressed': String(m.id === mes.id),
+      texto: nomeDoMes(m.ano_mes), onclick: () => { mesPreferido = m.ano_mes; telaMes(ctx, editarNegocio) },
+    })))
+    : null
+
   mostrar(
     el('header', { class: 'topo' }, logo(), botaoSair(supabase)),
+    trocaMes,
     el('h1', { texto: t('mes.titulo', { mes: nomeDoMes(mes.ano_mes) }) }),
     el('p', {}, el('span', { class: 'selo neutro', texto: rotuloEstrategia(mes.estrategia, ramo) }),
       el('span', { class: 'muted', texto: t('mes.total', { n: posts.length }) })),

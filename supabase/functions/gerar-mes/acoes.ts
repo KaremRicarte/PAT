@@ -5,7 +5,7 @@ import type { Estrategia, Tom } from '../_shared/modelos/tipos.ts'
 import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import { agendaDoMes, mesAlvo } from '../_shared/modelos/calendario.ts'
 import { gerarMes, type Pacote, type PostGerado } from '../_shared/modelos/gerar.ts'
-import { validarMes, validarPost } from '../_shared/modelos/validar.ts'
+import { temPromocao, validarMes, validarPost } from '../_shared/modelos/validar.ts'
 
 export type DepsMes = {
   cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null } | null>,
@@ -33,6 +33,14 @@ export async function gerarMesDoCliente(entrada: unknown, deps: DepsMes): Promis
   const [negocio, produtos, gerados] = await Promise.all([deps.negocio(), deps.produtos(), deps.mesesGerados()])
   if (!negocio || !produtos.length) return r(400, 'Complete o cadastro do seu negócio antes.')
 
+  // Em ramos com regras de conselho, o texto escrito pelo cliente também não pode falar de preço/promoção.
+  const ramo = RAMOS[cliente.ramo]
+  if (ramo.noPromo) {
+    const textos = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
+    const ruim = textos.find(temPromocao)
+    if (ruim) return r(400, `Revise "${ruim}": em ${ramo.nome} os textos não podem falar de preço nem de promoção.`)
+  }
+
   const alvo = mesAlvo(deps.hoje(), gerados)
   if (!alvo) return r(409, 'O próximo mês fica disponível a partir do dia 21.')
 
@@ -40,7 +48,7 @@ export async function gerarMesDoCliente(entrada: unknown, deps: DepsMes): Promis
   const posts = gerarMes({ ramo: cliente.ramo, estrategia: est, ...alvo, negocio, produtos })
   const problemas = [
     ...validarMes(posts, agendaDoMes(alvo.anoMes, alvo.inicio, est)),
-    ...posts.flatMap((p) => validarPost(p, RAMOS[cliente.ramo as string]).map((x) => `${p.data} ${p.rede}/${p.tipo}: ${x}`)),
+    ...posts.flatMap((p) => validarPost(p, ramo).map((x) => `${p.data} ${p.rede}/${p.tipo}: ${x}`)),
   ]
   if (problemas.length) {
     console.error('gerar-mes: validação recusou o mês', cliente.id, problemas)

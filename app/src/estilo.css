@@ -55,6 +55,7 @@ p.pequeno { font-size: 14px; margin: 6px 0 0; }
 .cartao input { width: auto; margin: 4px 0 0; accent-color: var(--pri); }
 .cartao small { display: block; color: var(--muted); font-size: 14px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+.chip.ativo { background: var(--pri); color: var(--pri-ink); border-color: var(--pri); }
 .chip { background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 8px 14px; font-size: 14px; font-weight: 600; }
 .itens fieldset { border: 1px solid var(--line); border-radius: 16px; padding: 4px 16px 16px; margin: 0 0 12px; }
 .itens legend { font-weight: 700; padding: 0 6px; text-transform: capitalize; }

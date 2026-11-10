@@ -1,5 +1,6 @@
 // Dados do negócio do cliente: leitura, gravação e preparo das fotos.
 // O cliente do Supabase vem por parâmetro, para as funções puras poderem ser testadas sem rede.
+import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
 
 export const MAX_ITENS = 12
 export const FOTO_MAX = 1600 // lado maior das fotos, em px
@@ -12,10 +13,12 @@ export function medidaReduzida(largura, altura, maximo) {
 }
 
 // Devolve a chave de texto do primeiro problema, ou null se a lista está boa.
-export function validarItens(itens) {
+// Em ramos com regras de conselho (noPromo), nome e descrição não podem falar de preço/promoção.
+export function validarItens(itens, ramo = { noPromo: false }) {
   if (!itens.length) return 'quiz.itens.min'
   if (itens.length > MAX_ITENS) return 'quiz.itens.max'
   if (itens.some((i) => { const n = String(i.nome ?? '').trim(); return n.length < 2 || n.length > 80 })) return 'quiz.itens.nome'
+  if (ramo.noPromo && itens.some((i) => temPromocao(`${i.nome} ${i.descricao ?? ''}`))) return 'quiz.itens.promo'
   return null
 }
 

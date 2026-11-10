@@ -83,6 +83,8 @@ const pt = {
   'quiz.itens.dica': 'Toque numa sugestão ou adicione os seus. Até {max}.',
   'quiz.itens.min': 'Inclua pelo menos 1 item.',
   'quiz.itens.max': 'São no máximo {max} itens.',
+  'quiz.itens.promo': 'Na sua área, os textos não podem falar de preço nem de promoção. Revise nomes e descrições.',
+  'quiz.nome.promo': 'Na sua área, o nome não pode falar de preço nem de promoção.',
   'quiz.itens.nome': 'Cada item precisa de um nome, com pelo menos 2 letras.',
   'quiz.item.nome': 'Nome',
   'quiz.item.descricao': 'Descrição (opcional)',

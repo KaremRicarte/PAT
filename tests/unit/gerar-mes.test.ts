@@ -73,3 +73,21 @@ test('mês que não passa na validação → 500 e nada é salvo', async () => {
   expect(deps.salvar).not.toHaveBeenCalled()
   erro.mockRestore()
 })
+
+test('ramo sem promoção com preço escrito pelo cliente → 400 dizendo o que revisar', async () => {
+  const deps = falsos({
+    cliente: async () => ({ id: 'c1', situacao: 'ativo', senha_provisoria: false, ramo: 'advocacia' }),
+    produtos: async () => [{ id: 'p1', nome: 'Consulta R$ 200', descricao: null, preco: null }],
+  })
+  expect(await gerarMesDoCliente({ estrategia: 'vender' }, deps)).toEqual({ status: 400, corpo: {
+    erro: 'Revise "Consulta R$ 200": em Advocacia os textos não podem falar de preço nem de promoção.' } })
+  expect(deps.salvar).not.toHaveBeenCalled()
+})
+
+test('psicologia com "100% online" e "promover" gera normalmente', async () => {
+  const deps = falsos({
+    cliente: async () => ({ id: 'c1', situacao: 'ativo', senha_provisoria: false, ramo: 'psicologia' }),
+    produtos: async () => [{ id: 'p1', nome: 'Psicoterapia 100% online', descricao: 'Sessões para promover autoconhecimento', preco: null }],
+  })
+  expect((await gerarMesDoCliente({ estrategia: 'vender' }, deps)).status).toBe(201)
+})

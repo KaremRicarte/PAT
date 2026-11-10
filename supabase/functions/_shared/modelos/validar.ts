@@ -3,7 +3,9 @@ import type { Ramo } from './tipos.ts'
 import type { Agenda } from './calendario.ts'
 import type { PostGerado } from './gerar.ts'
 
-const PROIBIDAS = /R\$|\d+\s?%|promo|desconto|oferta|black friday/i
+// Preço ou promoção, como palavra inteira: "promoção" e "50% off" contam; "promover" e "100% online" não.
+const PROIBIDAS = /R\$|(?<!\p{L})(promo(ção|ções|cional|cionais|s)?|descontos?|ofertas?|off)(?!\p{L})|black friday/iu
+export const temPromocao = (s: string) => PROIBIDAS.test(s)
 const SOBRAS = /undefined|\{prod\}|\{loja\}/
 const MAX_HASHTAGS: Record<PostGerado['rede'], number> = { instagram: 5, tiktok: 5, facebook: 3, whatsapp: 0 }
 
@@ -15,7 +17,7 @@ export function validarPost(post: PostGerado, ramo: Ramo): string[] {
   if (post.hashtags.length > MAX_HASHTAGS[post.rede]) erros.push(`hashtags demais para ${post.rede}`)
   const textos = [post.titulo, post.legenda, post.roteiro ?? '', ...post.hashtags]
   if (textos.some((t) => SOBRAS.test(t))) erros.push('marcador sobrando no texto')
-  if (ramo.noPromo && textos.some((t) => PROIBIDAS.test(t))) erros.push('preço ou promoção num ramo que não permite')
+  if (ramo.noPromo && textos.some(temPromocao)) erros.push('preço ou promoção num ramo que não permite')
   return erros
 }
 

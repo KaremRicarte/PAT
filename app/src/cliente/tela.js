@@ -2,13 +2,13 @@ import { ramoValido } from '../../../supabase/functions/_shared/modelos/ramos/in
 
 // Decide qual tela o cliente vê. A situação vem sempre do banco, nunca da sessão.
 // O ramo é definido pela administradora; sem ele o cliente espera o cadastro ser concluído.
-export function telaInicial({ sessao, cliente, negocio = null, mes = null }) {
+export function telaInicial({ sessao, cliente, negocio = null, produtos = [], mes = null }) {
   if (!sessao) return 'entrar'
   if (!cliente) return 'erro'
   if (cliente.situacao === 'bloqueado') return 'pausado'
   if (cliente.senha_provisoria) return 'trocar-senha'
   if (!ramoValido(cliente.ramo)) return 'sem-ramo'
-  if (!negocio) return 'quiz-negocio'
+  if (!negocio || !produtos.length) return 'quiz-negocio' // sem itens = cadastro salvo pela metade
   if (!mes) return 'quiz-mes'
   return 'mes'
 }

@@ -9,8 +9,10 @@ test.each([
   [{ sessao: {}, cliente: c() }, 'sem-ramo'],
   [{ sessao: {}, cliente: c({ ramo: 'padaria' }) }, 'sem-ramo'],
   [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: null }, 'quiz-negocio'],
-  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, mes: null }, 'quiz-mes'],
-  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, mes: {} }, 'mes'],
+  // negócio salvo pela metade (sem itens): volta ao quiz em vez de travar no quiz do mês
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [], mes: null }, 'quiz-negocio'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [{}], mes: null }, 'quiz-mes'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [{}], mes: {} }, 'mes'],
   [{ sessao: {}, cliente: c({ ramo: 'beleza', senha_provisoria: true }), negocio: {}, mes: {} }, 'trocar-senha'],
   [{ sessao: {}, cliente: c({ ramo: 'beleza', situacao: 'bloqueado' }), negocio: {}, mes: {} }, 'pausado'],
 ])('%o → %s', (e, tela) => expect(telaInicial(e)).toBe(tela))

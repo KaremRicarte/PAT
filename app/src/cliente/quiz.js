@@ -2,6 +2,7 @@
 import { t } from '../textos.js'
 import { el, logo, campo, mostrar } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
+import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
 import {
   MAX_ITENS, FOTO_MAX, LOGO_MAX, validarItens, precoDoTexto, normalizarInsta, reduzirFoto, salvarNegocio,
 } from './negocio.js'
@@ -64,7 +65,10 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
       input.addEventListener('input', () => { estado.nome = input.value })
       return {
         titulo: t('quiz.nome.titulo'), corpo: [rotulo, input],
-        validar: () => (estado.nome.trim().length < 2 ? t('quiz.nome.erro') : null),
+        validar: () => {
+          if (estado.nome.trim().length < 2) return t('quiz.nome.erro')
+          return ramo.noPromo && temPromocao(estado.nome) ? t('quiz.nome.promo') : null
+        },
       }
     },
     // 2. itens (produtos, serviços ou temas)
@@ -114,7 +118,7 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
       return {
         titulo: ramo.itensQ,
         corpo: [el('p', { class: 'muted', texto: t('quiz.itens.dica', { max: MAX_ITENS }) }), sugestoes, lista, adicionar],
-        validar: () => { const k = validarItens(estado.itens); return k ? t(k, { max: MAX_ITENS }) : null },
+        validar: () => { const k = validarItens(estado.itens, ramo); return k ? t(k, { max: MAX_ITENS }) : null },
       }
     },
     // 3. tom de voz

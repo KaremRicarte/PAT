@@ -32,3 +32,10 @@ test.each([
 ])('normalizarInsta(%j) → %s', (s, esperado) => {
   expect(normalizarInsta(s)).toBe(esperado)
 })
+
+test('em ramo sem promoção, item com preço ou promoção no texto é recusado no quiz', () => {
+  expect(validarItens([{ nome: 'Consulta R$ 200', descricao: '' }], { noPromo: true })).toBe('quiz.itens.promo')
+  expect(validarItens([{ nome: 'Consulta', descricao: 'com desconto' }], { noPromo: true })).toBe('quiz.itens.promo')
+  expect(validarItens([{ nome: 'Psicoterapia 100% online', descricao: 'promover bem-estar' }], { noPromo: true })).toBeNull()
+  expect(validarItens([{ nome: 'Corte com desconto', descricao: '' }], { noPromo: false })).toBeNull()
+})

@@ -40,7 +40,7 @@ async function atualizar() {
     }
   }
 
-  const tela = telaInicial({ sessao, cliente, negocio, mes: meses[0] ?? null })
+  const tela = telaInicial({ sessao, cliente, negocio, produtos, mes: meses[0] ?? null })
   if (TELAS_DO_APP.includes(tela) && !acessoRegistrado) {
     acessoRegistrado = true
     const { error } = await supabase.from('eventos').insert({ cliente_id: cliente.id, tipo: 'acesso' })

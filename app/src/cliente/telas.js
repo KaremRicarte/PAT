@@ -48,7 +48,11 @@ export function desenhar(tela, ctx) {
       el('div', { class: 'acoes' }, botaoSair(supabase)))
   }
 
-  if (tela === 'quiz-negocio') return telaQuiz({ supabase, cliente, inicial: null, aoSalvar: atualizar })
+  if (tela === 'quiz-negocio') {
+    // se o cadastro ficou pela metade, reabre com o que já foi salvo
+    const inicial = ctx.negocio ? { negocio: ctx.negocio, produtos: ctx.produtos } : null
+    return telaQuiz({ supabase, cliente, inicial, aoSalvar: atualizar })
+  }
 
   if (tela === 'quiz-mes') return telaQuizMes(ctx)
   if (tela === 'mes') return telaMes(ctx, editarNegocio)

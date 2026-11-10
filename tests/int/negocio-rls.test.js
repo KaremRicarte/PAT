@@ -5,7 +5,7 @@ afterEach(() => limpar(criados.splice(0)))
 const negocio = (id) => ({ cliente_id: id, nome: 'Loja da Ana', cor1: '#112233', cor2: '#FFFFFF' })
 
 test('cliente grava e lê o próprio negócio e produtos', async () => {
-  const a = await novoCliente()
+  const a = await novoCliente({ senha_provisoria: false })
   expect((await a.db.from('negocios').insert(negocio(a.id))).error).toBeNull()
   expect((await a.db.from('produtos').insert({ cliente_id: a.id, nome: 'Furadeira' })).error).toBeNull()
   const { data: n } = await a.db.from('negocios').select('nome,tom,horario,assinatura')
@@ -72,7 +72,7 @@ test('admin lê negócios de todos', async () => {
 })
 
 test('cliente envia arquivo só na própria pasta do bucket marcas', async () => {
-  const a = await novoCliente(), b = await novoCliente()
+  const a = await novoCliente({ senha_provisoria: false }), b = await novoCliente()
   const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })
   const ok = await a.db.storage.from('marcas').upload(`${a.id}/x.png`, png, { upsert: true })
   expect(ok.error).toBeNull()
@@ -108,3 +108,40 @@ function postBase() {
     titulo: 'Título', legenda: 'Legenda', hashtags: ['#a'], horario: '19:00', roteiro: null, produto_id: null, ordem: 0,
   }
 }
+
+test('cliente com senha provisória não grava negócio, produto nem arquivo', async () => {
+  const a = await novoCliente({ senha_provisoria: true })
+  expect((await a.db.from('negocios').insert(negocio(a.id))).error?.code).toBe('42501')
+  await novoNegocio(a)
+  expect((await a.db.from('produtos').insert({ cliente_id: a.id, nome: 'Trena' })).error?.code).toBe('42501')
+  const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })
+  expect((await a.db.storage.from('marcas').upload(`${a.id}/x.png`, png)).error).not.toBeNull()
+})
+
+test('cliente bloqueado não grava produto nem arquivo', async () => {
+  const a = await novoCliente({ situacao: 'bloqueado' })
+  await novoNegocio(a)
+  expect((await a.db.from('produtos').insert({ cliente_id: a.id, nome: 'Trena' })).error?.code).toBe('42501')
+  const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })
+  expect((await a.db.storage.from('marcas').upload(`${a.id}/x.png`, png)).error).not.toBeNull()
+})
+
+test('cliente não lê, não baixa e não lista arquivos de outro', async () => {
+  const a = await novoCliente({ senha_provisoria: false }), b = await novoCliente({ senha_provisoria: false })
+  const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })
+  expect((await b.db.storage.from('marcas').upload(`${b.id}/logo.png`, png, { upsert: true })).error).toBeNull()
+  expect((await a.db.storage.from('marcas').download(`${b.id}/logo.png`)).error).not.toBeNull()
+  expect((await a.db.storage.from('marcas').list(b.id)).data ?? []).toEqual([])
+  expect((await a.db.storage.from('marcas').createSignedUrl(`${b.id}/logo.png`, 60)).error).not.toBeNull()
+  await servico().storage.from('marcas').remove([`${b.id}/logo.png`])
+})
+
+test('cliente não grava nem altera produto de outro', async () => {
+  const a = await novoCliente({ senha_provisoria: false }), b = await novoCliente({ senha_provisoria: false })
+  const { produtos } = await novoNegocio(b)
+  expect((await a.db.from('produtos').insert({ cliente_id: b.id, nome: 'Invasão' })).error?.code).toBe('42501')
+  await a.db.from('produtos').update({ nome: 'Trocado' }).eq('id', produtos[0].id)
+  await a.db.from('produtos').upsert({ id: produtos[0].id, cliente_id: a.id, nome: 'Roubado' })
+  const { data } = await servico().from('produtos').select('nome, cliente_id').eq('id', produtos[0].id).single()
+  expect(data).toEqual({ nome: produtos[0].nome, cliente_id: b.id })
+})
