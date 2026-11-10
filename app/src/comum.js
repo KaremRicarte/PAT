@@ -11,7 +11,7 @@ export function el(tag, atributos = {}, ...filhos) {
     else if (k.startsWith('on')) n.addEventListener(k.slice(2), v)
     else n.setAttribute(k, v === true ? '' : v)
   }
-  for (const f of filhos.flat()) if (f !== null && f !== undefined && f !== false) n.append(f)
+  for (const f of filhos.flat(Infinity)) if (f !== null && f !== undefined && f !== false) n.append(f)
   return n
 }
 

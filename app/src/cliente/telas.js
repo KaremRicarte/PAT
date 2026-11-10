@@ -1,8 +1,12 @@
 import { t } from '../textos.js'
 import { el, logo, campo, mostrar, aoEnviar, telaEntrar, botaoSair } from '../comum.js'
 import { erroTrocaSenha } from './tela.js'
+import { telaQuiz } from './quiz.js'
+import { telaQuizMes, telaMes } from './mes.js'
 
-export function desenhar(tela, { supabase, cliente, aoTrocarSenha }) {
+// ctx: { supabase, cliente, negocio, produtos, meses, atualizar }
+export function desenhar(tela, ctx) {
+  const { supabase, cliente, atualizar } = ctx
   if (tela === 'entrar') return telaEntrar(supabase)
 
   if (tela === 'trocar-senha') {
@@ -24,7 +28,7 @@ export function desenhar(tela, { supabase, cliente, aoTrocarSenha }) {
       }
       const { error: e2 } = await supabase.rpc('marcar_senha_trocada')
       if (e2) return t('erro.geral')
-      await aoTrocarSenha()
+      await atualizar()
       return null
     })
     return mostrar(logo(), form)
@@ -37,15 +41,25 @@ export function desenhar(tela, { supabase, cliente, aoTrocarSenha }) {
       el('div', { class: 'acoes' }, botaoSair(supabase)))
   }
 
-  if (tela === 'inicio') {
+  if (tela === 'sem-ramo') {
     return mostrar(logo(),
       el('h1', { texto: t('inicio.ola', { nome: cliente.nome.split(' ')[0] }) }),
-      el('p', { class: 'muted', texto: t('inicio.embreve') }),
+      el('p', { class: 'muted', texto: t('semramo.texto') }),
       el('div', { class: 'acoes' }, botaoSair(supabase)))
   }
+
+  if (tela === 'quiz-negocio') return telaQuiz({ supabase, cliente, inicial: null, aoSalvar: atualizar })
+
+  if (tela === 'quiz-mes') return telaQuizMes(ctx)
+  if (tela === 'mes') return telaMes(ctx, editarNegocio)
 
   // 'erro': sessão sem cadastro de cliente
   return mostrar(logo(),
     el('p', { texto: t('erro.cadastro') }),
     el('div', { class: 'acoes' }, botaoSair(supabase)))
+}
+
+// Reabre o quiz preenchido; salvar ou voltar recarrega o app.
+export function editarNegocio({ supabase, cliente, negocio, produtos, atualizar }) {
+  telaQuiz({ supabase, cliente, inicial: { negocio, produtos }, aoSalvar: atualizar, aoCancelar: atualizar })
 }

@@ -6,7 +6,13 @@ test.each([
   [{ sessao: {}, cliente: null }, 'erro'],
   [{ sessao: {}, cliente: c({ situacao: 'bloqueado', senha_provisoria: true }) }, 'pausado'],
   [{ sessao: {}, cliente: c({ senha_provisoria: true }) }, 'trocar-senha'],
-  [{ sessao: {}, cliente: c() }, 'inicio'],
+  [{ sessao: {}, cliente: c() }, 'sem-ramo'],
+  [{ sessao: {}, cliente: c({ ramo: 'padaria' }) }, 'sem-ramo'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: null }, 'quiz-negocio'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, mes: null }, 'quiz-mes'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, mes: {} }, 'mes'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza', senha_provisoria: true }), negocio: {}, mes: {} }, 'trocar-senha'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza', situacao: 'bloqueado' }), negocio: {}, mes: {} }, 'pausado'],
 ])('%o → %s', (e, tela) => expect(telaInicial(e)).toBe(tela))
 
 import { erroTrocaSenha } from '../../app/src/cliente/tela.js'
