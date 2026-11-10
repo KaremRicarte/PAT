@@ -1,5 +1,6 @@
 import { t } from '../textos.js'
 import { el, logo, campo, mostrar, aoEnviar, telaEntrar, botaoSair } from '../comum.js'
+import { erroTrocaSenha } from './tela.js'
 
 export function desenhar(tela, { supabase, cliente, aoTrocarSenha }) {
   if (tela === 'entrar') return telaEntrar(supabase)
@@ -11,12 +12,16 @@ export function desenhar(tela, { supabase, cliente, aoTrocarSenha }) {
       campo(t('senha.repetir'), { name: 'repetir', type: 'password', autocomplete: 'new-password', required: true }),
       el('div', { class: 'acoes' }, el('button', { type: 'submit', texto: t('senha.botao') }), botaoSair(supabase)),
     )
+    let senhaJaTrocada = false // se só a marcação falhar, a nova tentativa refaz só ela
     aoEnviar(form, async (d) => {
       const senha = String(d.get('senha'))
       if (senha.length < 8) return t('senha.curta')
       if (senha !== String(d.get('repetir'))) return t('senha.diferente')
-      const { error } = await supabase.auth.updateUser({ password: senha })
-      if (error) return t('erro.geral')
+      if (!senhaJaTrocada) {
+        const { error } = await supabase.auth.updateUser({ password: senha })
+        if (error) return t(erroTrocaSenha(error))
+        senhaJaTrocada = true
+      }
       const { error: e2 } = await supabase.rpc('marcar_senha_trocada')
       if (e2) return t('erro.geral')
       await aoTrocarSenha()

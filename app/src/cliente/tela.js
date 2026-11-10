@@ -6,3 +6,10 @@ export function telaInicial({ sessao, cliente }) {
   if (cliente.senha_provisoria) return 'trocar-senha'
   return 'inicio'
 }
+
+// Chave de texto para o erro ao trocar a senha (códigos do Supabase Auth).
+export function erroTrocaSenha(error) {
+  if (error?.code === 'same_password') return 'senha.igual'
+  if (error?.code === 'weak_password') return 'senha.fraca'
+  return 'erro.geral'
+}

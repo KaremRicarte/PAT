@@ -15,6 +15,8 @@ const pt = {
   'senha.botao': 'Salvar senha',
   'senha.curta': 'A senha precisa ter pelo menos 8 caracteres.',
   'senha.diferente': 'As senhas não são iguais.',
+  'senha.igual': 'Escolha uma senha diferente da provisória.',
+  'senha.fraca': 'Essa senha é muito fraca. Tente outra.',
 
   // acesso pausado
   'pausado.titulo': 'Seu acesso está pausado.',

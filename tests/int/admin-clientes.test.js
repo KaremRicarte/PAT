@@ -89,3 +89,12 @@ test('ação desconhecida → 400', async () => {
   const adm = await novaAdmin()
   expect(await chamar(adm.db, { acao: 'apagar_tudo' })).toEqual({ status: 400, corpo: { erro: 'Ação desconhecida.' } })
 })
+
+test('cliente em espanhol do Chile (11 dígitos com DDI) é criado', async () => {
+  const adm = await novaAdmin()
+  const r = await chamar(adm.db, { ...novo(), idioma: 'es', telefone: '+56 9 1234 5678' })
+  expect(r.status).toBe(201)
+  criados.push(r.corpo.id)
+  const { data } = await servico().from('clientes').select('telefone,idioma').eq('id', r.corpo.id).single()
+  expect(data).toEqual({ telefone: '56912345678', idioma: 'es' })
+})

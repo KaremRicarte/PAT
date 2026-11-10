@@ -68,10 +68,10 @@ Verificação: `node -e "require('fs').readFileSync('.env.local','utf8').split('
   - `t(chave: string, vars?: Record<string,string>): string` em `app/src/textos.js`; substitui `{nome}` por `vars.nome`; chave inexistente lança `Error("texto ausente: <chave>")`.
   - Scripts npm: `dev`, `build`, `test` (unit), `test:int` (integração, lê `.env.local`).
 
-- [ ] **Passo 1:** `git checkout -b v2-etapa1`.
-- [ ] **Passo 2:** `npm init -y`; instalar `vite@6 vitest@3 supabase` (dev) e `@supabase/supabase-js@2`. `vite.config.js`: `root: 'app'`, `envDir: '..'`, `build.outDir: '../dist'`, `build.rollupOptions.input` com `index.html` e `admin.html`. `vitest.config.js`: `include: ['tests/unit/**/*.test.{js,ts}']`. `vitest.int.config.js`: `include: ['tests/int/**/*.test.js']`, `testTimeout: 30000`, `fileParallelism: false`, `env` carregado de `.env.local` via `loadEnv(mode, process.cwd(), '')`. Scripts: `test` = `vitest run`, `test:int` = `vitest run --config vitest.int.config.js`.
-- [ ] **Passo 3:** `.gitignore`: `node_modules/`, `dist/`, `.env.local`, `.env*.local`, `supabase/.temp/`. `.env.example` com as 5 chaves vazias.
-- [ ] **Passo 4: Teste que falha** — `tests/unit/textos.test.js`:
+- [x] **Passo 1:** `git checkout -b v2-etapa1`.
+- [x] **Passo 2:** `npm init -y`; instalar `vite@6 vitest@3 supabase` (dev) e `@supabase/supabase-js@2`. `vite.config.js`: `root: 'app'`, `envDir: '..'`, `build.outDir: '../dist'`, `build.rollupOptions.input` com `index.html` e `admin.html`. `vitest.config.js`: `include: ['tests/unit/**/*.test.{js,ts}']`. `vitest.int.config.js`: `include: ['tests/int/**/*.test.js']`, `testTimeout: 30000`, `fileParallelism: false`, `env` carregado de `.env.local` via `loadEnv(mode, process.cwd(), '')`. Scripts: `test` = `vitest run`, `test:int` = `vitest run --config vitest.int.config.js`.
+- [x] **Passo 3:** `.gitignore`: `node_modules/`, `dist/`, `.env.local`, `.env*.local`, `supabase/.temp/`. `.env.example` com as 5 chaves vazias.
+- [x] **Passo 4: Teste que falha** — `tests/unit/textos.test.js`:
 
 ```js
 import { t } from '../../app/src/textos.js'
@@ -83,10 +83,10 @@ test('chave ausente lança erro', () => {
 })
 ```
 
-- [ ] **Passo 5:** `npm test` → FAIL (módulo não existe).
-- [ ] **Passo 6:** Implementar `app/src/textos.js` com um objeto `pt` plano (`'inicio.ola': 'Olá, {nome}!'`, mais as chaves que as Tarefas 4 e 5 listam) e `t()`.
-- [ ] **Passo 7:** `npm test` → PASS. `npm run build` → gera `dist/index.html` e `dist/admin.html` sem erro.
-- [ ] **Passo 8:** Commit `chore: estrutura do PAT v2 (Vite, Vitest, Supabase)`.
+- [x] **Passo 5:** `npm test` → FAIL (módulo não existe).
+- [x] **Passo 6:** Implementar `app/src/textos.js` com um objeto `pt` plano (`'inicio.ola': 'Olá, {nome}!'`, mais as chaves que as Tarefas 4 e 5 listam) e `t()`.
+- [x] **Passo 7:** `npm test` → PASS. `npm run build` → gera `dist/index.html` e `dist/admin.html` sem erro.
+- [x] **Passo 8:** Commit `chore: estrutura do PAT v2 (Vite, Vitest, Supabase)`.
 
 ---
 
@@ -106,8 +106,8 @@ test('chave ausente lança erro', () => {
 - Produces (testes): em `tests/int/ajuda.js`, `servico()` (cliente com a chave de serviço), `async novoCliente(dados?) → { id, email, senha, db }` (cria usuário + linha em `clientes`, devolve um cliente supabase já logado como ele), `async novaAdmin() → { id, db }`, `async limpar(ids: string[])`.
 - `scripts/criar-admin.mjs <email> <senha>`: cria (ou atualiza) o usuário com `app_metadata: { role: 'admin' }` e `email_confirm: true`.
 
-- [ ] **Passo 1:** `npx supabase init` e `npx supabase link --project-ref $SUPABASE_PROJECT_REF`.
-- [ ] **Passo 2: Testes que falham** — `tests/int/rls.test.js`:
+- [x] **Passo 1:** `npx supabase init` e `npx supabase link --project-ref $SUPABASE_PROJECT_REF`.
+- [x] **Passo 2: Testes que falham** — `tests/int/rls.test.js`:
 
 ```js
 test('cliente lê só a própria linha', async () => {
@@ -144,11 +144,11 @@ test('admin lê todos e bloqueia', async () => {
 
 Cada teste chama `limpar()` no `afterEach` com os ids criados.
 
-- [ ] **Passo 3:** `npm run test:int` → FAIL (tabela `clientes` não existe).
-- [ ] **Passo 4:** Escrever a migração conforme o bloco Interfaces (com `alter table ... enable row level security` nas duas tabelas e `revoke execute on function public.marcar_senha_trocada from anon`). `npx supabase db push`.
-- [ ] **Passo 5:** `npm run test:int` → 5 PASS.
-- [ ] **Passo 6:** Implementar `scripts/criar-admin.mjs` (lê `.env.local`). A usuária roda `node scripts/criar-admin.mjs <email dela> <senha>`; verificação: `npm run test:int` continua verde e, no painel do Supabase, o usuário aparece com `role: admin` em *Raw app meta data*.
-- [ ] **Passo 7:** Commit `feat: tabelas clientes e eventos com RLS`.
+- [x] **Passo 3:** `npm run test:int` → FAIL (tabela `clientes` não existe).
+- [x] **Passo 4:** Escrever a migração conforme o bloco Interfaces (com `alter table ... enable row level security` nas duas tabelas e `revoke execute on function public.marcar_senha_trocada from anon`). `npx supabase db push`.
+- [x] **Passo 5:** `npm run test:int` → 5 PASS.
+- [x] **Passo 6:** Implementar `scripts/criar-admin.mjs` (lê `.env.local`). A usuária roda `node scripts/criar-admin.mjs <email dela> <senha>`; verificação: `npm run test:int` continua verde e, no painel do Supabase, o usuário aparece com `role: admin` em *Raw app meta data*.
+- [x] **Passo 7:** Commit `feat: tabelas clientes e eventos com RLS`.
 
 ---
 
@@ -165,7 +165,7 @@ Cada teste chama `limpar()` no `afterEach` com os ids criados.
   - `criarCliente(deps: Deps, entrada: unknown): Promise<Resposta>` e `redefinirSenha(deps: Deps, id: string): Promise<Resposta>` em `acoes.ts`, onde `Deps = { criarUsuario(email, senha): Promise<{ id } | { erro: 'email_existe' | string }>, apagarUsuario(id), inserirCliente(linha): Promise<{ erro?: string }>, trocarSenha(id, senha): Promise<{ erro?: string }>, marcarProvisoria(id): Promise<{ erro?: string }>, senha(): string }` e `Resposta = { status: number, corpo: object }`.
   - HTTP `POST /functions/v1/admin-clientes` com corpo `{ acao: 'criar', nome, email, telefone, idioma }` → `201 { id, senhaProvisoria }`; `{ acao: 'redefinir_senha', id }` → `200 { senhaProvisoria }`; erros de validação → `400 { erro }`; e-mail repetido → `409 { erro: "Já existe um cliente com este e-mail." }`; quem chama sem `app_metadata.role === 'admin'` → `403 { erro: "Só a administração pode fazer isso." }`; ação desconhecida → `400 { erro: "Ação desconhecida." }`.
 
-- [ ] **Passo 1: Testes que falham (unit)**
+- [x] **Passo 1: Testes que falham (unit)**
 
 ```ts
 // senha.test.ts
@@ -210,13 +210,13 @@ test('redefinir marca a senha como provisória', async () => {
 
 `falsos(sobrescrever)` monta `Deps` com `vi.fn()` que dão certo (`criarUsuario → { id: 'u1' }`, `senha → 'Senha12345'`).
 
-- [ ] **Passo 2:** `npm test` → FAIL.
-- [ ] **Passo 3:** Implementar `senha.ts` (usa `crypto.getRandomValues` por padrão), `validacao.ts` e `acoes.ts` sem nenhuma API do Deno (para o Vitest importar).
-- [ ] **Passo 4:** `npm test` → PASS.
-- [ ] **Passo 5:** `index.ts`: trata CORS (`OPTIONS` → 200 com `Access-Control-Allow-Origin: *` e `Allow-Headers: authorization, content-type, apikey, x-client-info`); lê o usuário do header `Authorization` com `supabase.auth.getUser(jwt)`; confere `app_metadata.role`; monta `Deps` reais com o cliente de serviço (`auth.admin.createUser({ email, password, email_confirm: true })` — mensagem de erro com "already" vira `email_existe`; `auth.admin.deleteUser`; `auth.admin.updateUserById(id, { password })`; inserts/updates em `clientes`); despacha pela `acao`.
-- [ ] **Passo 6: Teste de integração que falha** — `tests/int/admin-clientes.test.js`: admin cria cliente → 201 e consegue logar com `senhaProvisoria`; mesmo e-mail com maiúsculas → 409; cliente comum chamando → 403; redefinir → senha antiga deixa de funcionar e a nova funciona, `senha_provisoria` volta a `true`.
-- [ ] **Passo 7:** `npx supabase functions deploy admin-clientes` e `npm run test:int` → todos PASS.
-- [ ] **Passo 8:** Commit `feat: função admin-clientes (criar e redefinir senha)`.
+- [x] **Passo 2:** `npm test` → FAIL.
+- [x] **Passo 3:** Implementar `senha.ts` (usa `crypto.getRandomValues` por padrão), `validacao.ts` e `acoes.ts` sem nenhuma API do Deno (para o Vitest importar).
+- [x] **Passo 4:** `npm test` → PASS.
+- [x] **Passo 5:** `index.ts`: trata CORS (`OPTIONS` → 200 com `Access-Control-Allow-Origin: *` e `Allow-Headers: authorization, content-type, apikey, x-client-info`); lê o usuário do header `Authorization` com `supabase.auth.getUser(jwt)`; confere `app_metadata.role`; monta `Deps` reais com o cliente de serviço (`auth.admin.createUser({ email, password, email_confirm: true })` — mensagem de erro com "already" vira `email_existe`; `auth.admin.deleteUser`; `auth.admin.updateUserById(id, { password })`; inserts/updates em `clientes`); despacha pela `acao`.
+- [x] **Passo 6: Teste de integração que falha** — `tests/int/admin-clientes.test.js`: admin cria cliente → 201 e consegue logar com `senhaProvisoria`; mesmo e-mail com maiúsculas → 409; cliente comum chamando → 403; redefinir → senha antiga deixa de funcionar e a nova funciona, `senha_provisoria` volta a `true`.
+- [x] **Passo 7:** `npx supabase functions deploy admin-clientes` e `npm run test:int` → todos PASS.
+- [x] **Passo 8:** Commit `feat: função admin-clientes (criar e redefinir senha)`.
 
 ---
 
@@ -231,7 +231,7 @@ test('redefinir marca a senha como provisória', async () => {
 - Consumes: `supabase`, `t()` (Tarefa 1); tabela `clientes`, `eventos`, RPC `marcar_senha_trocada` (Tarefa 2).
 - Produces: `telaInicial({ sessao, cliente }): 'entrar' | 'trocar-senha' | 'pausado' | 'inicio' | 'erro'` — `sessao` nula → `entrar`; sessão sem linha em `clientes` (ex.: a admin) → `erro`; `situacao === 'bloqueado'` → `pausado` (vence a senha provisória); `senha_provisoria` → `trocar-senha`; senão `inicio`.
 
-- [ ] **Passo 1: Teste que falha**
+- [x] **Passo 1: Teste que falha**
 
 ```js
 const c = (x = {}) => ({ situacao: 'ativo', senha_provisoria: false, nome: 'Ana', ...x })
@@ -244,15 +244,15 @@ test.each([
 ])('%o → %s', (e, tela) => expect(telaInicial(e)).toBe(tela))
 ```
 
-- [ ] **Passo 2:** `npm test` → FAIL. **Passo 3:** implementar `tela.js`. **Passo 4:** `npm test` → PASS.
-- [ ] **Passo 5:** `main.js`: ao abrir e a cada `onAuthStateChange`, busca a sessão e **sempre** relê a linha em `clientes` do banco; chama `telaInicial`; ao chegar em `inicio` insere `{ cliente_id, tipo: 'acesso' }` em `eventos` uma vez por abertura do app. `telas.js` desenha cada tela num `<main>` com `textContent` (nunca `innerHTML` com dados do usuário):
+- [x] **Passo 2:** `npm test` → FAIL. **Passo 3:** implementar `tela.js`. **Passo 4:** `npm test` → PASS.
+- [x] **Passo 5:** `main.js`: ao abrir e a cada `onAuthStateChange`, busca a sessão e **sempre** relê a linha em `clientes` do banco; chama `telaInicial`; ao chegar em `inicio` insere `{ cliente_id, tipo: 'acesso' }` em `eventos` uma vez por abertura do app. `telas.js` desenha cada tela num `<main>` com `textContent` (nunca `innerHTML` com dados do usuário):
   - **entrar:** logo, e-mail, senha, botão "Entrar". Erro de login → `t('entrar.erro')` = "E-mail ou senha incorretos."
   - **trocar-senha:** "Crie sua senha" + dois campos; mínimo 8 caracteres (`"A senha precisa ter pelo menos 8 caracteres."`) e iguais (`"As senhas não são iguais."`); `auth.updateUser({ password })` e depois `rpc('marcar_senha_trocada')`.
   - **pausado:** "Seu acesso está pausado." + "Fale com a administração para reativar." + botão "Sair".
   - **inicio:** "Olá, {nome}!" + "Em breve: seu mês de posts aparece aqui." + botão "Sair".
   - **erro:** "Não encontramos seu cadastro. Fale com a administração." + "Sair".
-- [ ] **Passo 6: Verificação manual** com `npm run dev` (o executor roda e conta à usuária o que viu): cliente criado na Tarefa 3 → entra com a senha provisória → cai em "Crie sua senha" → troca → "Olá, …!"; sair e entrar com a nova senha vai direto para "Olá"; bloquear pelo painel do Supabase e recarregar → "Seu acesso está pausado"; em *Table editor → eventos* há uma linha `acesso`. Testar em largura de celular (390 px) sem rolagem horizontal.
-- [ ] **Passo 7:** Commit `feat: app do cliente com login, troca de senha e acesso pausado`.
+- [x] **Passo 6: Verificação manual** com `npm run dev` (o executor roda e conta à usuária o que viu): cliente criado na Tarefa 3 → entra com a senha provisória → cai em "Crie sua senha" → troca → "Olá, …!"; sair e entrar com a nova senha vai direto para "Olá"; bloquear pelo painel do Supabase e recarregar → "Seu acesso está pausado"; em *Table editor → eventos* há uma linha `acesso`. Testar em largura de celular (390 px) sem rolagem horizontal.
+- [x] **Passo 7:** Commit `feat: app do cliente com login, troca de senha e acesso pausado`.
 
 ---
 
@@ -269,7 +269,7 @@ test.each([
   - `ehAdmin(sessao): boolean` — `sessao?.user?.app_metadata?.role === 'admin'`.
   - Em `dados.js`: `listarClientes(): Promise<Cliente[]>` (ordenados por `nome`), `criarCliente(dados): Promise<{ id, senhaProvisoria } | { erro }>`, `redefinirSenha(id): Promise<{ senhaProvisoria } | { erro }>`, `definirSituacao(id, situacao: 'ativo'|'bloqueado'): Promise<{ erro? }>`. As duas do meio usam `supabase.functions.invoke('admin-clientes', { body })` e devolvem o `erro` do corpo quando o status não é 2xx.
 
-- [ ] **Passo 1: Teste que falha**
+- [x] **Passo 1: Teste que falha**
 
 ```js
 test('só role admin entra', () => {
@@ -279,14 +279,14 @@ test('só role admin entra', () => {
 })
 ```
 
-- [ ] **Passo 2:** `npm test` → FAIL. **Passo 3:** implementar `acesso.js`. **Passo 4:** `npm test` → PASS.
-- [ ] **Passo 5:** Implementar `dados.js`, `telas.js` e `main.js`:
+- [x] **Passo 2:** `npm test` → FAIL. **Passo 3:** implementar `acesso.js`. **Passo 4:** `npm test` → PASS.
+- [x] **Passo 5:** Implementar `dados.js`, `telas.js` e `main.js`:
   - Sem sessão → formulário de login (mesmos textos do cliente). Sessão sem `ehAdmin` → "Esta área é só para a administração." + "Sair".
   - **Lista:** tabela com nome, e-mail, telefone, idioma, situação (selo verde "Ativo" / vermelho "Bloqueado") e "Senha provisória" quando `senha_provisoria`. Em celular, cada linha vira um cartão.
   - **Novo cliente:** formulário nome, e-mail, telefone, idioma (Português / Español). Ao criar, mostra um quadro "Senha provisória: XXXXX" com botão "Copiar" e a frase "Envie ao cliente. Ela não aparece de novo." Erros da função aparecem acima do botão.
   - **Ações por cliente:** "Redefinir senha" (confirma antes; mostra o mesmo quadro), "Bloquear" / "Reativar" (confirma antes; atualiza a linha na lista).
-- [ ] **Passo 6: Verificação manual** com `npm run dev` → `/admin.html`: entrar como admin; criar cliente com telefone "(11) 98765-4321" → aparece `5511987654321`; criar de novo com o mesmo e-mail em maiúsculas → "Já existe um cliente com este e-mail."; bloquear → no app do cliente aparece "acesso pausado"; reativar → volta ao "Olá"; redefinir senha → o cliente é levado de novo a "Crie sua senha"; entrar no `/admin.html` com a conta de um cliente → "Esta área é só para a administração." Testar em 390 px.
-- [ ] **Passo 7:** Commit `feat: painel de administração mínimo`.
+- [x] **Passo 6: Verificação manual** com `npm run dev` → `/admin.html`: entrar como admin; criar cliente com telefone "(11) 98765-4321" → aparece `5511987654321`; criar de novo com o mesmo e-mail em maiúsculas → "Já existe um cliente com este e-mail."; bloquear → no app do cliente aparece "acesso pausado"; reativar → volta ao "Olá"; redefinir senha → o cliente é levado de novo a "Crie sua senha"; entrar no `/admin.html` com a conta de um cliente → "Esta área é só para a administração." Testar em 390 px.
+- [x] **Passo 7:** Commit `feat: painel de administração mínimo`.
 
 ---
 
@@ -295,8 +295,8 @@ test('só role admin entra', () => {
 **Files:**
 - Create: `netlify.toml`
 
-- [ ] **Passo 1:** `netlify.toml`: `[build] command = "npm run build"`, `publish = "dist"`, `[build.environment] NODE_VERSION = "22"`; header `X-Frame-Options = "DENY"` e `Referrer-Policy = "strict-origin-when-cross-origin"` para `/*`.
-- [ ] **Passo 2:** Commit `chore: configuração do Netlify` e, **com autorização da usuária**, push do branch (`git -c http.sslBackend=schannel push -u origin v2-etapa1`).
-- [ ] **Passo 3 (usuária, com orientação):** no Netlify, *Add new site → Import from GitHub → PAT*, branch `v2-etapa1`; em *Environment variables* cadastrar só `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. No Supabase, *Authentication → URL Configuration*: colocar o endereço do Netlify em *Site URL*.
-- [ ] **Passo 4: Verificação:** repetir no endereço público o roteiro das Tarefas 4 e 5 pelo celular da usuária; conferir que `dist/` publicado não contém `service_role` (`grep -r service_role dist` vazio no build local).
-- [ ] **Passo 5:** Atualizar a memória do projeto com o endereço do site e o estado da etapa.
+- [x] **Passo 1:** `netlify.toml`: `[build] command = "npm run build"`, `publish = "dist"`, `[build.environment] NODE_VERSION = "22"`; header `X-Frame-Options = "DENY"` e `Referrer-Policy = "strict-origin-when-cross-origin"` para `/*`.
+- [x] **Passo 2:** Commit `chore: configuração do Netlify` e, **com autorização da usuária**, push do branch (`git -c http.sslBackend=schannel push -u origin v2-etapa1`).
+- [x] **Passo 3 (usuária, com orientação):** no Netlify, *Add new site → Import from GitHub → PAT*, branch `v2-etapa1`; em *Environment variables* cadastrar só `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. No Supabase, *Authentication → URL Configuration*: colocar o endereço do Netlify em *Site URL*.
+- [x] **Passo 4: Verificação:** repetir no endereço público o roteiro das Tarefas 4 e 5 pelo celular da usuária; conferir que `dist/` publicado não contém `service_role` (`grep -r service_role dist` vazio no build local).
+- [x] **Passo 5:** Atualizar a memória do projeto com o endereço do site e o estado da etapa.

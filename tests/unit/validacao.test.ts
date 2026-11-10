@@ -17,3 +17,16 @@ test.each([
 test('entrada que não é objeto é recusada', () => {
   expect(validarNovoCliente(null)).toEqual({ ok: false, erro: 'Informe o nome.' })
 })
+test.each([
+  ['+56 9 1234 5678', '56912345678'], // Chile
+  ['+51 912 345 678', '51912345678'], // Peru
+  ['+598 91 234 567', '59891234567'], // Uruguai
+  ['+52 55 1234 5678', '525512345678'], // México
+])('espanhol com DDI de 11+ dígitos é aceito: %s', (telefone, esperado) => {
+  expect(validarNovoCliente({ nome: 'Luz', email: 'l@x.cl', telefone, idioma: 'es' }))
+    .toEqual({ ok: true, dados: { nome: 'Luz', email: 'l@x.cl', telefone: esperado, idioma: 'es' } })
+})
+test('espanhol curto demais é inválido', () => {
+  expect(validarNovoCliente({ nome: 'Luz', email: 'l@x.es', telefone: '612 345 678', idioma: 'es' }))
+    .toEqual({ ok: false, erro: 'Telefone inválido. Use DDD e número.' })
+})
