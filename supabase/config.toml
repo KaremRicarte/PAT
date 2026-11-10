@@ -428,3 +428,7 @@ enabled = true
 # A função confere o login e o papel de admin por conta própria (auth.getUser).
 [functions.admin-clientes]
 verify_jwt = false
+
+# Mesma regra: a função confere o login por conta própria (auth.getUser).
+[functions.gerar-mes]
+verify_jwt = false
