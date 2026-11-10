@@ -1,6 +1,6 @@
 import { criarCliente, redefinirSenha } from '../../supabase/functions/admin-clientes/acoes.ts'
 
-const valido = { nome: 'Ana', email: 'ana@x.com', telefone: '11987654321', idioma: 'pt' }
+const valido = { nome: 'Ana', email: 'ana@x.com', telefone: '11987654321', idioma: 'pt', ramo: 'beleza' }
 
 function falsos(sobrescrever = {}) {
   return {
@@ -39,7 +39,7 @@ test('sucesso devolve id e senha e grava a linha normalizada', async () => {
   expect(await criarCliente(deps, valido)).toEqual({ status: 201, corpo: { id: 'u1', senhaProvisoria: 'Senha12345' } })
   expect(deps.criarUsuario).toHaveBeenCalledWith('ana@x.com', 'Senha12345')
   expect(deps.inserirCliente).toHaveBeenCalledWith({
-    id: 'u1', nome: 'Ana', email: 'ana@x.com', telefone: '5511987654321', idioma: 'pt', senha_provisoria: true,
+    id: 'u1', nome: 'Ana', email: 'ana@x.com', telefone: '5511987654321', idioma: 'pt', ramo: 'beleza', senha_provisoria: true,
   })
 })
 test('redefinir marca a senha como provisória', async () => {

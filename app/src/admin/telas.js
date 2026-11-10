@@ -1,6 +1,7 @@
 import { t } from '../textos.js'
 import { el, logo, campo, mostrar, aoEnviar, botaoSair } from '../comum.js'
-import { listarClientes, criarCliente, redefinirSenha, definirSituacao } from './dados.js'
+import { listarClientes, criarCliente, redefinirSenha, definirSituacao, definirRamo } from './dados.js'
+import { listaRamos } from './ramo.js'
 
 export function telaSoAdmin(supabase) {
   mostrar(logo(),
@@ -57,7 +58,15 @@ export async function telaPainel(supabase) {
   await recarregar()
 }
 
+// <select> de ramo; a lista vem do registro de ramos.
+function seletorRamo(atributos, atual = '') {
+  return el('select', atributos,
+    el('option', { value: '', texto: t('admin.ramo.escolha') }),
+    listaRamos().map(r => el('option', { value: r.id, texto: r.nome, selected: r.id === atual })))
+}
+
 function formNovo(aviso, recarregar) {
+  const ramo = seletorRamo({ id: 'campo-ramo', name: 'ramo', required: true })
   const idioma = el('select', { id: 'campo-idioma', name: 'idioma' },
     el('option', { value: 'pt', texto: t('admin.idioma.pt') }),
     el('option', { value: 'es', texto: t('admin.idioma.es') }))
@@ -66,12 +75,13 @@ function formNovo(aviso, recarregar) {
     campo(t('admin.nome'), { name: 'nome', autocomplete: 'off', required: true }),
     campo(t('admin.email'), { name: 'email', type: 'email', autocomplete: 'off', required: true }),
     campo(t('admin.telefone'), { name: 'telefone', type: 'tel', autocomplete: 'off', placeholder: '(11) 98765-4321', required: true }),
+    el('label', { for: 'campo-ramo', texto: t('admin.ramo') }), ramo,
     el('label', { for: 'campo-idioma', texto: t('admin.idioma') }), idioma,
     el('div', { class: 'acoes' }, el('button', { type: 'submit', texto: t('admin.criar') })),
   )
   aoEnviar(form, async (d) => {
     const r = await criarCliente({
-      nome: d.get('nome'), email: d.get('email'), telefone: d.get('telefone'), idioma: d.get('idioma'),
+      nome: d.get('nome'), email: d.get('email'), telefone: d.get('telefone'), idioma: d.get('idioma'), ramo: d.get('ramo'),
     })
     if (r.erro) return r.erro
     form.reset()
@@ -84,7 +94,7 @@ function formNovo(aviso, recarregar) {
 }
 
 function tabela(clientes, aviso, recarregar) {
-  const cab = [t('admin.nome'), t('admin.email'), t('admin.telefone'), t('admin.idioma'), t('admin.situacao'), '']
+  const cab = [t('admin.nome'), t('admin.email'), t('admin.telefone'), t('admin.ramo'), t('admin.idioma'), t('admin.situacao'), '']
   return el('table', { class: 'clientes' },
     el('thead', {}, el('tr', {}, cab.map(c => el('th', { scope: 'col', texto: c })))),
     el('tbody', {}, clientes.map(c => linha(c, aviso, recarregar))))
@@ -119,11 +129,24 @@ function linha(c, aviso, recarregar) {
     await recarregar()
   })
 
+  const ramo = seletorRamo({ class: 'pequeno', 'aria-label': t('admin.ramo') + ': ' + c.nome }, c.ramo ?? '')
+  ramo.addEventListener('change', async () => {
+    if (!ramo.value || !confirm(t('admin.ramo.confirma'))) { ramo.value = c.ramo ?? ''; return }
+    ramo.disabled = true
+    const r = await definirRamo(c.id, ramo.value)
+    ramo.disabled = false
+    if (r.erro) return aviso.replaceChildren(el('p', { class: 'erro', role: 'alert', texto: r.erro }))
+    aviso.replaceChildren()
+    await recarregar()
+  })
+
   const celula = (rotulo, ...filhos) => el('td', { 'data-rotulo': rotulo }, ...filhos)
   return el('tr', {},
     celula(t('admin.nome'), el('strong', { texto: c.nome })),
     celula(t('admin.email'), c.email),
     celula(t('admin.telefone'), c.telefone),
+    celula(t('admin.ramo'), ramo,
+      c.ramo ? null : el('span', { class: 'selo ruim', texto: t('admin.semramo') })),
     celula(t('admin.idioma'), c.idioma === 'es' ? t('admin.idioma.es') : t('admin.idioma.pt')),
     celula(t('admin.situacao'),
       el('span', { class: bloqueado ? 'selo ruim' : 'selo bom', texto: bloqueado ? t('admin.bloqueado') : t('admin.ativo') }),

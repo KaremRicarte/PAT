@@ -1,4 +1,6 @@
-export type NovoCliente = { nome: string, email: string, telefone: string, idioma: 'pt' | 'es' }
+import { ramoValido } from './modelos/ramos/index.ts'
+
+export type NovoCliente = { nome: string, email: string, telefone: string, idioma: 'pt' | 'es', ramo: string }
 export type Validacao = { ok: true, dados: NovoCliente } | { ok: false, erro: string }
 
 const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
@@ -15,6 +17,10 @@ export function validarNovoCliente(entrada: unknown): Validacao {
   const idioma = e.idioma
   if (idioma !== 'pt' && idioma !== 'es') return { ok: false, erro: 'Idioma deve ser pt ou es.' }
 
+  // O ramo é escolhido pela administradora; a lista válida é o registro de ramos.
+  const ramo = e.ramo
+  if (!ramoValido(ramo)) return { ok: false, erro: 'Escolha o ramo do negócio.' }
+
   // pt: 10–11 dígitos = número brasileiro sem DDI → acrescenta 55.
   // es: o DDI é obrigatório; 10 dígitos é número sem DDI. Com DDI vale de 11 a 15
   // (Chile, Peru, Uruguai e outros têm 11 dígitos já com o código do país).
@@ -28,5 +34,5 @@ export function validarNovoCliente(entrada: unknown): Validacao {
     return { ok: false, erro: 'Telefone inválido. Use DDD e número.' }
   }
 
-  return { ok: true, dados: { nome, email, telefone, idioma } }
+  return { ok: true, dados: { nome, email, telefone, idioma, ramo } }
 }

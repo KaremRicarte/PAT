@@ -3,7 +3,7 @@ import { t } from '../textos.js'
 
 export async function listarClientes() {
   const { data, error } = await supabase.from('clientes')
-    .select('id, nome, email, telefone, idioma, situacao, senha_provisoria')
+    .select('id, nome, email, telefone, idioma, ramo, situacao, senha_provisoria')
     .order('nome')
   if (error) throw error
   return data
@@ -27,5 +27,10 @@ export const redefinirSenha = (id) => chamarFuncao({ acao: 'redefinir_senha', id
 
 export async function definirSituacao(id, situacao) {
   const { error } = await supabase.from('clientes').update({ situacao }).eq('id', id)
+  return error ? { erro: t('erro.geral') } : {}
+}
+
+export async function definirRamo(id, ramo) {
+  const { error } = await supabase.from('clientes').update({ ramo }).eq('id', id)
   return error ? { erro: t('erro.geral') } : {}
 }

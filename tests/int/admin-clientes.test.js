@@ -25,7 +25,7 @@ async function consegueEntrar(email, senha) {
 
 const novo = () => ({
   acao: 'criar', nome: 'Ana Teste', email: `Teste-${randomUUID().slice(0, 8)}@Example.com`,
-  telefone: '(11) 98765-4321', idioma: 'pt',
+  telefone: '(11) 98765-4321', idioma: 'pt', ramo: 'beleza',
 })
 
 test('admin cria cliente; e-mail e telefone normalizados; cliente entra com a senha provisória', async () => {
@@ -35,9 +35,9 @@ test('admin cria cliente; e-mail e telefone normalizados; cliente entra com a se
   criados.push(r.corpo.id)
   expect(r.corpo.senhaProvisoria).toMatch(/^[A-HJ-NP-Za-km-np-z2-9]{10}$/)
   const { data } = await servico().from('clientes')
-    .select('email,telefone,senha_provisoria,situacao').eq('id', r.corpo.id).single()
+    .select('email,telefone,senha_provisoria,situacao,ramo').eq('id', r.corpo.id).single()
   expect(data).toEqual({
-    email: dados.email.toLowerCase(), telefone: '5511987654321', senha_provisoria: true, situacao: 'ativo',
+    email: dados.email.toLowerCase(), telefone: '5511987654321', senha_provisoria: true, situacao: 'ativo', ramo: 'beleza',
   })
   expect(await consegueEntrar(data.email, r.corpo.senhaProvisoria)).toBe(true)
 })
@@ -97,4 +97,10 @@ test('cliente em espanhol do Chile (11 dígitos com DDI) é criado', async () =>
   criados.push(r.corpo.id)
   const { data } = await servico().from('clientes').select('telefone,idioma').eq('id', r.corpo.id).single()
   expect(data).toEqual({ telefone: '56912345678', idioma: 'es' })
+})
+
+test('criar sem ramo → 400', async () => {
+  const adm = await novaAdmin()
+  const { ramo, ...semRamo } = novo()
+  expect(await chamar(adm.db, semRamo)).toEqual({ status: 400, corpo: { erro: 'Escolha o ramo do negócio.' } })
 })

@@ -1,18 +1,18 @@
 import { validarNovoCliente } from '../../supabase/functions/_shared/validacao.ts'
 
 test('normaliza e-mail e telefone brasileiro', () => {
-  expect(validarNovoCliente({ nome: ' Ana ', email: ' Ana@X.com ', telefone: '(11) 98765-4321', idioma: 'pt' }))
-    .toEqual({ ok: true, dados: { nome: 'Ana', email: 'ana@x.com', telefone: '5511987654321', idioma: 'pt' } })
+  expect(validarNovoCliente({ nome: ' Ana ', email: ' Ana@X.com ', telefone: '(11) 98765-4321', idioma: 'pt', ramo: 'beleza' }))
+    .toEqual({ ok: true, dados: { nome: 'Ana', email: 'ana@x.com', telefone: '5511987654321', idioma: 'pt', ramo: 'beleza' } })
 })
 test('espanhol sem DDI é recusado', () => {
-  expect(validarNovoCliente({ nome: 'Luz', email: 'l@x.mx', telefone: '55 1234 5678', idioma: 'es' }))
+  expect(validarNovoCliente({ nome: 'Luz', email: 'l@x.mx', telefone: '55 1234 5678', idioma: 'es', ramo: 'beleza' }))
     .toEqual({ ok: false, erro: 'Inclua o código do país no telefone.' })
 })
 test.each([
-  [{ nome: 'A', email: 'a@x.com', telefone: '11987654321', idioma: 'pt' }, 'Informe o nome.'],
-  [{ nome: 'Ana', email: 'ana@', telefone: '11987654321', idioma: 'pt' }, 'E-mail inválido.'],
-  [{ nome: 'Ana', email: 'a@x.com', telefone: '123', idioma: 'pt' }, 'Telefone inválido. Use DDD e número.'],
-  [{ nome: 'Ana', email: 'a@x.com', telefone: '11987654321', idioma: 'en' }, 'Idioma deve ser pt ou es.'],
+  [{ nome: 'A', email: 'a@x.com', telefone: '11987654321', idioma: 'pt', ramo: 'beleza' }, 'Informe o nome.'],
+  [{ nome: 'Ana', email: 'ana@', telefone: '11987654321', idioma: 'pt', ramo: 'beleza' }, 'E-mail inválido.'],
+  [{ nome: 'Ana', email: 'a@x.com', telefone: '123', idioma: 'pt', ramo: 'beleza' }, 'Telefone inválido. Use DDD e número.'],
+  [{ nome: 'Ana', email: 'a@x.com', telefone: '11987654321', idioma: 'en', ramo: 'beleza' }, 'Idioma deve ser pt ou es.'],
 ])('recusa %o', (e, erro) => expect(validarNovoCliente(e)).toEqual({ ok: false, erro }))
 test('entrada que não é objeto é recusada', () => {
   expect(validarNovoCliente(null)).toEqual({ ok: false, erro: 'Informe o nome.' })
@@ -23,10 +23,18 @@ test.each([
   ['+598 91 234 567', '59891234567'], // Uruguai
   ['+52 55 1234 5678', '525512345678'], // México
 ])('espanhol com DDI de 11+ dígitos é aceito: %s', (telefone, esperado) => {
-  expect(validarNovoCliente({ nome: 'Luz', email: 'l@x.cl', telefone, idioma: 'es' }))
-    .toEqual({ ok: true, dados: { nome: 'Luz', email: 'l@x.cl', telefone: esperado, idioma: 'es' } })
+  expect(validarNovoCliente({ nome: 'Luz', email: 'l@x.cl', telefone, idioma: 'es', ramo: 'beleza' }))
+    .toEqual({ ok: true, dados: { nome: 'Luz', email: 'l@x.cl', telefone: esperado, idioma: 'es', ramo: 'beleza' } })
 })
 test('espanhol curto demais é inválido', () => {
-  expect(validarNovoCliente({ nome: 'Luz', email: 'l@x.es', telefone: '612 345 678', idioma: 'es' }))
+  expect(validarNovoCliente({ nome: 'Luz', email: 'l@x.es', telefone: '612 345 678', idioma: 'es', ramo: 'beleza' }))
     .toEqual({ ok: false, erro: 'Telefone inválido. Use DDD e número.' })
+})
+test.each([undefined, '', 'padaria', 'toString'])('ramo ausente ou desconhecido (%s) é recusado', (ramo) => {
+  expect(validarNovoCliente({ nome: 'Ana', email: 'a@x.com', telefone: '11987654321', idioma: 'pt', ramo }))
+    .toEqual({ ok: false, erro: 'Escolha o ramo do negócio.' })
+})
+test('ramo válido é devolvido em dados', () => {
+  const v = validarNovoCliente({ nome: 'Ana', email: 'a@x.com', telefone: '11987654321', idioma: 'pt', ramo: 'advocacia' })
+  expect(v.ok && v.dados.ramo).toBe('advocacia')
 })
