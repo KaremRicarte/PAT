@@ -1,5 +1,16 @@
 // Regras puras do calendário e do post (sem DOM).
 
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+
+// "2026-11-04" -> "4 de novembro".
+export function diaPorExtenso(data) {
+  const [, m, d] = data.split('-').map(Number)
+  return `${d} de ${MESES[m - 1]}`
+}
+
+// Chave do formato mostrado ("Carrossel", "Stories"…): no feed e no vídeo é o formato; nos outros, o tipo.
+export const chaveFormato = (p) => (p.tipo === 'feed' || p.tipo === 'video' ? p.formato : p.tipo)
+
 // Situação de um post para o calendário. "reprovado" aparece na tela como "Descartado".
 export function situacaoDoPost(post) {
   if (post.postado_em) return 'postado'

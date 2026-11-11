@@ -132,6 +132,57 @@ button.dia-btn[aria-pressed=true] .bolinha { box-shadow: 0 0 0 2px var(--pri-ink
 .aviso-rodape:empty { opacity: 0; transform: translate(-50%, 200%); pointer-events: none; }
 .aviso-rodape button { flex: none; min-height: 48px; background: var(--bg); color: var(--pri); }
 
+/* ===== Tela do post ===== */
+button.voltar { min-height: 48px; margin-bottom: 20px; }
+.cabecalho-post .rede { font-size: 14px; color: var(--muted); margin: 0 0 4px; }
+.cabecalho-post h1 { font-size: 24px; overflow-wrap: anywhere; }
+.cabecalho-post h1:focus { outline: none; }
+.cabecalho-post .quando { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); margin: 0 0 16px; }
+.cabecalho-post .situacao { font-weight: 700; color: var(--cor); }
+.arte-grande { margin-bottom: 20px; }
+.arte-grande canvas, .arte-grande .espera { display: block; width: 100%; height: auto; border-radius: 16px; }
+.arte-grande .espera { display: flex; align-items: center; justify-content: center; color: var(--muted); font-weight: 700; }
+.arte-grande .sem-arte { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin: 0; }
+.carrossel {
+  display: flex; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 16px;
+  scrollbar-width: none; overscroll-behavior-x: contain;
+}
+.carrossel::-webkit-scrollbar { display: none; }
+.carrossel:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
+.carrossel .pagina { flex: 0 0 100%; scroll-snap-align: start; }
+.carrossel .pagina canvas { border-radius: 0; }
+.carrossel-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.carrossel-nav button { min-height: 48px; padding: 8px 14px; }
+.carrossel-nav .contador { font-weight: 800; font-size: 18px; }
+.texto-post { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 4px 16px; margin-bottom: 20px; }
+.texto-post .roteiro h2 { font-size: 16px; margin: 14px 0 0; }
+.acoes-post { display: flex; flex-direction: column; gap: 10px; }
+.acoes-post button, .acoes-post summary { width: 100%; min-height: 48px; }
+.acoes-post .pequeno { margin: -4px 0 4px; }
+.acoes-post button.aprovado-btn { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
+.acoes-post progress { width: 100%; height: 12px; accent-color: var(--pri); }
+.estado-post { font-family: var(--display); font-size: 22px; font-weight: 800; margin: 0; color: var(--cor); }
+details.mais { border: 1px solid var(--line); border-radius: 16px; margin-top: 8px; }
+details.mais summary {
+  display: flex; align-items: center; padding: 12px 16px; cursor: pointer; font-weight: 700; list-style: none;
+}
+details.mais summary::-webkit-details-marker { display: none; }
+details.mais summary::after { content: "▾"; margin-left: auto; }
+details.mais[open] summary::after { content: "▴"; }
+details.mais summary:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; border-radius: 16px; }
+.mais-lista { display: flex; flex-direction: column; gap: 10px; padding: 0 12px 12px; }
+button.perigo { color: var(--bad); border-color: var(--bad); }
+dialog.dialogo {
+  width: min(400px, calc(100% - 32px)); background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 20px; padding: 20px;
+}
+dialog.dialogo::backdrop { background: rgba(0, 0, 0, .7); }
+dialog.dialogo h2 { font-size: 20px; }
+dialog.dialogo button { width: 100%; min-height: 48px; }
+dialog.dialogo .opcao { margin-bottom: 14px; }
+dialog.dialogo .opcao p { margin: 6px 4px 0; }
+dialog.dialogo .erro { margin: 0 0 14px; }
+
 /* ===== Painel de administração ===== */
 main.largo { max-width: 1040px; }
 .topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 32px; }

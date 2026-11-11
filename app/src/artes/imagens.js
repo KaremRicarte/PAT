@@ -3,7 +3,7 @@ import { pecasDaArte, fotoDoPost } from '../cliente/situacao.js'
 import { lookDoRamo, fontesDoLook } from './looks.js'
 import { medidaDaArte, assinaturaDaArte } from './texto.js'
 import { desenharArte } from './desenho.js'
-import { montarVideoDeFotos, editarVideo } from './video.js'
+import { montarVideoDeFotos, editarVideo, desenharQuadroDeFotos, W_VIDEO, H_VIDEO } from './video.js'
 
 // Cache das imagens por path, com no máximo LIMITE bitmaps (o usado há mais tempo sai primeiro).
 // Quem sai do cache tem o bitmap fechado (close), a não ser que esteja preso por prenderImagens.
@@ -129,8 +129,8 @@ function novaTela(W, H) {
 
 const paraPng = (canvas) => new Promise((ok, falha) => canvas.toBlob((b) => (b ? ok(b) : falha(new Error('PNG não gerado'))), 'image/png'))
 
-// PNG de cada página da arte, para "Baixar imagem". [] se o post não tem arte.
-export async function gerarImagens(supabase, post, ctxDados) {
+// Um canvas por página da arte, no tamanho real (a arte grande da tela do post). [] se o post não tem arte.
+export async function desenharPaginas(supabase, post, ctxDados) {
   const arte = await prepararArte(supabase, post, ctxDados)
   if (!arte) return []
   const telas = []
@@ -143,7 +143,12 @@ export async function gerarImagens(supabase, post, ctxDados) {
   } finally {
     arte.soltar()
   }
-  return Promise.all(telas.map(paraPng))
+  return telas
+}
+
+// PNG de cada página da arte, para "Baixar imagem". [] se o post não tem arte.
+export async function gerarImagens(supabase, post, ctxDados) {
+  return Promise.all((await desenharPaginas(supabase, post, ctxDados)).map(paraPng))
 }
 
 // A página 1 da arte, reduzida para `largura`. null se o post não tem arte.
@@ -188,6 +193,33 @@ export async function gerarVideoDeFotos(supabase, post, ctxDados, fotoPaths, aoP
   } finally {
     soltar()
   }
+}
+
+// Prévia animada da montagem num canvas, repetindo os 12 s até parar() (ou o canvas sair da página).
+// Com movimento reduzido no aparelho, fica parada no título. Devolve { canvas, parar }.
+export async function previaDaMontagem(supabase, post, ctxDados) {
+  const { soltar, opcoes } = await prepararVideo(supabase, post, ctxDados)
+  const canvas = novaTela(W_VIDEO, H_VIDEO)
+  const ctx = canvas.getContext('2d')
+  let pedido = null, t0 = null, parada = false
+  const parar = () => {
+    if (parada) return
+    parada = true
+    if (pedido !== null) cancelAnimationFrame(pedido)
+    soltar()
+  }
+  desenharQuadroDeFotos(ctx, opcoes, 1.5)
+  const reduzido = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (reduzido) { parar(); return { canvas, parar } } // o quadro já está desenhado: pode soltar as imagens
+  const passo = (agora) => {
+    if (parada) return
+    if (t0 !== null && !canvas.isConnected) return parar() // saiu da tela
+    t0 ??= agora
+    desenharQuadroDeFotos(ctx, opcoes, ((agora - t0) / 1000) % 12)
+    pedido = requestAnimationFrame(passo)
+  }
+  pedido = requestAnimationFrame(passo)
+  return { canvas, parar }
 }
 
 // O vídeo enviado pelo cliente, com título, assinatura e tela final. Erros: ver editarVideo.

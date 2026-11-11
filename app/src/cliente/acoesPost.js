@@ -1,7 +1,7 @@
 // Ações do post que gravam no banco (aprovar, descartar, Postei e os desfazer).
 import { t } from '../textos.js'
 import { aviso } from '../comum.js'
-import { proximoEstado } from './situacao.js'
+import { proximoEstado, chaveFormato } from './situacao.js'
 
 const emAndamento = new Set() // ids dos posts com uma ação ainda gravando
 
@@ -29,4 +29,37 @@ export async function aplicarAcao({ supabase, post, acao, aoMudar }) {
   } finally {
     emAndamento.delete(post.id)
   }
+}
+
+// ---------- Gerar outro (função trocar-post) ----------
+export const LIMITE_TROCAS = 10 // o mesmo LIMITE_TROCAS de supabase/functions/trocar-post/acoes.ts
+
+export const trocasDoMes = (posts) => posts.reduce((soma, p) => soma + (p.trocas ?? 0), 0)
+
+// Pede outro texto para o post. Não muda o post: quem chama aplica o { post } devolvido.
+// { erro } traz a mensagem da função (limite de trocas, nenhum texto novo…) ou a de sem conexão.
+export async function gerarOutro({ supabase, post }) {
+  if (emAndamento.has(post.id)) return { erro: t('post.aguarde') }
+  emAndamento.add(post.id)
+  try {
+    const { data, error } = await supabase.functions.invoke('trocar-post', { body: { post_id: post.id } })
+    if (!error && data?.post) return { post: data.post }
+    console.error(error)
+    if (error?.name === 'FunctionsFetchError' || !error?.context?.json) return { erro: t('erro.conexao') }
+    try {
+      const { erro } = await error.context.json()
+      if (erro) return { erro }
+    } catch { /* sem corpo: fica a mensagem geral */ }
+    return { erro: t('erro.geral') }
+  } catch (e) {
+    console.error(e)
+    return { erro: t('erro.conexao') }
+  } finally {
+    emAndamento.delete(post.id)
+  }
+}
+
+// Nome do arquivo baixado: 2026-11-04_instagram_carrossel_2.png (a página só quando houver).
+export function nomeDoArquivo(post, pagina, ext) {
+  return `${post.data}_${post.rede}_${chaveFormato(post)}${pagina ? `_${pagina}` : ''}.${ext}`
 }

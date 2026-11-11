@@ -3,12 +3,12 @@ import { t } from '../textos.js'
 import { el, logo, mostrar, botaoSair, carregando, aviso } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
-import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes } from './situacao.js'
+import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato } from './situacao.js'
 import { miniatura } from '../artes/imagens.js'
 import { telaQuizMes, rotuloEstrategia, mesMostrado, preferirMes } from './mes.js'
 import { aplicarAcao } from './acoesPost.js'
+import { telaPost } from './post.js'
 
-const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 const SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const ORDEM_REDE = { instagram: 0, facebook: 1, tiktok: 2, whatsapp: 3 }
 const SITUACOES = ['pendente', 'aprovado', 'reprovado', 'postado'] // ordem no rótulo do dia
@@ -17,12 +17,7 @@ const ICONE = { postado: '↑', aprovado: '✓', pendente: '…', reprovado: '�
 const CHAVE_DICAS = 'pat.dicas.vistas'
 const COLUNAS = 'id, data, rede, tipo, formato, titulo, legenda, hashtags, roteiro, horario, ordem, estado, foto_path, sem_foto, postado_em, produto_id, trocas'
 
-const diaPorExtenso = (data) => {
-  const [, m, d] = data.split('-').map(Number)
-  return `${d} de ${MESES[m - 1]}`
-}
 const tituloDoDia = (data) => `${SEMANA[new Date(`${data}T00:00:00Z`).getUTCDay()]}, ${diaPorExtenso(data)}`
-const chaveFormato = (p) => (p.tipo === 'feed' || p.tipo === 'video' ? p.formato : p.tipo)
 
 // Rótulo do botão do dia para leitores de tela: "4 de novembro, 2 pendentes".
 export function rotuloDoDia(data, posts) {
@@ -149,8 +144,13 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
     if (tinhaFoco) lista.querySelector(`[data-post="${post.id}"]`)?.focus()
   }
 
-  // A tela do post chega na Task 7.
-  const abrirPost = () => aviso(t('comum.embreve'))
+  // Voltar da tela do post: o calendário no mesmo dia, com o foco no cartão do post.
+  const abrirPost = (post) => telaPost(ctx, post, async () => {
+    await telaCalendario(ctx, editarNegocio, post.data)
+    const cartao = document.querySelector(`[data-post="${post.id}"]`)
+    cartao?.focus({ preventScroll: true })
+    cartao?.scrollIntoView({ block: 'center' })
+  })
 
   async function marcarPostado(post) {
     const ok = await aplicarAcao({ supabase, post, acao: 'postei', aoMudar: () => redesenhar(post) })
@@ -207,6 +207,7 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
       }))
   }
 
+  ctx.aoMudarPost = redesenhar // um Desfazer tocado depois de voltar da tela do post redesenha o calendário
   desenharResumo()
   pintarGrade()
   desenharLista()
