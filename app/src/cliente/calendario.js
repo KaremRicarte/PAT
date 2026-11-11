@@ -78,7 +78,8 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
 
   const posts = ctx.posts
   const porDia = agruparPorDia(posts)
-  let escolhido = diaEscolhido?.startsWith(mes.ano_mes) ? diaEscolhido : diaInicial(mes.ano_mes, hoje, posts)
+  const dias = gradeDoMes(mes.ano_mes)
+  let escolhido = dias.includes(diaEscolhido) ? diaEscolhido : diaInicial(mes.ano_mes, hoje, posts) // ex.: 2026-11-45 não existe
 
   // ---------- topo (como na lista antiga) ----------
   const alvo = mesAlvo(hoje, meses.map((m) => m.ano_mes))
@@ -104,7 +105,7 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
   const botoesDia = new Map()
   const grade = el('div', { class: 'grade', role: 'group', 'aria-label': nomeDoMes(mes.ano_mes) },
     t('cal.semana').split(',').map((letra) => el('span', { class: 'semana', 'aria-hidden': 'true', texto: letra })),
-    gradeDoMes(mes.ano_mes).map((data) => {
+    dias.map((data) => {
       if (!data) return el('span', { class: 'fora', 'aria-hidden': 'true' })
       const b = el('button', { type: 'button', class: data === hoje ? 'dia-btn hoje' : 'dia-btn', onclick: () => escolherDia(data) })
       botoesDia.set(data, b)

@@ -9,8 +9,8 @@ const emAndamento = new Set() // ids dos posts com uma ação ainda gravando
 // chama aoMudar de novo e avisa. Uma ação por post de cada vez (a outra é ignorada).
 export async function aplicarAcao({ supabase, post, acao, aoMudar }) {
   if (emAndamento.has(post.id)) return false
+  const mudanca = proximoEstado(post, acao) // lança se a ação não existe: antes de marcar o post
   emAndamento.add(post.id)
-  const mudanca = proximoEstado(post, acao)
   const antes = Object.fromEntries(Object.keys(mudanca).map((k) => [k, post[k]]))
   Object.assign(post, mudanca)
   aoMudar?.()

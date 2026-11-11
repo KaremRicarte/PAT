@@ -1,10 +1,12 @@
 import supabase from '../supabase.js'
 import { t } from '../textos.js'
-import { el, logo, mostrar, carregando, botaoSair } from '../comum.js'
+import { el, logo, mostrar, carregando, botaoSair, prepararAviso } from '../comum.js'
 import { telaInicial } from './tela.js'
 import { desenhar } from './telas.js'
 import { carregarNegocio } from './negocio.js'
 import { limparImagens } from '../artes/imagens.js'
+
+prepararAviso() // a região dos avisos existe desde o início
 
 let acessoRegistrado = false // um evento 'acesso' por abertura do app
 let usuarioMostrado // id do usuário da tela atual (undefined = nenhuma tela ainda)

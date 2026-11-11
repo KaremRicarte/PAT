@@ -56,3 +56,10 @@ test('sucesso usa o que o banco devolveu', async () => {
   expect(chamadas[0]).toMatchObject({ tabela: 'posts', col: 'id', id: 'p3', mudanca: { estado: 'aprovado' } })
   expect(post.postado_em).toBe('2026-11-04T15:00:00+00:00')
 })
+
+test('ação desconhecida não deixa o post preso', async () => {
+  const post = { id: 'p4', estado: 'gerado', postado_em: null }
+  const { supabase } = falso(async (m) => ({ data: { ...post, ...m }, error: null }))
+  await expect(aplicarAcao({ supabase, post, acao: 'voar' })).rejects.toThrow('ação desconhecida')
+  expect(await aplicarAcao({ supabase, post, acao: 'aprovar' })).toBe(true)
+})

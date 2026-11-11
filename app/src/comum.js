@@ -80,18 +80,29 @@ export const botaoSair = (supabase) =>
   el('button', { type: 'button', class: 'secundario', texto: t('comum.sair'), onclick: () => supabase.auth.signOut() })
 
 // Aviso curto fixo no rodapé ("Aprovado ✓"). Some em 3 s, ou em 6 s quando tem Desfazer.
+// A região role=status fica sempre na página (nunca hidden): vazia, só some da vista (CSS :empty),
+// e os leitores de tela anunciam quando o conteúdo muda.
 let prazoDoAviso
-export function aviso(texto, { desfazer } = {}) {
+export function prepararAviso() {
   let caixa = document.getElementById('aviso-rodape')
   if (!caixa) {
-    caixa = el('div', { id: 'aviso-rodape', class: 'aviso-rodape', role: 'status', hidden: true })
+    caixa = el('div', { id: 'aviso-rodape', class: 'aviso-rodape', role: 'status' })
     document.body.append(caixa) // fora do <main>: continua visível quando a tela muda
   }
-  const fechar = () => { clearTimeout(prazoDoAviso); caixa.hidden = true; caixa.replaceChildren() }
+  return caixa
+}
+
+export function aviso(texto, { desfazer } = {}) {
+  const nova = !document.getElementById('aviso-rodape')
+  const caixa = prepararAviso()
+  const fechar = () => { clearTimeout(prazoDoAviso); caixa.replaceChildren() }
+  const encher = () => {
+    caixa.replaceChildren(el('span', { texto }), desfazer
+      ? el('button', { type: 'button', class: 'pequeno', texto: t('comum.desfazer'), onclick: () => { fechar(); desfazer() } })
+      : null)
+    prazoDoAviso = setTimeout(fechar, desfazer ? 6000 : 3000)
+  }
   clearTimeout(prazoDoAviso)
-  caixa.replaceChildren(el('span', { texto }), desfazer
-    ? el('button', { type: 'button', class: 'pequeno', texto: t('comum.desfazer'), onclick: () => { fechar(); desfazer() } })
-    : null)
-  caixa.hidden = false
-  prazoDoAviso = setTimeout(fechar, desfazer ? 6000 : 3000)
+  if (nova) prazoDoAviso = setTimeout(encher, 100) // região recém-criada: dá tempo de entrar na árvore de acessibilidade
+  else encher()
 }
