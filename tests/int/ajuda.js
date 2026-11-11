@@ -67,3 +67,19 @@ export async function limpar(ids) {
   const s = servico()
   for (const id of ids) if (id) await s.auth.admin.deleteUser(id)
 }
+
+// Gera o mês pela função gerar-mes publicada; o cliente precisa ter senha_provisoria:false.
+export async function novoMes(cliente) {
+  await novoNegocio(cliente)
+  const { data: { session } } = await cliente.db.auth.getSession()
+  const r = await fetch(`${URL}/functions/v1/gerar-mes`, {
+    method: 'POST',
+    headers: { apikey: ANON, Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estrategia: 'vender' }),
+  })
+  const corpo = await r.json()
+  if (r.status !== 201) throw new Error(`gerar-mes ${r.status}: ${JSON.stringify(corpo)}`)
+  const { data: posts, error } = await servico().from('posts').select('id').eq('mes_id', corpo.id).order('ordem')
+  if (error) throw error
+  return { mesId: corpo.id, posts }
+}
