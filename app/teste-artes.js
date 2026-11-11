@@ -3,6 +3,7 @@ import { LOOKS } from '/src/artes/looks.js'
 import { desenharArte } from '/src/artes/desenho.js'
 import { esperarFontes } from '/src/artes/imagens.js'
 import { assinaturaDaArte } from '/src/artes/texto.js'
+import { montarVideoDeFotos, editarVideo, podeEditarVideo } from '/src/artes/video.js'
 
 const CORES = {
   varejo: { cor1: '#F2A21B', cor2: '#151925' },
@@ -74,3 +75,39 @@ document.getElementById('logo').onchange = async (e) => { logo = await lerImagem
 document.getElementById('longo').onchange = desenharTudo
 document.getElementById('semFoto').onchange = desenharTudo
 desenharTudo()
+
+// ---------- vídeo (Task 5) ----------
+
+const $ = (id) => document.getElementById(id)
+function opcoesDoVideo() {
+  const estilo = $('vEstilo').value
+  const pecas = { ...CURTO, assinatura: assinaturaDaArte({ texto: 'lojadoteste', logo: true }, Boolean(logo), 'Loja do Teste') }
+  return { pecas, look: LOOKS[estilo], cores: CORES[estilo], logo }
+}
+function aoProgredir(fracao, canvas) {
+  $('vProgresso').value = fracao
+  $('vPrevia').getContext('2d').drawImage(canvas, 0, 0)
+}
+async function gerar(fazer) {
+  $('vAviso').textContent = podeEditarVideo() ? 'Gravando…' : 'Este navegador não grava vídeo.'
+  try {
+    const opcoes = opcoesDoVideo()
+    await esperarFontes(opcoes.look)
+    const { blob, ext } = await fazer(opcoes)
+    const url = URL.createObjectURL(blob)
+    $('vSaida').src = url
+    Object.assign($('vBaixar'), { href: url, download: `teste.${ext}`, hidden: false, textContent: `Baixar (.${ext}, ${(blob.size / 1e6).toFixed(1)} MB)` })
+    $('vAviso').textContent = 'Pronto.'
+  } catch (e) {
+    $('vAviso').textContent = `Erro: ${e.codigo ?? e.message}`
+  }
+}
+$('vMontar').onclick = () => gerar(async (opcoes) => {
+  const fotos = await Promise.all([...$('vFotos').files].map((a) => createImageBitmap(a).catch(() => null)))
+  return montarVideoDeFotos({ ...opcoes, fotos }, aoProgredir)
+})
+$('vEditar').onclick = () => gerar((opcoes) => {
+  const arq = $('vArquivo').files[0]
+  if (!arq) throw new Error('escolha um vídeo')
+  return editarVideo(arq, opcoes, aoProgredir)
+})

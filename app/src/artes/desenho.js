@@ -37,7 +37,7 @@ export function sombrear(ctx, W, H) {
 const nomeDoEstilo = (look) => Object.keys(LOOKS).find((k) => LOOKS[k].fd === look.fd) ?? 'varejo'
 
 // Tudo o que as funções abaixo precisam saber sobre a arte que está sendo desenhada.
-function folha(ctx, { look, cores, W, H }) {
+export function folha(ctx, { look, cores, W, H }) {
   const u = W / 100
   return {
     ctx, look, W, H, u,

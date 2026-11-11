@@ -25,6 +25,19 @@
     <label><input type="checkbox" id="longo"> Textos longos</label>
     <label><input type="checkbox" id="semFoto"> Sem foto</label>
   </div>
+  <section class="video">
+    <h2>Vídeo</h2>
+    <div class="controles">
+      <label>Estilo <select id="vEstilo"><option>varejo</option><option>elegante</option><option>sereno</option><option>sobrio</option></select></label>
+      <label>Fotos <input type="file" id="vFotos" accept="image/*" multiple></label>
+      <button id="vMontar">Montar vídeo (12 s)</button>
+      <label>Vídeo <input type="file" id="vArquivo" accept="video/*"></label>
+      <button id="vEditar">Editar vídeo</button>
+      <progress id="vProgresso" max="1" value="0"></progress>
+      <span id="vAviso"></span>
+    </div>
+    <div class="linha"><canvas id="vPrevia" width="720" height="1280"></canvas><video id="vSaida" controls playsinline width="270"></video><a id="vBaixar" hidden>Baixar</a></div>
+  </section>
   <div id="saida"></div>
   <script type="module" src="/teste-artes.js"></script>
 </body>

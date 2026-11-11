@@ -3,6 +3,7 @@ import { pecasDaArte, fotoDoPost } from '../cliente/situacao.js'
 import { lookDoRamo, fontesDoLook } from './looks.js'
 import { medidaDaArte, assinaturaDaArte } from './texto.js'
 import { desenharArte } from './desenho.js'
+import { montarVideoDeFotos, editarVideo } from './video.js'
 
 // Cache das imagens por path, com no máximo LIMITE bitmaps (o usado há mais tempo sai primeiro).
 // Quem sai do cache tem o bitmap fechado (close), a não ser que esteja preso por prenderImagens.
@@ -160,4 +161,42 @@ export async function miniatura(supabase, post, ctxDados, largura = 240) {
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(grande, 0, 0, pequena.width, pequena.height)
   return pequena
+}
+
+// O que os vídeos do post precisam: textos, estilo, cores, logo e as fotos (paths).
+// Fotos e logo ficam presos até soltar(): os bitmaps são desenhados durante toda a gravação.
+async function prepararVideo(supabase, post, { negocio, produtos, ramo }, fotoPaths) {
+  const look = lookDoRamo(ramo?.id)
+  const pecas = pecasDaArte(post, negocio, ramo)
+  const paths = (fotoPaths ?? [fotoDoPost(post, produtos ?? [], ramo)]).filter(Boolean)
+  const logoPath = pecas.assinatura.logo ? negocio.logo_path : null
+  const soltar = prenderImagens([...paths, logoPath])
+  const [logo, , ...fotos] = await Promise.all([
+    carregarImagem(supabase, logoPath),
+    esperarFontes(look),
+    ...paths.map((p) => carregarImagem(supabase, p)),
+  ])
+  pecas.assinatura = assinaturaDaArte(pecas.assinatura, Boolean(logo), negocio.nome)
+  return { soltar, opcoes: { pecas, look, cores: { cor1: negocio.cor1, cor2: negocio.cor2 }, logo, fotos: fotos.filter(Boolean) } }
+}
+
+// Montagem de 12 s com as fotos do post (sem fotoPaths, a foto do post).
+export async function gerarVideoDeFotos(supabase, post, ctxDados, fotoPaths, aoProgredir) {
+  const { soltar, opcoes } = await prepararVideo(supabase, post, ctxDados, fotoPaths)
+  try {
+    return await montarVideoDeFotos(opcoes, aoProgredir)
+  } finally {
+    soltar()
+  }
+}
+
+// O vídeo enviado pelo cliente, com título, assinatura e tela final. Erros: ver editarVideo.
+export async function gerarVideoEditado(supabase, post, ctxDados, arquivo, aoProgredir, audioExtra) {
+  const { soltar, opcoes } = await prepararVideo(supabase, post, ctxDados, [])
+  try {
+    const { pecas, look, cores, logo } = opcoes
+    return await editarVideo(arquivo, { pecas, look, cores, logo, assinatura: pecas.assinatura }, aoProgredir, audioExtra)
+  } finally {
+    soltar()
+  }
 }
