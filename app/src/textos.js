@@ -155,6 +155,9 @@ const pt = {
   'admin.reativar.confirma': 'Reativar o acesso de {nome}?',
   'admin.vazio': 'Nenhum cliente ainda.',
   'admin.emailrepetido': 'Já existe um cliente com este e-mail.',
+
+  // artes
+  'arte.arraste': 'Arraste para o lado →',
 }
 
 const textos = { pt }

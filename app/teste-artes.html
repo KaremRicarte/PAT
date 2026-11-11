@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Página temporária de conferência das artes (fora do build). Apagar no fim da Task 6. -->
+  <title>Teste das artes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Nunito+Sans:wght@400;600;700;800&family=Cormorant+Garamond:wght@600&family=Montserrat:wght@600;700;800&family=Fraunces:wght@500&family=DM+Sans:wght@600;700;800&family=Playfair+Display:wght@700&family=Source+Sans+3:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; padding: 16px; font: 14px system-ui, sans-serif; background: #eee; color: #111 }
+    .controles { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px }
+    h2 { margin: 24px 0 8px }
+    .linha { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px }
+    figure { margin: 0; flex: none }
+    figcaption { font-size: 12px; color: #555 }
+    canvas { width: 180px; height: auto; display: block; box-shadow: 0 1px 4px rgba(0,0,0,.25) }
+  </style>
+</head>
+<body>
+  <div class="controles">
+    <label>Foto <input type="file" id="foto" accept="image/*"></label>
+    <label>Logo <input type="file" id="logo" accept="image/*"></label>
+    <label><input type="checkbox" id="longo"> Textos longos</label>
+    <label><input type="checkbox" id="semFoto"> Sem foto</label>
+  </div>
+  <div id="saida"></div>
+  <script type="module" src="/teste-artes.js"></script>
+</body>
+</html>
