@@ -4,6 +4,7 @@ import { el, logo, mostrar, carregando, botaoSair } from '../comum.js'
 import { telaInicial } from './tela.js'
 import { desenhar } from './telas.js'
 import { carregarNegocio } from './negocio.js'
+import { limparImagens } from '../artes/imagens.js'
 
 let acessoRegistrado = false // um evento 'acesso' por abertura do app
 let usuarioMostrado // id do usuário da tela atual (undefined = nenhuma tela ainda)
@@ -54,7 +55,7 @@ async function atualizar() {
 supabase.auth.onAuthStateChange((evento, sessao) => {
   const id = sessao?.user.id ?? null
   if (evento === 'INITIAL_SESSION' || evento === 'SIGNED_OUT' || id !== usuarioMostrado) {
-    if (evento === 'SIGNED_OUT') acessoRegistrado = false
+    if (evento === 'SIGNED_OUT') { acessoRegistrado = false; limparImagens() } // fecha as fotos da conta que saiu
     setTimeout(atualizar, 0)
   }
 })

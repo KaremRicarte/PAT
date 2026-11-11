@@ -78,3 +78,20 @@ export function telaEntrar(supabase) {
 
 export const botaoSair = (supabase) =>
   el('button', { type: 'button', class: 'secundario', texto: t('comum.sair'), onclick: () => supabase.auth.signOut() })
+
+// Aviso curto fixo no rodapé ("Aprovado ✓"). Some em 3 s, ou em 6 s quando tem Desfazer.
+let prazoDoAviso
+export function aviso(texto, { desfazer } = {}) {
+  let caixa = document.getElementById('aviso-rodape')
+  if (!caixa) {
+    caixa = el('div', { id: 'aviso-rodape', class: 'aviso-rodape', role: 'status', hidden: true })
+    document.body.append(caixa) // fora do <main>: continua visível quando a tela muda
+  }
+  const fechar = () => { clearTimeout(prazoDoAviso); caixa.hidden = true; caixa.replaceChildren() }
+  clearTimeout(prazoDoAviso)
+  caixa.replaceChildren(el('span', { texto }), desfazer
+    ? el('button', { type: 'button', class: 'pequeno', texto: t('comum.desfazer'), onclick: () => { fechar(); desfazer() } })
+    : null)
+  caixa.hidden = false
+  prazoDoAviso = setTimeout(fechar, desfazer ? 6000 : 3000)
+}

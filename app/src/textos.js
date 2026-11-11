@@ -51,8 +51,6 @@ const pt = {
 
   // lista do mês
   'mes.titulo': 'Seu mês: {mes}',
-  'mes.total': '{n} posts',
-  'mes.hoje': 'Hoje',
   'mes.gerarproximo': 'Gerar o mês de {mes}',
   'mes.copiar': 'Copiar legenda',
   'mes.copiado': 'Copiada!',
@@ -70,6 +68,38 @@ const pt = {
   'formato.status': 'Status',
   'formato.lista': 'Mensagem para a lista',
   'mes.editar': 'Editar meu negócio',
+
+  // calendário
+  'cal.semana': 'D,S,T,Q,Q,S,S',
+  'cal.resumo': 'Resumo do mês',
+  'cal.resumo.postado': '📤 {n} postados',
+  'cal.resumo.aprovado': '✓ {n} aprovados',
+  'cal.resumo.pendente': '⏳ {n} pendentes',
+  'cal.resumo.reprovado': '✕ {n} reprovados',
+  'cal.dia.pendente.1': '1 pendente',
+  'cal.dia.pendente.n': '{n} pendentes',
+  'cal.dia.aprovado.1': '1 aprovado',
+  'cal.dia.aprovado.n': '{n} aprovados',
+  'cal.dia.reprovado.1': '1 descartado',
+  'cal.dia.reprovado.n': '{n} descartados',
+  'cal.dia.postado.1': '1 postado',
+  'cal.dia.postado.n': '{n} postados',
+  'cal.dia.tudo': 'tudo postado',
+  'cal.dia.vazio': 'sem posts',
+  'cal.hoje': 'Hoje',
+  'cal.lista.vazia': 'Nenhum post neste dia.',
+  'cal.situacao.postado': '📤 Postado',
+  'cal.situacao.aprovado': '✓ Aprovado',
+  'cal.situacao.pendente': '⏳ Para aprovar',
+  'cal.situacao.reprovado': '✕ Descartado',
+  'cal.sotexto': 'Só texto',
+  'cal.postei': '✓ Postei',
+  'cal.postei.ok': 'Marcado como postado ✓',
+  'cal.dicas.titulo': 'Como usar',
+  'cal.dicas.1': 'Toque num dia para ver os posts.',
+  'cal.dicas.2': 'Toque no post para aprovar ou trocar a imagem.',
+  'cal.dicas.3': 'Depois de postar, toque em ✓ Postei.',
+  'cal.dicas.ok': 'Entendi',
   'semramo.texto': 'Seu cadastro ainda está sendo preparado. Fale com a administração.',
 
   // quiz do negócio
@@ -118,11 +148,14 @@ const pt = {
   // erro de cadastro
   'erro.cadastro': 'Não encontramos seu cadastro. Fale com a administração.',
   'erro.geral': 'Algo deu errado. Tente de novo.',
+  'erro.conexao': 'Sem conexão. Tente de novo.',
 
   // comum
   'comum.sair': 'Sair',
   'comum.carregando': 'Carregando…',
   'comum.tentar': 'Tentar de novo',
+  'comum.desfazer': 'Desfazer',
+  'comum.embreve': 'Em breve',
 
   // administração
   'admin.soadmin': 'Esta área é só para a administração.',

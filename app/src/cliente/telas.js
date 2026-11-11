@@ -2,7 +2,8 @@ import { t } from '../textos.js'
 import { el, logo, campo, mostrar, aoEnviar, telaEntrar, botaoSair } from '../comum.js'
 import { erroTrocaSenha } from './tela.js'
 import { telaQuiz } from './quiz.js'
-import { telaQuizMes, telaMes } from './mes.js'
+import { telaQuizMes } from './mes.js'
+import { telaCalendario } from './calendario.js'
 
 // ctx: { supabase, cliente, negocio, produtos, meses, atualizar }
 export function desenhar(tela, ctx) {
@@ -55,12 +56,20 @@ export function desenhar(tela, ctx) {
   }
 
   if (tela === 'quiz-mes') return telaQuizMes(ctx)
-  if (tela === 'mes') return telaMes(ctx, editarNegocio)
+  if (tela === 'mes') return telaCalendario(ctx, editarNegocio, diaDaUrl())
 
   // 'erro': sessão sem cadastro de cliente
   return mostrar(logo(),
     el('p', { texto: t('erro.cadastro') }),
     el('div', { class: 'acoes' }, botaoSair(supabase)))
+}
+
+// Dia vindo da notificação (?dia=AAAA-MM-DD). Lido uma vez: o parâmetro sai da URL.
+function diaDaUrl() {
+  const dia = new URLSearchParams(location.search).get('dia')
+  if (dia === null) return undefined
+  history.replaceState(null, '', location.pathname)
+  return /^\d{4}-\d{2}-\d{2}$/.test(dia) ? dia : undefined
 }
 
 // Reabre o quiz preenchido; salvar ou voltar recarrega o app.
