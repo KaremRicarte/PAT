@@ -104,3 +104,14 @@ test('post que não passa na validação → 500 e nada é gravado', async () =>
   expect(deps.gravar).not.toHaveBeenCalled()
   erro.mockRestore()
 })
+
+test('sem texto novo para oferecer → 422 e nada é gravado (nem a troca conta)', async () => {
+  // com 1 produto, as duas mensagens da lista do mês têm o mesmo texto
+  const deps = falsos({
+    post: async () => ({ ...POST, rede: 'whatsapp', tipo: 'lista', formato: 'texto', data: '2026-12-03' }),
+    produtos: async () => [{ id: 'p1', nome: 'Furadeira', descricao: null, preco: 99.9 }],
+  })
+  expect(await trocarPostDoCliente({ post_id: ID }, deps)).toEqual({ status: 422, corpo: {
+    erro: 'Não encontrei outro texto diferente para este post. Você pode usar "Só descartar".' } })
+  expect(deps.gravar).not.toHaveBeenCalled()
+})

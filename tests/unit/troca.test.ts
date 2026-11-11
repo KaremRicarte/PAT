@@ -23,6 +23,7 @@ test.each([
   ['instagram', 'feed', undefined],
   ['instagram', 'stories', undefined],
   ['tiktok', 'video', 'gravar'],
+  ['tiktok', 'video', 'montagem'],
   ['whatsapp', 'status', undefined],
 ])('mesma data, rede, tipo, formato e horário do post original (%s/%s)', (rede, tipo, formato) => {
   const original = primeiro(gerarMes(doisProdutos()), rede, tipo, formato)
@@ -37,37 +38,61 @@ test.each([
 
 test('formato do feed é sempre o do original, mesmo que a troca venha de outro formato', () => {
   for (const original of gerarMes(doisProdutos()).filter((p) => p.tipo === 'feed')) {
-    for (const n of [1, 2, 3]) expect(gerarTroca(doisProdutos(), original, n).formato).toBe(original.formato)
+    for (const n of [1, 2, 3]) expect(gerarTroca(doisProdutos(), original, n)?.formato).toBe(original.formato)
   }
 })
 
-test('n=1 muda a legenda', () => {
-  const original = primeiro(gerarMes(doisProdutos()), 'instagram', 'feed')
-  expect(gerarTroca(doisProdutos(), original, 1).legenda).not.toBe(original.legenda)
+const PACOTES = { '1 produto': umProduto(), '2 produtos': doisProdutos() }
+// Com 1 produto, as 2 montagens e as 2 mensagens da lista do mês têm o mesmo texto: não há outro para oferecer.
+const LIMITE_NULOS: Record<string, number> = { '1 produto': 4, '2 produtos': 0 }
+const tipoDe = (p: PostGerado) => `${p.rede}/${p.tipo}${p.tipo === 'video' ? '/' + p.formato : ''}`
+
+// Quantas trocas não acham texto novo (null), por pacote. O relatório da tarefa mostra estes números.
+const SEM_TEXTO_NOVO: Record<string, Record<string, number>> = {}
+
+describe.each(Object.entries(PACOTES))('%s', (nome, p) => {
+  const mes = gerarMes(p)
+
+  test('o mês tem todos os tipos (feed IG e FB, stories, vídeo montagem e gravar, status, lista)', () => {
+    expect([...new Set(mes.map(tipoDe))].sort()).toEqual([
+      'facebook/feed', 'instagram/feed', 'instagram/stories', 'tiktok/video/gravar', 'tiktok/video/montagem',
+      'whatsapp/lista', 'whatsapp/status'])
+  })
+
+  test('em todo post, n=1 devolve legenda diferente da atual ou null (e null é raro)', () => {
+    const nulos: Record<string, number> = {}
+    for (const original of mes) {
+      const novo = gerarTroca(p, original, 1)
+      if (novo === null) { nulos[tipoDe(original)] = (nulos[tipoDe(original)] ?? 0) + 1; continue }
+      expect(novo.legenda).not.toBe(original.legenda)
+    }
+    SEM_TEXTO_NOVO[nome] = nulos
+    const total = Object.values(nulos).reduce((a, b) => a + b, 0)
+    expect(total).toBeLessThanOrEqual(LIMITE_NULOS[nome])
+  })
+
+  test('3 trocas seguidas nunca repetem um texto já visto', () => {
+    for (const original of mes) {
+      const vistos = new Set([original.legenda])
+      let atual = original
+      for (let n = 1; n <= 3; n++) {
+        const novo = gerarTroca(p, atual, n)
+        if (!novo) break
+        expect(vistos.has(novo.legenda), `${tipoDe(original)} ${original.data} n=${n}`).toBe(false)
+        vistos.add(novo.legenda)
+        atual = { ...original, ...novo }
+      }
+    }
+  })
 })
 
-test('com 1 produto, n=1 ainda muda a legenda', () => {
-  for (const [rede, tipo] of [['instagram', 'stories'], ['tiktok', 'video']]) {
-    const original = gerarMes(umProduto()).filter((p) => p.rede === rede && p.tipo === tipo).at(-1)!
-    expect(gerarTroca(umProduto(), original, 1).legenda).not.toBe(original.legenda)
-  }
-})
+afterAll(() => console.log('trocas sem texto novo (n=1):', JSON.stringify(SEM_TEXTO_NOVO)))
 
-test('n=1 e n=2 diferentes entre si', () => {
-  // como na função: a 2ª troca parte do post já trocado uma vez
+test('sem a legenda atual, a troca n não repete as trocas 1..n-1 nem o original', () => {
   const original = primeiro(gerarMes(doisProdutos()), 'instagram', 'feed')
-  const um = gerarTroca(doisProdutos(), original, 1)
-  expect(gerarTroca(doisProdutos(), um, 2).legenda).not.toBe(um.legenda)
-  // sem a legenda atual, compara com o deslocamento anterior
   const { legenda: _, ...semLegenda } = original
-  expect(gerarTroca(doisProdutos(), semLegenda, 2).legenda).not.toBe(gerarTroca(doisProdutos(), semLegenda, 1).legenda)
-})
-
-test('com a legenda atual informada, a troca nunca devolve a mesma', () => {
-  const posts = gerarMes(doisProdutos())
-  for (const original of posts.filter((p) => p.tipo !== 'lista')) {
-    expect(gerarTroca(doisProdutos(), original, 1).legenda).not.toBe(original.legenda)
-  }
+  const legendas = [original.legenda, ...[1, 2, 3].map((n) => gerarTroca(doisProdutos(), semLegenda, n)!.legenda)]
+  expect(new Set(legendas).size).toBe(legendas.length)
 })
 
 test('advocacia: troca nunca tem preço nem promoção', () => {
@@ -79,7 +104,10 @@ test('advocacia: troca nunca tem preço nem promoção', () => {
     ],
   })
   for (const original of gerarMes(p)) {
-    for (let n = 1; n <= 5; n++) expect(validarPost(gerarTroca(p, original, n), RAMOS.advocacia)).toEqual([])
+    for (let n = 1; n <= 5; n++) {
+      const novo = gerarTroca(p, original, n)
+      if (novo) expect(validarPost(novo, RAMOS.advocacia)).toEqual([])
+    }
   }
 })
 

@@ -57,6 +57,8 @@ export async function trocarPostDoCliente(entrada: unknown, deps: DepsTroca): Pr
     ordem: post.ordem, legenda: post.legenda,
   } as Pick<PostGerado, 'data' | 'rede' | 'tipo' | 'formato' | 'horario' | 'ordem' | 'legenda'>
   const novo = gerarTroca(pacote, alvo, post.trocas + 1)
+  // Nenhum texto que o cliente ainda não viu: não grava e não conta a troca.
+  if (!novo) return r(422, 'Não encontrei outro texto diferente para este post. Você pode usar "Só descartar".')
   const problemas = validarPost(novo, RAMOS[cliente.ramo])
   if (problemas.length) {
     console.error('trocar-post: validação recusou o post', cliente.id, post.id, problemas)
