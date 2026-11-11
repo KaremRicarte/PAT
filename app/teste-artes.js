@@ -3,7 +3,7 @@ import { LOOKS } from '/src/artes/looks.js'
 import { desenharArte } from '/src/artes/desenho.js'
 import { esperarFontes } from '/src/artes/imagens.js'
 import { assinaturaDaArte } from '/src/artes/texto.js'
-import { montarVideoDeFotos, editarVideo, podeEditarVideo } from '/src/artes/video.js'
+import { montarVideoDeFotos, editarVideo, podeEditarVideo, criarAudioDoGesto } from '/src/artes/video.js'
 
 const CORES = {
   varejo: { cor1: '#F2A21B', cor2: '#151925' },
@@ -106,8 +106,11 @@ $('vMontar').onclick = () => gerar(async (opcoes) => {
   const fotos = await Promise.all([...$('vFotos').files].map((a) => createImageBitmap(a).catch(() => null)))
   return montarVideoDeFotos({ ...opcoes, fotos }, aoProgredir)
 })
-$('vEditar').onclick = () => gerar((opcoes) => {
-  const arq = $('vArquivo').files[0]
-  if (!arq) throw new Error('escolha um vídeo')
-  return editarVideo(arq, opcoes, aoProgredir)
-})
+$('vEditar').onclick = () => {
+  const audioCtx = criarAudioDoGesto() // síncrono, dentro do clique (Safari)
+  gerar((opcoes) => {
+    const arq = $('vArquivo').files[0]
+    if (!arq) throw new Error('escolha um vídeo')
+    return editarVideo(arq, opcoes, aoProgredir, { audioCtx })
+  }).finally(() => audioCtx?.close())
+}

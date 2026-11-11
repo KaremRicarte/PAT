@@ -43,7 +43,13 @@ test('gerarVideoDeFotos: fotos e logo presos durante a gravação, soltos no fim
 test('gerarVideoEditado: solta o logo mesmo quando a edição falha', async () => {
   let logo
   gravacao.durante = async (opcoes) => { logo = opcoes.logo; await encherCache(); throw Object.assign(new Error('x'), { codigo: 'longo' }) }
-  await expect(gerarVideoEditado(supabase, post, { negocio, ramo: null }, { name: 'v.mp4' })).rejects.toMatchObject({ codigo: 'longo' })
+  const arquivo = { name: 'v.mp4' }, audio = { audioCtx: { fake: 1 }, audioExtra: { trilha: 1 } }, progresso = () => {}
+  await expect(gerarVideoEditado(supabase, post, { negocio, ramo: null }, arquivo, progresso, audio)).rejects.toMatchObject({ codigo: 'longo' })
+  const [arq, dados, aoProgredir, opcoesDeAudio] = video.editarVideo.mock.calls[0]
+  expect(arq).toBe(arquivo)
+  expect(aoProgredir).toBe(progresso)
+  expect(opcoesDeAudio).toBe(audio)
+  expect(dados.assinatura).toEqual({ texto: '@loja', logo: true })
   expect(logo.close).not.toHaveBeenCalled()
   await encherCache()
   expect(logo.close).toHaveBeenCalledTimes(1)

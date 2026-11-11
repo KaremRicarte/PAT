@@ -1,4 +1,4 @@
-import { escolherFormato, validarDuracao, planoDoVideo, podeEditarVideo, momentoDaMontagem } from '../../app/src/artes/video.js'
+import { escolherFormato, validarDuracao, planoDoVideo, podeEditarVideo, momentoDaMontagem, enquadramento, codigoDoErro } from '../../app/src/artes/video.js'
 
 test('escolherFormato: tenta MP4 primeiro e cai para WebM', () => {
   expect(escolherFormato((m) => m === 'video/webm')).toEqual({ mime: 'video/webm', ext: 'webm' })
@@ -51,4 +51,22 @@ test('momentoDaMontagem: 4 partes de 3 s, com as fotos repartidas nos 9 s antes 
   expect(momentoDaMontagem(0, 2).zoom).toBe(0)
   expect(momentoDaMontagem(4.49, 2).zoom).toBeGreaterThan(0.99)
   expect(momentoDaMontagem(4.5, 2).zoom).toBe(0)
+})
+
+test("enquadramento: vídeo vertical cobre a tela; horizontal ou quadrado fica inteiro, centralizado", () => {
+  expect(enquadramento(1080, 1920, 720, 1280)).toEqual({ x: 0, y: 0, w: 720, h: 1280 })
+  expect(enquadramento(1920, 1080, 720, 1280)).toEqual({ x: 0, y: 437.5, w: 720, h: 405 })
+  expect(enquadramento(1000, 1000, 720, 1280)).toEqual({ x: 0, y: 280, w: 720, h: 720 })
+  // vertical mais alto que 9:16: corta em cima e embaixo
+  expect(enquadramento(1000, 2000, 720, 1280)).toEqual({ x: 0, y: -80, w: 720, h: 1440 })
+  // vertical mais largo que 9:16: corta dos lados
+  expect(enquadramento(900, 1200, 720, 1280)).toEqual({ x: -120, y: 0, w: 960, h: 1280 })
+  expect(enquadramento(0, 0, 720, 1280)).toBeNull() // ainda sem quadro
+})
+
+test("codigoDoErro: mantém o código; autoplay recusado vira sem-permissao; o resto vira falhou", () => {
+  expect(codigoDoErro(Object.assign(new Error("x"), { codigo: "longo" }))).toBe("longo")
+  expect(codigoDoErro(Object.assign(new Error("x"), { name: "NotAllowedError" }))).toBe("sem-permissao")
+  expect(codigoDoErro(new Error("qualquer"))).toBe("falhou")
+  expect(codigoDoErro(undefined)).toBe("falhou")
 })

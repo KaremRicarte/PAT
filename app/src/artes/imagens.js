@@ -191,11 +191,12 @@ export async function gerarVideoDeFotos(supabase, post, ctxDados, fotoPaths, aoP
 }
 
 // O vídeo enviado pelo cliente, com título, assinatura e tela final. Erros: ver editarVideo.
-export async function gerarVideoEditado(supabase, post, ctxDados, arquivo, aoProgredir, audioExtra) {
+// opcoesDeAudio = { audioCtx, audioExtra }: o audioCtx vem de criarAudioDoGesto(), feito no clique.
+export async function gerarVideoEditado(supabase, post, ctxDados, arquivo, aoProgredir, opcoesDeAudio) {
   const { soltar, opcoes } = await prepararVideo(supabase, post, ctxDados, [])
   try {
     const { pecas, look, cores, logo } = opcoes
-    return await editarVideo(arquivo, { pecas, look, cores, logo, assinatura: pecas.assinatura }, aoProgredir, audioExtra)
+    return await editarVideo(arquivo, { pecas, look, cores, logo, assinatura: pecas.assinatura }, aoProgredir, opcoesDeAudio)
   } finally {
     soltar()
   }

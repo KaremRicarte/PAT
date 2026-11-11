@@ -36,8 +36,15 @@ export function podeEditarVideo() {
     && typeof HTMLCanvasElement.prototype.captureStream === 'function'
 }
 
-// Erro com um código para a tela escolher a mensagem: 'sem-suporte' | 'longo' | 'invalido'.
+// Erro com um código para a tela escolher a mensagem (a lista está em editarVideo).
 const erroDeVideo = (codigo) => Object.assign(new Error(`vídeo: ${codigo}`), { codigo })
+
+// Código de qualquer erro da gravação: mantém o que já tem; autoplay recusado vira 'sem-permissao';
+// o resto (MediaRecorder, canvas…) vira 'falhou'.
+export function codigoDoErro(erro) {
+  if (erro?.codigo) return erro.codigo
+  return erro?.name === 'NotAllowedError' ? 'sem-permissao' : 'falhou'
+}
 
 const suave = (k) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2)
 
@@ -133,6 +140,16 @@ export function desenharQuadroDeFotos(ctx, { pecas, look, cores, fotos = [], log
   ctx.restore()
 }
 
+// Onde o vídeo enviado entra na tela W×H. Vertical: cobre a tela (cortando o que sobra).
+// Horizontal ou quadrado: inteiro, na largura toda e centralizado na vertical.
+// null enquanto o vídeo não tem quadro.
+export function enquadramento(larguraVideo, alturaVideo, W, H) {
+  if (!larguraVideo || !alturaVideo) return null
+  const s = larguraVideo >= alturaVideo ? W / larguraVideo : Math.max(W / larguraVideo, H / alturaVideo)
+  const w = larguraVideo * s, h = alturaVideo * s
+  return { x: (W - w) / 2, y: (H - h) / 2, w, h }
+}
+
 // Um quadro do vídeo editado no segundo t: o vídeo com o título até 3 s e a assinatura; depois, a tela final.
 export function desenharQuadroDoVideo(ctx, { pecas, look, cores, logo = null, video, W = W_VIDEO, H = H_VIDEO }, t, plano) {
   const f = folha(ctx, { look, cores, W, H })
@@ -142,7 +159,8 @@ export function desenharQuadroDoVideo(ctx, { pecas, look, cores, logo = null, vi
   } else {
     ctx.fillStyle = f.b2
     ctx.fillRect(0, 0, W, H)
-    cobrir(ctx, video, W, H)
+    const r = enquadramento(video.videoWidth, video.videoHeight, W, H)
+    if (r) ctx.drawImage(video, r.x, r.y, r.w, r.h)
     sombrear(ctx, W, H)
     if (t < plano.tituloAte) {
       const alfa = Math.max(0, Math.min(1, t / 0.3, (plano.tituloAte - t) / 0.15))
@@ -170,38 +188,53 @@ function formatoDoAparelho() {
   return formato
 }
 
-// Grava o canvas (mais as faixas de áudio) enquanto `quadro()` desenha, a cada frame,
-// e devolve o segundo atual; para quando ele passar de `total`.
-async function gravar(canvas, formato, audios, total, quadro, aoProgredir) {
+// Grava o canvas (mais as faixas de áudio). `aoComecar(falhar)` roda logo depois de rec.start
+// (ex.: dar play no vídeo e vigiar os erros dele); `quadro()` desenha a cada frame e devolve o segundo atual.
+// Para quando o segundo passa de `total`. Se a tela for para segundo plano, aborta ('interrompido').
+// Para sempre as faixas do canvas; as de áudio são de quem chama.
+async function gravar({ canvas, formato, audios = [], total, quadro, aoProgredir, aoComecar }) {
   const stream = canvas.captureStream(30)
   for (const a of audios) stream.addTrack(a)
-  const rec = new MediaRecorder(stream, { mimeType: formato.mime, videoBitsPerSecond: BITS })
+  let terminar, falhar, rec = null, pedidoDeQuadro = null
+  const fim = new Promise((ok, erro) => { terminar = ok; falhar = erro })
+  fim.catch(() => {}) // a falha é tratada no await abaixo
+  const aoEsconder = () => { if (document.hidden) falhar(erroDeVideo('interrompido')) }
   const pedacos = []
-  rec.ondataavailable = (e) => { if (e.data.size) pedacos.push(e.data) }
-  const parou = new Promise((ok) => { rec.onstop = ok })
-  rec.start(500)
   try {
-    await new Promise((ok, falha) => {
-      const passo = () => {
-        try {
-          const t = quadro()
-          aoProgredir?.(Math.min(1, t / total), canvas)
-          if (t < total) requestAnimationFrame(passo)
-          else ok()
-        } catch (e) { falha(e) }
-      }
-      requestAnimationFrame(passo)
-    })
-  } finally {
+    document.addEventListener('visibilitychange', aoEsconder)
+    aoEsconder()
+    rec = new MediaRecorder(stream, { mimeType: formato.mime, videoBitsPerSecond: BITS })
+    rec.ondataavailable = (e) => { if (e.data.size) pedacos.push(e.data) }
+    rec.onerror = () => falhar(erroDeVideo('falhou'))
+    rec.start(500)
+    await aoComecar?.(falhar)
+    const passo = () => {
+      try {
+        const t = quadro()
+        aoProgredir?.(Math.min(1, t / total), canvas)
+        if (t < total) pedidoDeQuadro = requestAnimationFrame(passo)
+        else terminar()
+      } catch (e) { falhar(e) }
+    }
+    pedidoDeQuadro = requestAnimationFrame(passo)
+    await fim
+    const parou = new Promise((ok) => { rec.onstop = ok })
     rec.stop()
     await parou
+    return { blob: new Blob(pedacos, { type: formato.mime.split(';')[0] }), ext: formato.ext }
+  } catch (e) {
+    throw erroDeVideo(codigoDoErro(e))
+  } finally {
+    if (pedidoDeQuadro !== null) cancelAnimationFrame(pedidoDeQuadro)
+    document.removeEventListener('visibilitychange', aoEsconder)
+    if (rec && rec.state !== 'inactive') { try { rec.stop() } catch { /* já parado */ } }
     stream.getVideoTracks().forEach((tr) => tr.stop())
   }
-  return { blob: new Blob(pedacos, { type: formato.mime.split(';')[0] }), ext: formato.ext }
 }
 
 // A montagem de 12 s com as fotos. Quem chama prende as fotos e o logo (prenderImagens)
 // até a promessa terminar: os bitmaps são desenhados durante toda a gravação.
+// Erros: `erro.codigo` = 'sem-suporte' | 'interrompido' | 'falhou'.
 export async function montarVideoDeFotos({ pecas, look, cores, fotos = [], logo = null }, aoProgredir) {
   const formato = formatoDoAparelho()
   const canvas = novaTela()
@@ -209,47 +242,97 @@ export async function montarVideoDeFotos({ pecas, look, cores, fotos = [], logo 
   const opcoes = { pecas, look, cores, fotos: fotos.filter(Boolean), logo }
   desenharQuadroDeFotos(ctx, opcoes, 0)
   let t0 = null
-  return gravar(canvas, formato, [], MONTAGEM, () => {
-    const agora = performance.now()
-    t0 ??= agora
-    const t = (agora - t0) / 1000
-    desenharQuadroDeFotos(ctx, opcoes, Math.min(t, MONTAGEM - 0.01))
-    return t
-  }, aoProgredir)
+  return gravar({
+    canvas, formato, total: MONTAGEM, aoProgredir,
+    quadro: () => {
+      const agora = performance.now()
+      t0 ??= agora
+      const t = (agora - t0) / 1000
+      desenharQuadroDeFotos(ctx, opcoes, Math.min(t, MONTAGEM - 0.01))
+      return t
+    },
+  })
 }
 
+const LIMITE_ABRIR = 15000 // ms sem metadados = vídeo que o navegador não abre
+const LIMITE_PARADO = 2000 // ms pausado sem ter acabado = gravação travada
+
+// O <video> não fica muted quando o som passa pelo Web Audio (senão a gravação sai muda).
+// O som vai só para o grafo, nunca para audioCtx.destination, então nada toca no alto-falante.
 function abrirVideo(arquivo) {
   const video = document.createElement('video')
-  video.muted = true
   video.playsInline = true
   video.setAttribute('playsinline', '')
   video.preload = 'auto'
   const url = URL.createObjectURL(arquivo)
-  const fechar = () => { video.pause(); video.removeAttribute('src'); video.load(); URL.revokeObjectURL(url) }
+  let limite = null
   const pronto = new Promise((ok, falha) => {
-    video.onloadedmetadata = ok
-    video.onerror = () => falha(erroDeVideo('invalido'))
+    limite = setTimeout(() => falha(erroDeVideo('invalido')), LIMITE_ABRIR)
+    video.onloadedmetadata = () => { clearTimeout(limite); ok() }
+    video.onerror = () => { clearTimeout(limite); falha(erroDeVideo('invalido')) }
   })
+  pronto.catch(() => {}) // tratado por quem espera `pronto`
+  const fechar = () => {
+    clearTimeout(limite)
+    video.onerror = null
+    video.pause()
+    video.removeAttribute('src')
+    video.load()
+    URL.revokeObjectURL(url)
+  }
   video.src = url
   return { video, pronto, fechar }
 }
 
-// Faixa de áudio do vídeo tocando (Chrome e Firefox; o Safari não captura e o vídeo sai sem som).
-function audioDoVideo(video) {
+// Cria o AudioContext do vídeo. Chame de forma SÍNCRONA dentro do clique do usuário:
+// assim o Safari deixa tocar o som depois dos awaits. null se o navegador não tem Web Audio.
+// Quem cria fecha (audioCtx.close()) depois que editarVideo terminar.
+export function criarAudioDoGesto() {
+  const Contexto = globalThis.AudioContext ?? globalThis.webkitAudioContext
+  if (!Contexto) return null
   try {
-    const s = video.captureStream?.() ?? video.mozCaptureStream?.()
-    return s ? s.getAudioTracks().slice(0, 1) : []
+    const audioCtx = new Contexto()
+    audioCtx.resume?.()?.catch?.(() => {})
+    return audioCtx
   } catch {
-    return []
+    return null
+  }
+}
+
+// Liga o som do vídeo (e o audioExtra, misturado) a um destino de gravação, sem passar pelo alto-falante.
+function ligarSom(audioCtx, video, audioExtra) {
+  const dest = audioCtx.createMediaStreamDestination()
+  const fonte = audioCtx.createMediaElementSource(video)
+  fonte.connect(dest)
+  const nos = [fonte]
+  if (audioExtra) {
+    const extra = audioCtx.createMediaStreamSource(new MediaStream([audioExtra]))
+    const volume = audioCtx.createGain()
+    extra.connect(volume)
+    volume.connect(dest)
+    nos.push(extra, volume)
+  }
+  audioCtx.resume?.()?.catch?.(() => {}) // sem await: fora do gesto, o resume pode ficar pendente
+  return {
+    faixas: dest.stream.getAudioTracks(),
+    desligar: () => {
+      for (const n of nos) { try { n.disconnect() } catch { /* já desligado */ } }
+      dest.stream.getTracks().forEach((tr) => tr.stop())
+    },
   }
 }
 
 // Edita o vídeo enviado: título nos primeiros 3 s, assinatura no canto e 2 s de tela final.
-// `audioExtra` (opcional) substitui o som do vídeo; está reservado para a narração da Etapa 4.
-// Erros: `erro.codigo` = 'sem-suporte' | 'longo' | 'invalido'.
-export async function editarVideo(arquivo, { pecas, look, cores, logo = null, assinatura }, aoProgredir, audioExtra) {
+// O som vai pelo Web Audio. `audioCtx` deve vir de criarAudioDoGesto(), criado dentro do clique,
+// e quem o passa é quem o fecha. Sem ele, um é criado aqui (plano B) e fechado no fim.
+// `audioExtra` (reservado para a narração da Etapa 4) é misturado ao som do vídeo e não é parado aqui.
+// Erros: `erro.codigo` = 'sem-suporte' | 'longo' | 'invalido' | 'sem-permissao' | 'interrompido' | 'falhou'.
+export async function editarVideo(arquivo, { pecas, look, cores, logo = null, assinatura }, aoProgredir, { audioCtx, audioExtra } = {}) {
   const formato = formatoDoAparelho()
+  const audioProprio = audioCtx ? null : criarAudioDoGesto()
+  const contexto = audioCtx ?? audioProprio
   const { video, pronto, fechar } = abrirVideo(arquivo)
+  let som = null
   try {
     await pronto
     const validade = validarDuracao(video.duration)
@@ -258,21 +341,40 @@ export async function editarVideo(arquivo, { pecas, look, cores, logo = null, as
     const canvas = novaTela()
     const ctx = canvas.getContext('2d')
     const opcoes = { pecas: { ...pecas, assinatura: assinatura ?? pecas.assinatura }, look, cores, logo, video }
+    if (contexto) { try { som = ligarSom(contexto, video, audioExtra) } catch { som = null } }
+    video.muted = !som // sem o grafo, o som iria para o alto-falante
     video.currentTime = 0
-    try { await video.play() } catch { throw erroDeVideo('invalido') }
-    const audios = audioExtra ? [audioExtra] : audioDoVideo(video)
-    let fimDesde = null
-    return await gravar(canvas, formato, audios, plano.total, () => {
-      let t
-      if (fimDesde === null && !video.ended && video.currentTime < plano.fimDe) t = video.currentTime
-      else {
-        fimDesde ??= performance.now()
-        t = plano.fimDe + (performance.now() - fimDesde) / 1000
-      }
-      desenharQuadroDoVideo(ctx, opcoes, Math.min(t, plano.fimAte - 0.01), plano)
-      return t
-    }, aoProgredir)
+    let fimDesde = null, paradoDesde = null
+    return await gravar({
+      canvas, formato, audios: som?.faixas ?? [], total: plano.total, aoProgredir,
+      aoComecar: async (falhar) => {
+        video.onerror = () => falhar(erroDeVideo('invalido'))
+        try { await video.play() } catch (e) {
+          throw erroDeVideo(e?.name === 'NotAllowedError' ? 'sem-permissao' : 'invalido')
+        }
+      },
+      quadro: () => {
+        const agora = performance.now()
+        let t
+        if (fimDesde === null && !video.ended && video.currentTime < plano.fimDe) {
+          if (video.paused) {
+            paradoDesde ??= agora
+            if (agora - paradoDesde > LIMITE_PARADO) throw erroDeVideo('falhou')
+          } else paradoDesde = null
+          t = video.currentTime
+        } else {
+          fimDesde ??= agora
+          t = plano.fimDe + (agora - fimDesde) / 1000
+        }
+        desenharQuadroDoVideo(ctx, opcoes, Math.min(t, plano.fimAte - 0.01), plano)
+        return t
+      },
+    })
+  } catch (e) {
+    throw erroDeVideo(codigoDoErro(e))
   } finally {
+    som?.desligar()
     fechar()
+    if (audioProprio) { try { audioProprio.close()?.catch?.(() => {}) } catch { /* já fechado */ } }
   }
 }
