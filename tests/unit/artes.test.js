@@ -74,7 +74,7 @@ test('assinaturaDaArte: @ do Instagram com arroba; sem logo nem @, entra o nome 
 
 // Canvas de mentira: guarda cada texto pintado com a caixa que ele ocupa.
 function canvasFalso() {
-  const textos = []
+  const textos = [], caixas = []
   const tamanho = (font) => Number(/([\d.]+)px/.exec(font)[1])
   const ctx = {
     font: '10px x', textAlign: 'left', textBaseline: 'alphabetic', fillStyle: '', strokeStyle: '', globalAlpha: 1, lineWidth: 1,
@@ -85,17 +85,19 @@ function canvasFalso() {
       const topo = this.textBaseline === 'middle' ? y - tam / 2 : this.textBaseline === 'bottom' ? y - tam : y
       textos.push({ s, esq, dir: esq + w, topo, base: topo + tam })
     },
-    save() {}, restore() {}, clearRect() {}, fillRect() {}, strokeRect() {}, beginPath() {}, roundRect() {}, rect() {},
+    save() {}, restore() {}, clearRect() {}, fillRect() {}, strokeRect() {}, beginPath() {}, rect() {},
+    roundRect(x, y, w, h) { caixas.push({ esq: x, dir: x + w, topo: y, base: y + h }) },
     fill() {}, arc() {}, drawImage() {}, createLinearGradient: () => ({ addColorStop() {} }),
   }
-  return { ctx, textos }
+  return { ctx, textos, caixas }
 }
 
 test('desenharArte: nenhum texto sai da arte, em todos os estilos e formas, com textos longos', async () => {
   const { desenharArte } = await import('../../app/src/artes/desenho.js')
   const longo = 'Você já perdeu um dia inteiro de obra porque a ferramenta não deu conta do concreto? A gente sabe como isso atrasa tudo e encarece o serviço no fim do mês.'
+  const palavra = 'Anticonstitucionalissimam' // 25 letras
   const pecas = {
-    rotulo: 'FERRAGENS E MATERIAIS DE CONSTRUÇÃO SÃO JOÃO DA BOA VISTA', titulo: longo, gancho: longo, meio: longo + ' ' + longo, convite: longo,
+    rotulo: 'FERRAGENS E MATERIAIS DE CONSTRUÇÃO SÃO JOÃO DA BOA VISTA', titulo: `${palavra} ${longo}`, gancho: `O ${palavra} ${longo}`, meio: longo + ' ' + longo, convite: longo,
     assinatura: { texto: '@lojadoteste', logo: false },
   }
   const formas = [
@@ -104,10 +106,10 @@ test('desenharArte: nenhum texto sai da arte, em todos os estilos e formas, com 
   for (const look of Object.values(LOOKS)) {
     for (const forma of formas) {
       for (let pagina = 1; pagina <= forma.paginas; pagina++) {
-        const { ctx, textos } = canvasFalso()
+        const { ctx, textos, caixas } = canvasFalso()
         desenharArte(ctx, { pecas, look, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, foto: null, logo: null, ...forma, pagina })
         expect(textos.length).toBeGreaterThan(0)
-        for (const tx of textos) {
+        for (const tx of [...textos, ...caixas]) {
           expect(tx.esq).toBeGreaterThanOrEqual(0)
           expect(tx.dir).toBeLessThanOrEqual(forma.W)
           expect(tx.topo).toBeGreaterThanOrEqual(0)
@@ -116,4 +118,14 @@ test('desenharArte: nenhum texto sai da arte, em todos os estilos e formas, com 
       }
     }
   }
+})
+
+test('encaixarTexto: linha mais larga que o máximo também conta como "não coube"', () => {
+  const quebra = (t, tam) => quebrarLinhas(t, 20, (s) => s.length * tam / 10)
+  const r = encaixarTexto('oi Anticonstitucionalissimam', {
+    tamanho: 10, minimo: 5, alturaMax: 1000, quebra, altura: (n, tam) => n * tam,
+    larguraMax: 20, largura: (s, tam) => s.length * tam / 10,
+  })
+  expect(r.tamanho).toBeLessThan(10)
+  for (const l of r.linhas) expect(l.length * r.tamanho / 10).toBeLessThanOrEqual(20)
 })

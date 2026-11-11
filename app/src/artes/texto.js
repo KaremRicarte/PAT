@@ -41,12 +41,14 @@ export function quebrarLinhas(texto, larguraMax, medir) {
 
 // Acha o maior tamanho de letra (de `tamanho` até `minimo`) em que o texto cabe em alturaMax.
 // quebra(texto, tam) -> linhas; altura(nLinhas, tam) -> altura do bloco.
+// Com largura(linha, tam) e larguraMax, uma linha mais larga (palavra comprida) também não cabe.
 // Se nem no mínimo couber, corta as linhas que sobram e termina a última com "…".
-export function encaixarTexto(texto, { tamanho, minimo, alturaMax, quebra, altura }) {
+export function encaixarTexto(texto, { tamanho, minimo, alturaMax, quebra, altura, largura, larguraMax = Infinity }) {
+  const larga = (linhas, tam) => Boolean(largura) && linhas.some((l) => largura(l, tam) > larguraMax)
   let tam = tamanho
   for (;;) {
     const linhas = quebra(texto, tam)
-    if (altura(linhas.length, tam) <= alturaMax) return { tamanho: tam, linhas }
+    if (altura(linhas.length, tam) <= alturaMax && !larga(linhas, tam)) return { tamanho: tam, linhas }
     const proximo = Math.max(minimo, tam * 0.92)
     if (tam <= minimo || proximo === tam) break
     tam = proximo

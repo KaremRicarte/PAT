@@ -50,6 +50,8 @@ function folha(ctx, { look, cores, W, H }) {
 }
 
 const medidor = (ctx) => (s) => ctx.measureText(s).width
+// Largura de uma linha na fonte montada por `fonte(tam)`, para o encaixe conferir a largura.
+const larguraNa = (ctx, fonte, extra = 0) => (l, tam) => { ctx.font = fonte(tam); return ctx.measureText(l).width + extra * tam }
 const xAlinhado = (x, mw, alinhar) => (alinhar === 'center' ? x + mw / 2 : x)
 
 // ---------- textos ----------
@@ -83,11 +85,15 @@ export function montarTitulo(f, texto, tamanho, alturaMax) {
     const r = encaixarTexto(texto, {
       tamanho: tamanho * look.hs, minimo: tamanho * look.hs * 0.55, alturaMax,
       quebra, altura: (n, s) => fio(s) + n * s * 1.12,
+      larguraMax: mw, largura: larguraNa(ctx, (s) => `${look.dw} ${s}px ${look.fd}`),
     })
     return { ...r, h: fio(r.tamanho) + r.linhas.length * r.tamanho * 1.12 }
   }
   const quebra = (txt, s) => { ctx.font = `800 ${s}px ${look.fd}`; return quebrarLinhas(txt, mw - s * 0.44, medidor(ctx)) }
-  const r = encaixarTexto(texto, { tamanho, minimo: tamanho * 0.55, alturaMax, quebra, altura: (n, s) => n * s * 1.25 })
+  const r = encaixarTexto(texto, {
+    tamanho, minimo: tamanho * 0.55, alturaMax, quebra, altura: (n, s) => n * s * 1.25,
+    larguraMax: mw, largura: larguraNa(ctx, (s) => `800 ${s}px ${look.fd}`, 0.44),
+  })
   return { ...r, h: r.linhas.length * r.tamanho * 1.25 }
 }
 
@@ -103,7 +109,7 @@ export function pintarTitulo(f, titulo, y, corTinta) {
     ctx.fillStyle = corTinta
     ctx.textBaseline = 'top'
     ctx.textAlign = alinhar
-    titulo.linhas.forEach((l, i) => ctx.fillText(l, xAlinhado(x, mw, alinhar), y + 4.2 * u + i * lh))
+    titulo.linhas.forEach((l, i) => ctx.fillText(l, xAlinhado(x, mw, alinhar), y + 4.2 * u + i * lh, mw))
     ctx.textAlign = 'left'
     return
   }
@@ -111,13 +117,13 @@ export function pintarTitulo(f, titulo, y, corTinta) {
   const pad = s * 0.22, lh = s * 1.25
   ctx.textAlign = 'left'
   titulo.linhas.forEach((l, i) => {
-    const w = ctx.measureText(l).width + pad * 2, bx = alinhar === 'center' ? x + (mw - w) / 2 : x, by = y + i * lh
+    const w = Math.min(ctx.measureText(l).width, mw - pad * 2) + pad * 2, bx = alinhar === 'center' ? x + (mw - w) / 2 : x, by = y + i * lh
     ctx.fillStyle = f.b1
     retanguloArredondado(ctx, bx, by, w, lh * 0.96, s * 0.14)
     ctx.fill()
     ctx.fillStyle = f.b1i
     ctx.textBaseline = 'middle'
-    ctx.fillText(l, bx + pad, by + lh * 0.5)
+    ctx.fillText(l, bx + pad, by + lh * 0.5, mw - pad * 2)
   })
 }
 
@@ -126,7 +132,10 @@ export function montarTexto(f, texto, tamanho, alturaMax, { fonte, peso = 700, e
   const { ctx, mw } = f
   const familia = fonte ?? f.look.fb
   const quebra = (txt, s) => { ctx.font = `${peso} ${s}px ${familia}`; return quebrarLinhas(txt, mw, medidor(ctx)) }
-  const r = encaixarTexto(texto, { tamanho, minimo: tamanho * minimo, alturaMax, quebra, altura: (n, s) => n * s * entrelinha })
+  const r = encaixarTexto(texto, {
+    tamanho, minimo: tamanho * minimo, alturaMax, quebra, altura: (n, s) => n * s * entrelinha,
+    larguraMax: mw, largura: larguraNa(ctx, (s) => `${peso} ${s}px ${familia}`),
+  })
   return { ...r, familia, peso, entrelinha, h: r.linhas.length * r.tamanho * entrelinha }
 }
 
@@ -136,7 +145,7 @@ export function pintarTexto(f, bloco, y, cor) {
   ctx.fillStyle = cor
   ctx.textBaseline = 'top'
   ctx.textAlign = alinhar
-  bloco.linhas.forEach((l, i) => ctx.fillText(l, xAlinhado(x, mw, alinhar), y + i * bloco.tamanho * bloco.entrelinha))
+  bloco.linhas.forEach((l, i) => ctx.fillText(l, xAlinhado(x, mw, alinhar), y + i * bloco.tamanho * bloco.entrelinha, mw))
   ctx.textAlign = 'left'
 }
 
@@ -144,7 +153,10 @@ export function pintarTexto(f, bloco, y, cor) {
 export function caixaDeTexto(f, texto, fundo, tamanho, alturaMax, { cor = 'rgba(0,0,0,.6)', tinta = '#fff' } = {}) {
   const { ctx, x, mw, look } = f
   const quebra = (txt, s) => { ctx.font = `800 ${s}px ${look.fb}`; return quebrarLinhas(txt, mw - s * 1.1, medidor(ctx)) }
-  const r = encaixarTexto(texto, { tamanho, minimo: tamanho * 0.6, alturaMax, quebra, altura: (n, s) => n * s * 1.3 + s * 1.1 })
+  const r = encaixarTexto(texto, {
+    tamanho, minimo: tamanho * 0.6, alturaMax, quebra, altura: (n, s) => n * s * 1.3 + s * 1.1,
+    larguraMax: mw, largura: larguraNa(ctx, (s) => `800 ${s}px ${look.fb}`, 1.1),
+  })
   const s = r.tamanho, pad = s * 0.55, lh = s * 1.3, h = r.linhas.length * lh + pad * 2, y = fundo - h
   ctx.fillStyle = cor
   retanguloArredondado(ctx, x, y, mw, h, s * 0.45)
@@ -153,7 +165,7 @@ export function caixaDeTexto(f, texto, fundo, tamanho, alturaMax, { cor = 'rgba(
   ctx.fillStyle = tinta
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
-  r.linhas.forEach((l, i) => ctx.fillText(l, x + pad, y + pad + lh * i + lh / 2))
+  r.linhas.forEach((l, i) => ctx.fillText(l, x + pad, y + pad + lh * i + lh / 2, mw - pad * 2))
   return h
 }
 
