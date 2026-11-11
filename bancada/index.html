@@ -684,7 +684,7 @@ const LAW_APROX = [
 
 const NICHES = {
   ferramentas:{
-    nome:'Loja de ferramentas', desc:'Ferragens e material de construção', icon:'tool', tone:'t1',
+    nome:'Loja de ferramentas', desc:'Ferragens e material de construção', icon:'tool', tone:'t1', assunto:'ferramentas e reparos',
     itens:'Produtos', itensQ:'Quais produtos você quer vender este mês?', itemOne:'produto',
     sug:['Ferragens Martins','Casa do Parafuso','Ferramentaria Central'],
     tipo:[['bairro','Ferragem de bairro','Vizinhança e pequenos reparos'],['pro','Ferramentas profissionais','Elétricas, medição e proteção'],['construcao','Material de construção','Do básico ao acabamento'],['eletrohidra','Elétrica e hidráulica','Reparos e instalações']],
@@ -702,7 +702,7 @@ const NICHES = {
     promo:{un:'', rest:'unidades', restC:'un.', parc:'6x sem juros', restam:'5', urg:['Só hoje','Até domingo','Últimas unidades','Enquanto durar o estoque'], bon:['Frete grátis','Brinde na compra','Retirada na hora','Garantia estendida']},
   },
   turismo:{
-    nome:'Turismo', desc:'Agências, pousadas e passeios', icon:'sun', tone:'t2',
+    nome:'Turismo', desc:'Agências, pousadas e passeios', icon:'sun', tone:'t2', assunto:'viagens',
     itens:'Pacotes e passeios', itensQ:'Quais pacotes e passeios você quer vender este mês?', itemOne:'pacote',
     sug:['Mar & Serra Viagens','Rota Azul Turismo','Pousada Recanto do Sol'],
     tipo:[['agencia','Agência de viagens','Pacotes, passagens e hotel'],['pousada','Pousada ou hotel','Hospedagem'],['receptivo','Passeios no destino','Receptivo e passeios'],['excursao','Excursões','Viagens em grupo de ônibus']],
@@ -721,7 +721,7 @@ const NICHES = {
   },
   /* ramos novos: look define o estilo da arte; kick usa a categoria do serviço como rótulo; esp são as datas do mês */
   beleza:{
-    nome:'Beleza e bem-estar', desc:'Salões, estética, unhas e spa', icon:'spark', tone:'t3', look:'elegante', kick:true,
+    nome:'Beleza e bem-estar', desc:'Salões, estética, unhas e spa', icon:'spark', tone:'t3', assunto:'beleza e autocuidado', look:'elegante', kick:true,
     itens:'Serviços', itensQ:'Quais serviços você quer divulgar este mês?', itemOne:'serviço', quem:'a cliente',
     sug:['Studio Bella Pele','Espaço Flor de Lis','Ateliê da Beleza'],
     tipo:[['salao','Salão de beleza','Cabelo, unhas e maquiagem'],['estetica','Clínica de estética','Pele e corpo'],['unhas','Esmalteria e cílios','Unhas, cílios e sobrancelhas'],['spa','Spa e bem-estar','Massagens e relaxamento']],
@@ -744,7 +744,7 @@ const NICHES = {
       f:[['Gancho','"Dezembro chegou e sua agenda de beleza ainda está vazia?"'],['Problema','Perto das festas, os horários esgotam rápido.'],['Solução',`Carrossel com os cuidados para as festas, começando por ${it.nome}.`],['Convite','"Agende agora e garanta o seu horário."']]}; }}},
   },
   psicologia:{
-    nome:'Psicologia', desc:'Consultórios e atendimento online', icon:'heart', tone:'t4', look:'sereno', kick:true, textOnly:true, noPromo:true,
+    nome:'Psicologia', desc:'Consultórios e atendimento online', icon:'heart', tone:'t4', assunto:'saúde emocional', look:'sereno', kick:true, textOnly:true, noPromo:true,
     itens:'Atendimentos e temas', itensQ:'Sobre quais atendimentos você quer falar este mês?', itemOne:'tema', quem:'quem te procura',
     nomeQ:'Qual é o seu nome profissional ou o nome do consultório?',
     sug:['Psicóloga Ana Ribeiro','Espaço Escuta','Consultório Acolher'],
@@ -773,7 +773,7 @@ const NICHES = {
     },
   },
   advocacia:{
-    nome:'Advocacia', desc:'Escritórios e advogados autônomos', icon:'scale', tone:'t5', look:'sobrio', kick:true, textOnly:true, noPromo:true,
+    nome:'Advocacia', desc:'Escritórios e advogados autônomos', icon:'scale', tone:'t5', assunto:'direitos do dia a dia', look:'sobrio', kick:true, textOnly:true, noPromo:true,
     itens:'Áreas de atuação', itensQ:'Sobre quais áreas você quer falar este mês?', itemOne:'área',
     nomeQ:'Qual é o nome do escritório ou o seu nome profissional?',
     sug:['Martins & Lima Advocacia','Carla Souza Advocacia','Ribeiro Advogados Associados'],
@@ -809,7 +809,7 @@ function questions(){
   const n=N();
   return [
     {k:'nome', type:'text', t:n.nomeQ||'Qual é o nome do seu negócio?', sug:n.sug},
-    {k:'tipo', type:'multi', t:'Quais destes combinam com você?', h:'Pode marcar mais de um.', o:n.tipo},
+    {k:'tipo', type:'multi', t:'Quais destes combinam com você?', h:'Pode marcar mais de um.', o:[...n.tipo,['engaja','Perfil de engajamento',`Conteúdo sobre ${n.assunto} para crescer no Instagram`]]},
     {k:'publico', type:'multi', t:'Quem são seus clientes?', h:'Pode marcar mais de um.', o:n.publico},
     {k:'redes', type:'multi', t:'Onde você quer postar?', h:'Pode marcar mais de um.', o:[['ig','Instagram'],['fb','Facebook'],['tt','TikTok'],['wa','Status do WhatsApp']]},
     {k:'freq', type:'single', t:'Quantos posts por semana?', o:[['3','3 por semana','Segunda, quarta e sexta'],['5','5 por semana','De segunda a sexta'],['7','Todo dia','Inclui sábado e domingo']]},
@@ -822,6 +822,11 @@ function questions(){
     {k:'horario', type:'single', t:'Que horas seus clientes mais usam o celular?', o:[['07:00','De manhã cedo','Por volta das 7h'],['12:00','Na hora do almoço','Por volta do meio-dia'],['19:00','À noite','Por volta das 19h']]},
   ];
 }
+const ENGAJA_MIX = {demo:.2, aprox:.45, need:.35};
+const ENGAJA_CTA = ['"Salva este post para ver de novo quando precisar."','"Manda para alguém que precisa ver isso."','"Comenta aqui: você já passou por isso?"','"Segue o perfil para mais conteúdo assim."','"Qual parte você não sabia? Conta nos comentários."'];
+const engaja = () => (S.a.tipo||[]).includes('engaja');
+let ctaI = 0;
+const convite = () => engaja() ? ENGAJA_CTA[ctaI++%ENGAJA_CTA.length] : N().convite[S.a.tom||'proximo'];
 const MIX = {vendas:{demo:.5,aprox:.2,need:.3}, equilibrio:{demo:.4,aprox:.3,need:.3}, relacao:{demo:.3,aprox:.45,need:.25}};
 const PILLAR = {demo:'Demonstração', aprox:'Aproximação', need:'Necessidade'};
 const NETL = {ig:'Instagram',fb:'Facebook',tt:'TikTok',wa:'WhatsApp'};
@@ -863,11 +868,11 @@ function noVideo(fmt){ return S.a.gravar==='ninguem' && fmt==='Reels' ? 'Carross
 /* ---------- geração do calendário ---------- */
 function buildDemo(p, extra){
   return {pillar:'demo', fmt:noVideo('Reels'), title:(extra?.prefix||'')+N().title(p), prod:p.nome, kicker:N().kick?p.cat:undefined, img:imgOf(p), preco:p.preco||PRECO[p.k]||'',
-    f:[['Gancho',`"${p.gancho}"`],['Demonstração',p.demo],['Benefício',`"${p.beneficio}"`],['Convite',extra?.convite||N().convite[S.a.tom||'proximo']]]};
+    f:[['Gancho',`"${p.gancho}"`],['Demonstração',p.demo],['Benefício',`"${p.beneficio}"`],['Convite',extra?.convite||convite()]]};
 }
 function buildNeed(p, i){
   return {pillar:'need', fmt:noVideo(i%2?'Carrossel':'Reels'), title:p.dor, prod:p.nome, kicker:N().kick?p.cat:undefined, img:imgOf(p), preco:p.preco||PRECO[p.k]||'',
-    f:[['Gancho',`"${p.dorG}"`],['Problema',p.dorT],['Solução',p.sol],['Convite',N().convite[S.a.tom||'proximo']]]};
+    f:[['Gancho',`"${p.dorG}"`],['Problema',p.dorT],['Solução',p.sol],['Convite',convite()]]};
 }
 function buildAprox(a, prod){
   const name = prod ? (prod.art ? prod.art+' '+prod.curto : prod.curto) : 'a novidade';
@@ -904,9 +909,9 @@ function special(d, prods, used){
 }
 function generate(){
   const days={3:[1,3,5],5:[1,2,3,4,5],7:[0,1,2,3,4,5,6]}[S.a.freq||'5'];
-  const mix=MIX[S.a.mix||'equilibrio'], prods=[...S.products].sort((a,b)=>b.star-a.star);
+  const um=MIX[S.a.mix||'equilibrio'], mix=engaja()?{demo:(um.demo+ENGAJA_MIX.demo)/2, aprox:(um.aprox+ENGAJA_MIX.aprox)/2, need:(um.need+ENGAJA_MIX.need)/2}:um, prods=[...S.products].sort((a,b)=>b.star-a.star);
   const used={demo:0,aprox:0,need:0}, flags=new Set(), A=N().aprox, out=[];
-  let di=0, ni=0, ai=0, prev=null, n=0;
+  let di=0, ni=0, ai=0, prev=null, n=0; ctaI=0;
   for(let d=2; d<=29; d++){
     const date=new Date(2026,10,d);
     if(!days.includes(date.getDay())) continue;
@@ -1109,7 +1114,8 @@ function vGerando(){
 function caption(p){
   if(p.cap) return p.cap;
   const g=unq(p.f[0][1]), b=unq(p.f[2][1]), c=unq(p.f[3][1]), pr=promoText(p), mid=pr?`\n\n${pr}`:'';
-  return p.short?`${g}${mid}\n\n${c}`:`${g}\n\n${b}${mid}\n\n${c}`;
+  const seg=engaja()&&handle()?`\n\nSiga ${handle()} para mais conteúdo sobre ${N().assunto}.`:'';
+  return (p.short?`${g}${mid}\n\n${c}`:`${g}\n\n${b}${mid}\n\n${c}`)+seg;
 }
 function postCard(p){
   const net=p.nets.map(n=>NETL[n]).join(', '), ed=S.editing===p.id;

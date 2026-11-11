@@ -2,6 +2,9 @@
 // Dados do usuário entram sempre como texto (textContent), nunca como HTML.
 import { t } from './textos.js'
 
+// Achata listas de filhos e descarta os vazios (null, undefined, false).
+export const filhosValidos = (filhos) => filhos.flat(Infinity).filter((f) => f !== null && f !== undefined && f !== false)
+
 export function el(tag, atributos = {}, ...filhos) {
   const n = document.createElement(tag)
   for (const [k, v] of Object.entries(atributos)) {
@@ -11,7 +14,7 @@ export function el(tag, atributos = {}, ...filhos) {
     else if (k.startsWith('on')) n.addEventListener(k.slice(2), v)
     else n.setAttribute(k, v === true ? '' : v)
   }
-  for (const f of filhos.flat(Infinity)) if (f !== null && f !== undefined && f !== false) n.append(f)
+  n.append(...filhosValidos(filhos))
   return n
 }
 
@@ -26,7 +29,7 @@ export function campo(rotulo, atributos) {
 // Mostra uma tela: troca todo o conteúdo do <main id="app">.
 export function mostrar(...filhos) {
   const main = document.getElementById('app')
-  main.replaceChildren(...filhos)
+  main.replaceChildren(...filhosValidos(filhos))
   main.querySelector('input, button')?.focus({ preventScroll: true })
 }
 
