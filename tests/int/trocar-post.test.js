@@ -38,7 +38,8 @@ test('troca muda o texto, mantém a data e soma 1', async () => {
 })
 
 test('post de outro cliente → 404', async () => {
-  const a = await pronto(), b = await pronto()
+  // b com ramo, para o pedido chegar à checagem do dono (sem ramo a resposta seria 400 antes)
+  const a = await pronto(), b = await pronto({ ramo: 'ferramentas' })
   const { posts } = await novoMes(a)
   const antes = await lerPost(posts[0].id)
   expect(await trocar(b.db, posts[0].id)).toEqual({ status: 404, corpo: { erro: 'Post não encontrado.' } })
