@@ -8,11 +8,15 @@ export function situacaoDoPost(post) {
   return 'pendente'
 }
 
-// Cor do dia: postado > pendente > reprovado > aprovado; null = dia sem post.
+// Cor do dia: postado só se todos os não descartados foram postados; depois pendente,
+// reprovado (descartado) e aprovado. null = dia sem post.
 export function corDoDia(posts) {
   if (!posts.length) return null
-  const s = new Set(posts.map(situacaoDoPost))
-  for (const cor of ['postado', 'pendente', 'reprovado']) if (s.has(cor)) return cor
+  const sit = posts.map(situacaoDoPost)
+  const ativos = sit.filter((x) => x !== 'reprovado')
+  if (ativos.length && ativos.every((x) => x === 'postado')) return 'postado'
+  if (sit.includes('pendente')) return 'pendente'
+  if (sit.includes('reprovado')) return 'reprovado'
   return 'aprovado'
 }
 

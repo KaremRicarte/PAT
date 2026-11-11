@@ -25,6 +25,10 @@ test('corDoDia: a cor mais urgente do dia', () => {
   expect(corDoDia([aprovado, reprovado])).toBe('reprovado')
   expect(corDoDia([reprovado])).toBe('reprovado')
   expect(corDoDia([aprovado])).toBe('aprovado')
+  expect(corDoDia([postado, aprovado])).toBe('aprovado')
+  expect(corDoDia([postado, pendente])).toBe('pendente')
+  expect(corDoDia([postado, reprovado, aprovado])).toBe('reprovado')
+  expect(corDoDia([reprovado, reprovado])).toBe('reprovado')
   expect(corDoDia([])).toBeNull()
 })
 
