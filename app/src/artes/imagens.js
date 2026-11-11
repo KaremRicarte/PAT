@@ -4,32 +4,90 @@ import { lookDoRamo, fontesDoLook } from './looks.js'
 import { medidaDaArte, assinaturaDaArte } from './texto.js'
 import { desenharArte } from './desenho.js'
 
-const cache = new Map() // path -> Promise<ImageBitmap|null>
+// Cache das imagens por path, com no máximo LIMITE bitmaps (o usado há mais tempo sai primeiro).
+// Quem sai do cache tem o bitmap fechado (close), a não ser que esteja preso por prenderImagens.
+const LIMITE = 12
+const cache = new Map() // path -> { promessa, bitmap }; a ordem do Map é a do uso
+const presos = new Map() // path -> quantas chamadas estão usando
+const fecharAoSoltar = new Map() // path -> bitmaps já fora do cache, esperando soltar
 
-// Foto ou logo do bucket privado `marcas` (URL assinada de 1 h). null se falhar.
-export function carregarImagem(supabase, path) {
-  if (!path) return Promise.resolve(null)
-  if (!cache.has(path)) {
-    const p = (async () => {
-      try {
-        const { data, error } = await supabase.storage.from('marcas').createSignedUrl(path, 3600)
-        if (error || !data?.signedUrl) return null
-        const r = await fetch(data.signedUrl)
-        if (!r.ok) return null
-        return await createImageBitmap(await r.blob())
-      } catch {
-        return null
-      }
-    })()
-    cache.set(path, p)
-    p.then((img) => { if (!img) cache.delete(path) }) // falhou: tenta de novo na próxima vez
-  }
-  return cache.get(path)
+function fechar(path, bitmap) {
+  if (!bitmap) return
+  if (presos.get(path)) fecharAoSoltar.set(path, [...(fecharAoSoltar.get(path) ?? []), bitmap])
+  else bitmap.close?.()
 }
 
-// Esquece a imagem guardada (depois de trocar a foto no mesmo path).
+// Tira do cache os mais antigos já carregados e soltos, até voltar ao limite.
+function aparar(poupar) {
+  for (const [path, item] of cache) {
+    if (cache.size <= LIMITE) return
+    if (path === poupar || !item.bitmap || presos.get(path)) continue
+    cache.delete(path)
+    item.bitmap.close?.()
+  }
+}
+
+async function baixar(supabase, path) {
+  try {
+    const { data, error } = await supabase.storage.from('marcas').createSignedUrl(path, 3600)
+    if (error || !data?.signedUrl) return null
+    const r = await fetch(data.signedUrl)
+    if (!r.ok) return null
+    return await createImageBitmap(await r.blob())
+  } catch {
+    return null
+  }
+}
+
+// Foto ou logo do bucket privado `marcas` (URL assinada de 1 h). null se falhar.
+// Quem for desenhar a imagem depois de outro await deve prendê-la antes (prenderImagens).
+export function carregarImagem(supabase, path) {
+  if (!path) return Promise.resolve(null)
+  const achado = cache.get(path)
+  if (achado) { cache.delete(path); cache.set(path, achado); return achado.promessa }
+  const item = { bitmap: null }
+  item.promessa = baixar(supabase, path).then((bitmap) => {
+    if (cache.get(path) !== item) return bitmap // esquecida enquanto baixava
+    if (!bitmap) { cache.delete(path); return null } // falhou: tenta de novo na próxima vez
+    item.bitmap = bitmap
+    aparar(path)
+    return bitmap
+  })
+  cache.set(path, item)
+  return item.promessa
+}
+
+// Prende as imagens enquanto são desenhadas: não saem do cache nem são fechadas.
+// Devolve a função que solta.
+export function prenderImagens(paths) {
+  const lista = paths.filter(Boolean)
+  for (const p of lista) presos.set(p, (presos.get(p) ?? 0) + 1)
+  let solto = false
+  return () => {
+    if (solto) return
+    solto = true
+    for (const p of lista) {
+      const n = presos.get(p) - 1
+      if (n > 0) { presos.set(p, n); continue }
+      presos.delete(p)
+      for (const b of fecharAoSoltar.get(p) ?? []) b.close?.()
+      fecharAoSoltar.delete(p)
+    }
+    aparar()
+  }
+}
+
+// Esquece a imagem guardada (depois de trocar a foto no mesmo path) e fecha o bitmap.
 export function esquecerImagem(path) {
+  const item = cache.get(path)
   cache.delete(path)
+  fechar(path, item?.bitmap)
+}
+
+// Fecha todas as imagens e esvazia o cache (ao sair da conta).
+export function limparImagens() {
+  for (const [path, item] of cache) fechar(path, item.bitmap)
+  cache.clear()
 }
 
 export async function esperarFontes(look) {
@@ -42,15 +100,18 @@ async function prepararArte(supabase, post, { negocio, produtos, ramo }) {
   if (!medida) return null
   const look = lookDoRamo(ramo?.id)
   const pecas = pecasDaArte(post, negocio, ramo)
-  const querLogo = pecas.assinatura.logo && negocio.logo_path
+  const fotoPath = fotoDoPost(post, produtos ?? [], ramo)
+  const logoPath = pecas.assinatura.logo ? negocio.logo_path : null
+  const soltar = prenderImagens([fotoPath, logoPath]) // quem chama solta depois de desenhar
   const [foto, logo] = await Promise.all([
-    carregarImagem(supabase, fotoDoPost(post, produtos ?? [], ramo)),
-    querLogo ? carregarImagem(supabase, negocio.logo_path) : null,
+    carregarImagem(supabase, fotoPath),
+    carregarImagem(supabase, logoPath),
     esperarFontes(look),
   ])
   pecas.assinatura = assinaturaDaArte(pecas.assinatura, Boolean(logo), negocio.nome)
   return {
     ...medida,
+    soltar,
     opcoes: {
       pecas, look, cores: { cor1: negocio.cor1, cor2: negocio.cor2 }, foto, logo,
       W: medida.W, H: medida.H, paginas: medida.paginas, capaDeVideo: post.tipo === 'video',
@@ -71,13 +132,17 @@ const paraPng = (canvas) => new Promise((ok, falha) => canvas.toBlob((b) => (b ?
 export async function gerarImagens(supabase, post, ctxDados) {
   const arte = await prepararArte(supabase, post, ctxDados)
   if (!arte) return []
-  const blobs = []
-  for (let pagina = 1; pagina <= arte.paginas; pagina++) {
-    const c = novaTela(arte.W, arte.H)
-    desenharArte(c.getContext('2d'), { ...arte.opcoes, pagina })
-    blobs.push(await paraPng(c))
+  const telas = []
+  try {
+    for (let pagina = 1; pagina <= arte.paginas; pagina++) {
+      const c = novaTela(arte.W, arte.H)
+      desenharArte(c.getContext('2d'), { ...arte.opcoes, pagina })
+      telas.push(c)
+    }
+  } finally {
+    arte.soltar()
   }
-  return blobs
+  return Promise.all(telas.map(paraPng))
 }
 
 // A página 1 da arte, reduzida para `largura`. null se o post não tem arte.
@@ -85,7 +150,11 @@ export async function miniatura(supabase, post, ctxDados, largura = 240) {
   const arte = await prepararArte(supabase, post, ctxDados)
   if (!arte) return null
   const grande = novaTela(arte.W, arte.H)
-  desenharArte(grande.getContext('2d'), { ...arte.opcoes, pagina: 1 })
+  try {
+    desenharArte(grande.getContext('2d'), { ...arte.opcoes, pagina: 1 })
+  } finally {
+    arte.soltar()
+  }
   const pequena = novaTela(largura, Math.round(largura * arte.H / arte.W))
   const ctx = pequena.getContext('2d')
   ctx.imageSmoothingQuality = 'high'
