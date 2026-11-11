@@ -8,6 +8,8 @@ export type Pacote = {
   ramo: string, estrategia: Estrategia, anoMes: string, inicio: string,
   negocio: { nome: string, insta: string | null, tom: Tom, horario: string },
   produtos: { id: string, nome: string, descricao: string | null, preco: number | null }[],
+  // "Gerar outro": gira produtos e temas em n posições para sair um texto diferente no mesmo lugar.
+  deslocamento?: number,
 }
 export type PostGerado = {
   data: string, rede: 'instagram' | 'facebook' | 'tiktok' | 'whatsapp',
@@ -35,6 +37,11 @@ const paragrafos = (...p: (string | null | undefined | false)[]) => p.filter(Boo
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/\s/g, ' ')
 const ehSexta = (data: string) => new Date(`${data}T00:00:00Z`).getUTCDay() === 5
 
+const girar = <T>(lista: readonly T[], n: number): T[] => {
+  const k = lista.length ? n % lista.length : 0
+  return [...lista.slice(k), ...lista.slice(0, k)]
+}
+
 function tagLoja(nome: string) {
   const t = nome.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
   return '#' + (t || 'meunegocio')
@@ -52,7 +59,8 @@ export function gerarMes(p: Pacote): PostGerado[] {
   if (!p.produtos.length) throw new Error('sem produtos')
 
   const agenda = agendaDoMes(p.anoMes, p.inicio, p.estrategia)
-  const itens = p.produtos.map((pr) => ({ pr, it: itemDoProduto(ramo, pr.nome) }))
+  const desl = p.deslocamento ?? 0
+  const itens = girar(p.produtos, desl).map((pr) => ({ pr, it: itemDoProduto(ramo, pr.nome) }))
   const L = itens.length
   const nome = p.negocio.nome
   const insta = p.negocio.insta ? (p.negocio.insta.startsWith('@') ? p.negocio.insta : `@${p.negocio.insta}`) : null
@@ -60,7 +68,8 @@ export function gerarMes(p: Pacote): PostGerado[] {
   const comOferta = p.estrategia === 'vender' && !ramo.noPromo
 
   let cta = 0
-  const convite = () => unq(crescer ? ENGAJA_CTA[cta++ % ENGAJA_CTA.length] : ramo.convite[p.negocio.tom])
+  const engaja = girar(ENGAJA_CTA, desl)
+  const convite = () => unq(crescer ? engaja[cta++ % engaja.length] : ramo.convite[p.negocio.tom])
   const nomeItem = (it: Item) => (it.art ? `${it.art} ${it.curto}` : it.curto)
   const trocar = (s: string, it: Item) => s.replaceAll('{prod}', nomeItem(it)).replaceAll('{loja}', nome)
   const campo = (a: Aprox, i: number, it: Item) => unq(trocar(a.f[i]?.[1] ?? '', it))
@@ -70,12 +79,12 @@ export function gerarMes(p: Pacote): PostGerado[] {
     preco ? `Condição especial esta semana: a partir de ${brl(preco)}.` : 'Condição especial esta semana.'
   const siga = crescer && insta ? `Siga ${insta} para mais conteúdo sobre ${ramo.assunto}.` : ''
 
-  const aproxFeed = p.estrategia === 'credibilidade'
+  const aproxFeed = girar(p.estrategia === 'credibilidade'
     ? [...ramo.aprox.filter((a) => TEMAS_CONFIANCA.test(a.tema)), ...ramo.aprox.filter((a) => !TEMAS_CONFIANCA.test(a.tema))]
-    : ramo.aprox
-  const aproxStories = ramo.aprox.filter((a) => a.fmt === 'Stories')
-  const aproxGravar = [...ramo.aprox.filter((a) => a.fmt === 'Reels'),
-    ...ramo.aprox.filter((a) => a.fmt === 'Post' || a.fmt === 'Carrossel')]
+    : ramo.aprox, desl)
+  const aproxStories = girar(ramo.aprox.filter((a) => a.fmt === 'Stories'), desl)
+  const aproxGravar = girar([...ramo.aprox.filter((a) => a.fmt === 'Reels'),
+    ...ramo.aprox.filter((a) => a.fmt === 'Post' || a.fmt === 'Carrossel')], desl)
 
   const out: Omit<PostGerado, 'ordem' | 'horario'>[] = []
 
