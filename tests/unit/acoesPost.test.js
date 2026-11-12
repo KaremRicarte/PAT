@@ -185,3 +185,20 @@ test('gravarMudanca: a foto volta à anterior se a gravação falhar', async () 
   expect(post).toEqual({ id: 'p7', foto_path: null, sem_foto: false })
   expect(aviso).toHaveBeenCalledWith('Sem conexão. Tente de novo.')
 })
+
+// ---------- rótulo do botão de baixar/salvar ----------
+test('rotuloDoBaixar: a montagem diz "Montar vídeo" até o vídeo ficar pronto', async () => {
+  const { rotuloDoBaixar } = await import('../../app/src/cliente/acoesPost.js')
+  expect(rotuloDoBaixar({ modo: 'compartilhar', ehMontagem: true, videoPronto: false })).toBe('Montar vídeo')
+  expect(rotuloDoBaixar({ modo: 'baixar', ehMontagem: true, videoPronto: false })).toBe('Montar vídeo')
+  expect(rotuloDoBaixar({ modo: 'compartilhar', ehMontagem: true, videoPronto: true })).toBe('Salvar vídeo')
+  expect(rotuloDoBaixar({ modo: 'baixar', ehMontagem: true, videoPronto: true })).toBe('Baixar vídeo')
+})
+
+test('rotuloDoBaixar: imagens dizem Salvar no iPhone e Baixar nos outros, com o número de páginas', async () => {
+  const { rotuloDoBaixar } = await import('../../app/src/cliente/acoesPost.js')
+  expect(rotuloDoBaixar({ modo: 'compartilhar', paginas: 1 })).toBe('Salvar imagem')
+  expect(rotuloDoBaixar({ modo: 'baixar', paginas: 1 })).toBe('Baixar imagem')
+  expect(rotuloDoBaixar({ modo: 'compartilhar', paginas: 5 })).toBe('Salvar as 5 imagens')
+  expect(rotuloDoBaixar({ modo: 'baixar', paginas: 5 })).toBe('Baixar as 5 imagens')
+})

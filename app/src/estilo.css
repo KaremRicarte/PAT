@@ -57,7 +57,7 @@ p.pequeno { font-size: 14px; margin: 6px 0 0; }
 .cartao small { display: block; color: var(--muted); font-size: 14px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
 .chip.ativo { background: var(--pri); color: var(--pri-ink); border-color: var(--pri); }
-.chip { background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 8px 14px; font-size: 14px; font-weight: 600; }
+.chip { background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 8px 14px; font-size: 14px; font-weight: 600; min-height: 48px; }
 .itens fieldset { border: 1px solid var(--line); border-radius: 16px; padding: 4px 16px 16px; margin: 0 0 12px; }
 .itens legend { font-weight: 700; padding: 0 6px; text-transform: capitalize; }
 .itens .acoes { margin-top: 12px; }
@@ -71,7 +71,7 @@ ol.passos li { padding: 10px 0 10px 32px; color: var(--muted); position: relativ
 ol.passos li::before { content: ""; position: absolute; left: 0; top: 13px; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); }
 ol.passos li.feito { color: var(--ink); }
 ol.passos li.feito::before { background: var(--pri); border-color: var(--pri); }
-.topo .secundario { padding: 8px 16px; }
+.topo .secundario { padding: 8px 16px; min-height: 48px; }
 .legenda { white-space: pre-wrap; overflow-wrap: anywhere; }
 .hashtags { font-size: 14px; }
 .roteiro { border-top: 1px solid var(--line); }

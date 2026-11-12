@@ -6,6 +6,9 @@ import { proximoEstado, chaveFormato } from './situacao.js'
 
 const emAndamento = new Set() // ids dos posts com uma ação ainda gravando
 
+// O post tem uma gravação em andamento (a próxima seria ignorada).
+export const postOcupado = (post) => emAndamento.has(post.id)
+
 // Uma ação de aprovação/Postei: a mudança vem de proximoEstado e é gravada por gravarMudanca.
 export async function aplicarAcao({ supabase, post, acao, aoMudar }) {
   if (emAndamento.has(post.id)) return false
@@ -76,6 +79,15 @@ export function nomeDoArquivo(post, pagina, ext) {
 // o compartilhamento (Web Share) oferece "Salvar imagem", que leva às Fotos.
 export function modoDeSalvar({ userAgent = '', maxTouchPoints = 0, podeCompartilharArquivos = false }) {
   return ehIphone(userAgent, maxTouchPoints) && podeCompartilharArquivos ? 'compartilhar' : 'baixar'
+}
+
+// Rótulo do botão de baixar/salvar. No iPhone (modo 'compartilhar') diz "Salvar" (vai para as Fotos);
+// nos outros, "Baixar". A montagem diz "Montar vídeo" até o vídeo ficar pronto.
+export function rotuloDoBaixar({ modo, ehMontagem = false, videoPronto = false, paginas = 1 }) {
+  const verbo = modo === 'compartilhar' ? 'post.salvar' : 'post.baixar'
+  if (videoPronto) return t(`${verbo}.video`)
+  if (ehMontagem) return t('post.montar.video')
+  return paginas > 1 ? t(`${verbo}.varias`, { n: paginas }) : t(verbo)
 }
 
 // Os arquivos para salvar, prontos antes do toque: um por página (_1, _2… quando há mais de um).

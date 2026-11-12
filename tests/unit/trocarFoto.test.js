@@ -106,3 +106,18 @@ test('foto já enviada e "Sem foto" só gravam o post', async () => {
   expect(uploads).toEqual([])
   expect(updates).toEqual([{ foto_path: 'u1/produtos/c.jpg', sem_foto: false }, { sem_foto: true }])
 })
+
+test('post com outra gravação em andamento: avisa para esperar em vez de ficar em silêncio', async () => {
+  const { gravarMudanca } = await import('../../app/src/cliente/acoesPost.js')
+  const post = { id: 'p5', foto_path: null, sem_foto: false }
+  let liberar
+  const lento = { from: () => ({ update: () => ({ eq: () => ({ select: () => ({ single: () => new Promise((ok) => { liberar = () => ok({ data: {}, error: null }) }) }) }) }) }) }
+  const primeira = gravarMudanca({ supabase: lento, post, mudanca: { sem_foto: true } })
+  aviso.mockClear()
+  const { supabase, updates } = falso()
+  expect(await gravarEscolhaDeFoto({ supabase, uid: 'u1', post, escolha: { foto_path: 'u1/produtos/c.jpg' } })).toBe(false)
+  expect(aviso).toHaveBeenCalledWith('Espere a última ação terminar.')
+  expect(updates).toEqual([])
+  liberar()
+  await primeira
+})

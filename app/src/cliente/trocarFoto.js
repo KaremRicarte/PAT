@@ -4,7 +4,7 @@ import { t } from '../textos.js'
 import { el, aviso } from '../comum.js'
 import { fotoDoPost } from './situacao.js'
 import { reduzirFoto, FOTO_MAX } from './negocio.js'
-import { gravarMudanca } from './acoesPost.js'
+import { gravarMudanca, postOcupado } from './acoesPost.js'
 import { carregarImagem, prenderImagens, esquecerImagem } from '../artes/imagens.js'
 
 const MINI = 96 // px do quadrado de cada foto na grade (toque bem maior que 48 px)
@@ -99,10 +99,15 @@ const enviando = new Set() // posts com uma foto nova ainda subindo
 // Foto nova: reduz no aparelho, envia para ${uid}/posts/${id}.jpg e esquece a imagem velha do cache.
 // Devolve true quando gravou.
 export async function gravarEscolhaDeFoto({ supabase, uid, post, escolha, aoMudar }) {
-  if (escolha.sem_foto) return gravarMudanca({ supabase, post, mudanca: { sem_foto: true }, aoMudar })
-  if (!escolha.arquivo) return gravarMudanca({ supabase, post, mudanca: { foto_path: escolha.foto_path, sem_foto: false }, aoMudar })
+  // Com outra gravação do post em andamento, gravarMudanca ignoraria esta: avisa em vez de ficar em silêncio.
+  const gravar = (mudanca) => {
+    if (postOcupado(post)) { aviso(t('post.aguarde')); return false }
+    return gravarMudanca({ supabase, post, mudanca, aoMudar })
+  }
+  if (escolha.sem_foto) return gravar({ sem_foto: true })
+  if (!escolha.arquivo) return gravar({ foto_path: escolha.foto_path, sem_foto: false })
 
-  if (enviando.has(post.id)) { aviso(t('post.aguarde')); return false }
+  if (enviando.has(post.id) || postOcupado(post)) { aviso(t('post.aguarde')); return false }
   enviando.add(post.id)
   try {
     let blob
@@ -122,7 +127,7 @@ export async function gravarEscolhaDeFoto({ supabase, uid, post, escolha, aoMuda
       return false
     }
     esquecerImagem(caminho) // mesmo caminho, imagem nova: o cache não pode devolver a antiga
-    return await gravarMudanca({ supabase, post, mudanca: { foto_path: caminho, sem_foto: false }, aoMudar })
+    return await gravar({ foto_path: caminho, sem_foto: false })
   } finally {
     enviando.delete(post.id)
   }

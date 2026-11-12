@@ -17,19 +17,24 @@ self.addEventListener('push', (evento) => {
 })
 
 // Tocar na notificação: usa uma aba do PAT já aberta (foca e vai para a url) ou abre uma nova.
+// A aba da administração (/admin) não serve: o lembrete é da tela do cliente.
+// Se o foco deu certo e só a navegação falhou, fica a aba focada (sem abrir uma segunda janela).
+const ehDoCliente = (c) => {
+  const endereco = new URL(c.url)
+  return endereco.origin === self.location.origin && !endereco.pathname.startsWith('/admin')
+}
+
 self.addEventListener('notificationclick', (evento) => {
   evento.notification.close()
   const url = new URL(evento.notification.data?.url || '/', self.location.origin).href
   evento.waitUntil((async () => {
     const abas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    const aba = abas.find((c) => new URL(c.url).origin === self.location.origin)
+    const aba = abas.find(ehDoCliente)
+    let focada = null
     if (aba) {
-      try {
-        await aba.focus()
-        await aba.navigate(url)
-        return
-      } catch { /* aba não controlada por este service worker: abre outra */ }
+      try { focada = (await aba.focus()) ?? aba } catch { focada = null }
     }
-    await self.clients.openWindow(url)
+    if (!focada) return self.clients.openWindow(url)
+    try { await focada.navigate(url) } catch { /* aba não controlada por este service worker: fica onde está */ }
   })())
 })

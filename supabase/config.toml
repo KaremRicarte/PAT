@@ -440,3 +440,7 @@ verify_jwt = false
 # A função confere o login por conta própria (auth.getUser).
 [functions.lembrete-teste]
 verify_jwt = false
+
+# A função confere o login por conta própria (auth.getUser).
+[functions.trocar-post]
+verify_jwt = false

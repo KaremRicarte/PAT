@@ -2,7 +2,7 @@
 import { t } from '../textos.js'
 import { el, mostrar, aviso, filhosValidos } from '../comum.js'
 import { situacaoDoPost, diaPorExtenso, chaveFormato } from './situacao.js'
-import { aplicarAcao, gerarOutro, arquivosParaSalvar, trocasDoMes, LIMITE_TROCAS } from './acoesPost.js'
+import { aplicarAcao, gerarOutro, arquivosParaSalvar, trocasDoMes, LIMITE_TROCAS, rotuloDoBaixar } from './acoesPost.js'
 import { entregar, baixarArquivos, modoDoAparelho } from './salvarArquivo.js'
 import { textoParaCopiar } from './mes.js'
 import { medidaDaArte } from '../artes/texto.js'
@@ -154,11 +154,8 @@ export function telaPost(ctx, post, aoVoltar) {
     },
   })
 
-  // No iPhone o botão diz "Salvar" (vai para as Fotos); nos outros, "Baixar".
-  const verbo = modo === 'compartilhar' ? 'post.salvar' : 'post.baixar'
-  const rotuloBaixar = () => (videoPronto ? t('post.salvar.video')
-    : ehMontagem ? t(`${verbo}.video`)
-      : medida?.paginas > 1 ? t(`${verbo}.varias`, { n: medida.paginas }) : t(verbo))
+  // "Salvar" no iPhone, "Baixar" nos outros; a montagem diz "Montar vídeo" até o vídeo ficar pronto.
+  const rotuloBaixar = () => rotuloDoBaixar({ modo, ehMontagem, videoPronto: Boolean(videoPronto), paginas: medida?.paginas })
   const baixar = medida ? el('button', { type: 'button', class: 'secundario', 'data-acao': 'baixar', texto: rotuloBaixar() }) : null
   const progresso = el('progress', { max: '100', value: '0', hidden: true })
   const sobreBaixar = el('p', { class: 'pequeno', hidden: true })
@@ -223,8 +220,9 @@ export function telaPost(ctx, post, aoVoltar) {
       })
       if (vez === vezDaArte) {
         videoPronto = arquivosParaSalvar(post, [blob], ext)
-        dizer(t('post.video.pronto'))
-        aviso(t('post.video.pronto'))
+        const pronto = t('post.video.pronto', { botao: rotuloBaixar() })
+        dizer(pronto)
+        aviso(pronto)
       } else dizer('')
     } catch (e) {
       mostrarErro(e)

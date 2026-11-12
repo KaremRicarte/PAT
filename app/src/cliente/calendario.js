@@ -49,6 +49,19 @@ function marcarDicasVistas() {
 let vezDoDesenho = 0 // só a última chamada desenha (troca rápida de mês)
 
 // ctx: { supabase, cliente, negocio, produtos, meses, atualizar }; aqui ganha ramo e os posts do mês mostrado.
+// A miniatura de um post, guardada no cache (chave -> promessa do canvas) para não redesenhar.
+// A que falhou (null ou erro) sai do cache: a próxima visita ao dia tenta de novo.
+export async function guardarMiniatura(cache, chave, gerar) {
+  let promessa = cache.get(chave)
+  if (!promessa) {
+    promessa = Promise.resolve().then(gerar).catch((e) => { console.error(e); return null })
+    cache.set(chave, promessa)
+  }
+  const canvas = await promessa
+  if (!canvas && cache.get(chave) === promessa) cache.delete(chave)
+  return canvas
+}
+
 export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
   const { supabase, meses } = ctx
   const vez = ++vezDoDesenho
@@ -187,12 +200,7 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
 
   async function carregarMiniatura(post, caixa) {
     const chave = `${post.id}|${post.foto_path}|${post.sem_foto}`
-    let promessa = ctx.miniaturas.get(chave)
-    if (!promessa) {
-      promessa = miniatura(supabase, post, ctx).catch((e) => { console.error(e); return null })
-      ctx.miniaturas.set(chave, promessa)
-    }
-    const canvas = await promessa
+    const canvas = await guardarMiniatura(ctx.miniaturas, chave, () => miniatura(supabase, post, ctx))
     if (canvas && caixa.isConnected) caixa.replaceChildren(canvas) // sem arte: fica o fundo na cor do cliente
   }
 
