@@ -1,5 +1,5 @@
 // Regras que todo post precisa cumprir, venha dos modelos prontos ou da IA (Etapa 3).
-import type { Ramo } from './tipos.ts'
+import { REDES, type Ramo, type Rede } from './tipos.ts'
 import type { Agenda } from './calendario.ts'
 import type { PostGerado } from './gerar.ts'
 
@@ -21,11 +21,13 @@ export function validarPost(post: PostGerado, ramo: Ramo): string[] {
   return erros
 }
 
-export function validarMes(posts: PostGerado[], agenda: Agenda): string[] {
-  const esperado: Record<string, number> = {
+// `redes`: as escolhidas no quiz do mês (ausente = todas); das outras, espera zero posts.
+export function validarMes(posts: PostGerado[], agenda: Agenda, redes: readonly Rede[] = REDES): string[] {
+  const todos: Record<string, number> = {
     'instagram/feed': agenda.feed.length, 'instagram/stories': agenda.feed.length, 'facebook/feed': agenda.feed.length,
     'tiktok/video': agenda.videos.length, 'whatsapp/status': agenda.status.length, 'whatsapp/lista': agenda.lista.length,
   }
+  const esperado = Object.fromEntries(Object.entries(todos).filter(([k]) => redes.includes(k.split('/')[0] as Rede)))
   const contado: Record<string, number> = {}
   for (const p of posts) contado[`${p.rede}/${p.tipo}`] = (contado[`${p.rede}/${p.tipo}`] ?? 0) + 1
   const chaves = new Set([...Object.keys(esperado), ...Object.keys(contado)])

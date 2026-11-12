@@ -144,3 +144,16 @@ test('mês começando no meio tem menos posts, todos a partir do início', () =>
   expect(posts.every((p) => p.data >= '2026-11-16')).toBe(true)
   expect(contar(posts)['instagram/feed']).toBe(7)
 })
+
+test('com redes escolhidas, só vêm posts delas, iguais (texto e ordem) aos do mês completo', () => {
+  const completo = gerarMes(base())
+  const escolhido = gerarMes(base({ redes: ['instagram', 'whatsapp'] }))
+  expect(new Set(escolhido.map((p) => p.rede))).toEqual(new Set(['instagram', 'whatsapp']))
+  expect(escolhido).toEqual(completo.filter((p) => p.rede === 'instagram' || p.rede === 'whatsapp'))
+  expect(validarMes(escolhido, agendaDoMes('2026-12', '2026-12-01', 'vender'), ['instagram', 'whatsapp'])).toEqual([])
+})
+
+test('sem redes = as 4 redes, igual a antes', () => {
+  expect(gerarMes(base())).toEqual(gerarMes(base({ redes: ['instagram', 'facebook', 'tiktok', 'whatsapp'] })))
+  expect(new Set(gerarMes(base()).map((p) => p.rede)).size).toBe(4)
+})

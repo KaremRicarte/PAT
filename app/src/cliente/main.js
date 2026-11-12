@@ -33,7 +33,7 @@ async function atualizar() {
   if (cliente && cliente.situacao === 'ativo' && !cliente.senha_provisoria) {
     try {
       ({ negocio, produtos } = await carregarNegocio(supabase, cliente.id))
-      const r = await supabase.from('meses').select('id, ano_mes, estrategia, gerado_em')
+      const r = await supabase.from('meses').select('id, ano_mes, estrategia, redes, gerado_em')
         .eq('cliente_id', cliente.id).order('ano_mes', { ascending: false })
       if (r.error) throw r.error
       meses = r.data

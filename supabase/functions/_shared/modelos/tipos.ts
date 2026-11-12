@@ -4,6 +4,8 @@ export type RamoId = string // de propósito: a lista válida é o registro (ram
 export type Estrategia = 'vender' | 'crescer' | 'credibilidade' | 'tempo'
 export type Tom = 'proximo' | 'tecnico' | 'promo'
 export type Pilar = 'demo' | 'aprox' | 'need'
+export type Rede = 'instagram' | 'facebook' | 'tiktok' | 'whatsapp'
+export const REDES: readonly Rede[] = ['instagram', 'facebook', 'tiktok', 'whatsapp']
 
 // Um produto, serviço ou tema do ramo, com os textos de cada pilar.
 export type Item = {

@@ -55,3 +55,13 @@ test.each([
 test('"100% online" e "promover" passam em psicologia', () => {
   expect(validarPost(post({ titulo: 'Psicoterapia 100% online', legenda: 'Para promover autoconhecimento.' }), RAMOS.psicologia)).toEqual([])
 })
+
+test('validarMes com redes: espera zero posts das redes não escolhidas', () => {
+  const agenda = { feed: ['2026-12-02'], videos: ['2026-12-03'], status: [], lista: [] }
+  const insta = [post(), post({ tipo: 'stories', hashtags: [] })]
+  expect(validarMes(insta, agenda, ['instagram'])).toEqual([])
+  expect(validarMes(insta, agenda)).not.toEqual([])
+  expect(validarMes([...insta, post({ rede: 'facebook' })], agenda, ['instagram']))
+    .toEqual(['facebook/feed: esperado 0, veio 1'])
+  expect(validarMes([post()], agenda, ['instagram'])).toEqual(['instagram/stories: esperado 1, veio 0'])
+})

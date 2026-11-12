@@ -91,3 +91,34 @@ test('psicologia com "100% online" e "promover" gera normalmente', async () => {
   })
   expect((await gerarMesDoCliente({ estrategia: 'vender' }, deps)).status).toBe(201)
 })
+
+const TODAS = ['instagram', 'facebook', 'tiktok', 'whatsapp']
+const chamada = (deps: DepsMes) => (deps.salvar as ReturnType<typeof vi.fn>).mock.calls[0]
+
+test.each([
+  ['vazio', []], ['valor desconhecido', ['instagram', 'orkut']], ['não-array', 'instagram'], ['null', null],
+  ['número na lista', [1]],
+])('redes %s → 400', async (_, redes) => {
+  const deps = falsos()
+  expect(await gerarMesDoCliente({ estrategia: 'vender', redes }, deps))
+    .toEqual({ status: 400, corpo: { erro: 'Escolha pelo menos uma rede.' } })
+  expect(deps.salvar).not.toHaveBeenCalled()
+})
+
+test('sem redes no corpo → todas (app antigo)', async () => {
+  const deps = falsos()
+  expect((await gerarMesDoCliente({ estrategia: 'vender' }, deps)).status).toBe(201)
+  const [, , posts, redes] = chamada(deps)
+  expect(redes).toEqual(TODAS)
+  expect(new Set(posts.map((p: { rede: string }) => p.rede))).toEqual(new Set(TODAS))
+})
+
+test('redes repetidas são removidas e salvar recebe só as escolhidas', async () => {
+  const deps = falsos()
+  const r = await gerarMesDoCliente({ estrategia: 'vender', redes: ['whatsapp', 'tiktok', 'whatsapp'] }, deps)
+  expect(r.status).toBe(201)
+  const [, , posts, redes] = chamada(deps)
+  expect(redes).toEqual(['whatsapp', 'tiktok'])
+  expect(new Set(posts.map((p: { rede: string }) => p.rede))).toEqual(new Set(['whatsapp', 'tiktok']))
+  expect(r.corpo).toEqual({ id: 'm1', anoMes: '2026-11', total: posts.length })
+})

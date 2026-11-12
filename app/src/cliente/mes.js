@@ -1,9 +1,12 @@
-// Quiz do mês (estratégia) e geração. O calendário fica em calendario.js.
+// Quiz do mês (estratégia e redes) e geração. O calendário fica em calendario.js.
 import { t } from '../textos.js'
 import { el, logo, mostrar, botaoSair } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
+import { REDES } from '../../../supabase/functions/_shared/modelos/tipos.ts'
 import { opcoes } from './quiz.js'
+
+export { REDES }
 
 const ESTRATEGIAS = ['vender', 'crescer', 'credibilidade', 'tempo']
 
@@ -16,6 +19,42 @@ const descricaoEstrategia = (estrategia, ramo) =>
 
 export function sugestaoEstrategia(mesAnterior) {
   return mesAnterior?.estrategia ?? 'tempo'
+}
+
+// Redes pré-marcadas: as do mês anterior (na ordem das opções); no primeiro mês, todas.
+export function sugestaoRedes(mesAnterior) {
+  const anteriores = mesAnterior?.redes
+  return anteriores?.length ? REDES.filter((r) => anteriores.includes(r)) : [...REDES]
+}
+
+// "Todas": marca as 4; se as 4 já estão marcadas, desmarca todas.
+export const alternarTodas = (redes) => (REDES.every((r) => redes.includes(r)) ? [] : [...REDES])
+
+// Caixinhas de marcar das redes, no visual dos cartões de estratégia, com a opção "Todas" no topo.
+function escolhaRedes(atuais, aoMudar) {
+  let redes = [...atuais]
+  const caixa = (name) => el('input', { type: 'checkbox', name })
+  const cartao = (input, rotulo) => el('label', { class: 'cartao' }, input, el('span', {}, el('strong', { texto: rotulo })))
+  const todas = caixa('redes-todas')
+  const porRede = REDES.map((r) => [r, caixa('redes')])
+  const sincronizar = () => {
+    for (const [r, input] of porRede) input.checked = redes.includes(r)
+    todas.checked = REDES.every((r) => redes.includes(r))
+    aoMudar([...redes])
+  }
+  todas.addEventListener('change', () => { redes = alternarTodas(redes); sincronizar() })
+  for (const [r, input] of porRede) {
+    input.addEventListener('change', () => {
+      redes = REDES.filter((x) => (x === r ? input.checked : redes.includes(x)))
+      sincronizar()
+    })
+  }
+  const grupo = el('fieldset', { class: 'redes' },
+    el('legend', { texto: t('mesq.redes.titulo') }),
+    el('div', { class: 'opcoes' }, cartao(todas, t('mesq.redes.todas')),
+      porRede.map(([r, input]) => cartao(input, t(`mesq.redes.${r}`)))))
+  sincronizar()
+  return grupo
 }
 
 // Mês mostrado: o escolhido (ou recém-gerado), senão o de hoje, senão o mais recente.
@@ -37,6 +76,7 @@ export function telaQuizMes({ supabase, cliente, meses, atualizar }) {
   if (!alvo) return atualizar()
   let escolhida = sugestaoEstrategia(meses[0] ?? null)
   const sugerida = escolhida
+  let redes = sugestaoRedes(meses[0] ?? null) // meses vem do mais recente para o mais antigo
 
   const erro = el('p', { class: 'erro', role: 'alert', hidden: true })
   const gerar = el('button', { type: 'submit', texto: t('mesq.gerar', { mes: nomeDoMes(alvo.anoMes) }) })
@@ -47,23 +87,29 @@ export function telaQuizMes({ supabase, cliente, meses, atualizar }) {
     el('p', { class: 'muted', texto: t('mesq.dica', { mes: nomeDoMes(alvo.anoMes) }) }),
     opcoes('estrategia', ESTRATEGIAS.map((e) => [e, rotuloEstrategia(e, ramo), descricaoEstrategia(e, ramo),
       e === sugerida ? t('mesq.sugerido') : null]), escolhida, (v) => { escolhida = v }),
+    escolhaRedes(redes, (v) => { redes = v; if (v.length) erro.hidden = true }),
     erro,
     el('div', { class: 'acoes' }, gerar, voltar, botaoSair(supabase)))
   form.addEventListener('submit', (ev) => {
     ev.preventDefault()
-    telaGerando({ supabase, atualizar, estrategia: escolhida, voltar: () => telaQuizMes({ supabase, cliente, meses, atualizar }) })
+    if (!redes.length) {
+      erro.textContent = t('mesq.redes.erro')
+      erro.hidden = false
+      return erro.scrollIntoView?.({ block: 'center' })
+    }
+    telaGerando({ supabase, atualizar, estrategia: escolhida, redes, voltar: () => telaQuizMes({ supabase, cliente, meses, atualizar }) })
   })
   mostrar(logo(), form)
 }
 
 // ---------- Gerando ----------
-async function telaGerando({ supabase, atualizar, estrategia, voltar }) {
+async function telaGerando({ supabase, atualizar, estrategia, redes, voltar }) {
   const passos = ['gerando.1', 'gerando.2', 'gerando.3'].map((k) => el('li', { texto: t(k) }))
   mostrar(logo(), el('h1', { texto: t('gerando.titulo') }), el('ol', { class: 'passos' }, passos))
   let i = 0
   const tique = setInterval(() => { if (i < passos.length) passos[i++].classList.add('feito') }, 700)
 
-  const { data, error } = await supabase.functions.invoke('gerar-mes', { body: { estrategia } })
+  const { data, error } = await supabase.functions.invoke('gerar-mes', { body: { estrategia, redes } })
   clearInterval(tique)
   if (!error) {
     mesPreferido = data?.anoMes ?? null // mostra o mês que acabou de ser gerado

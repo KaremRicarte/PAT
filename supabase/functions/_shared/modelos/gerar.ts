@@ -1,6 +1,6 @@
 // Monta o mês inteiro com os modelos prontos (sem IA). Determinística: o mesmo pacote dá o mesmo mês.
 // Baseada na geração do PAT atual (bancada/index.html, generate/buildDemo/buildNeed/buildAprox/caption).
-import type { Aprox, Estrategia, Item, Pilar, Tom } from './tipos.ts'
+import type { Aprox, Estrategia, Item, Pilar, Rede, Tom } from './tipos.ts'
 import { ENGAJA_CTA, RAMOS, itemDoProduto } from './ramos/index.ts'
 import { agendaDoMes } from './calendario.ts'
 
@@ -10,9 +10,11 @@ export type Pacote = {
   produtos: { id: string, nome: string, descricao: string | null, preco: number | null }[],
   // "Gerar outro": gira produtos e temas em n posições para sair um texto diferente no mesmo lugar.
   deslocamento?: number,
+  // Redes escolhidas no quiz do mês; ausente = todas.
+  redes?: readonly Rede[],
 }
 export type PostGerado = {
-  data: string, rede: 'instagram' | 'facebook' | 'tiktok' | 'whatsapp',
+  data: string, rede: Rede,
   tipo: 'feed' | 'stories' | 'video' | 'status' | 'lista',
   formato: 'arte' | 'carrossel' | 'montagem' | 'gravar' | 'texto',
   pilar: Pilar, titulo: string, legenda: string, hashtags: string[], horario: string,
@@ -189,4 +191,7 @@ export function gerarMes(p: Pacote): PostGerado[] {
     .sort((a, b) => a.x.data.localeCompare(b.x.data) || ORDEM_REDE[a.x.rede] - ORDEM_REDE[b.x.rede] ||
       ORDEM_TIPO[a.x.tipo] - ORDEM_TIPO[b.x.tipo] || a.i - b.i)
     .map(({ x }, ordem) => ({ ...x, horario: p.negocio.horario, ordem }))
+    // Filtra só no fim: os textos e a ordem das redes escolhidas ficam iguais aos do mês completo
+    // (o "Gerar outro" regera o mês completo e procura o mesmo lugar).
+    .filter((x) => !p.redes || p.redes.includes(x.rede))
 }

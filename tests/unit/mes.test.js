@@ -26,3 +26,24 @@ test('escolherMes: o recém-gerado tem preferência; senão o de hoje; senão o 
   expect(escolherMes(meses, '2026-11-25', '2025-01').ano_mes).toBe('2026-11')
   expect(escolherMes([{ ano_mes: '2026-12' }], '2026-11-25', null).ano_mes).toBe('2026-12')
 })
+
+import { REDES, sugestaoRedes, alternarTodas } from '../../app/src/cliente/mes.js'
+import { t } from '../../app/src/textos.js'
+test('redes do quiz: as do mês anterior; no primeiro mês, todas', () => {
+  expect(REDES).toEqual(['instagram', 'facebook', 'tiktok', 'whatsapp'])
+  expect(sugestaoRedes(null)).toEqual(REDES)
+  expect(sugestaoRedes({ redes: null })).toEqual(REDES)
+  expect(sugestaoRedes({ redes: ['whatsapp', 'tiktok'] })).toEqual(['tiktok', 'whatsapp'])
+})
+test('"Todas" marca as 4; se as 4 já estão marcadas, desmarca todas', () => {
+  expect(alternarTodas(['tiktok'])).toEqual(REDES)
+  expect(alternarTodas([])).toEqual(REDES)
+  expect(alternarTodas(REDES)).toEqual([])
+})
+test('textos da pergunta das redes', () => {
+  expect(t('mesq.redes.titulo')).toBe('Onde você vai postar?')
+  expect(REDES.map((r) => t(`mesq.redes.${r}`)))
+    .toEqual(['Instagram (feed e Stories)', 'Facebook', 'TikTok / Reels', 'WhatsApp (Status e lista)'])
+  expect(t('mesq.redes.todas')).toBe('Todas')
+  expect(t('mesq.redes.erro')).toBe('Marque pelo menos uma rede.')
+})

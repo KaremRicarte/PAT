@@ -43,9 +43,9 @@ Deno.serve(async (req) => {
     mesesGerados: async () => ((await ler(db.from('meses').select('ano_mes').eq('cliente_id', quem.id))) ?? [])
       .map((m: { ano_mes: string }) => m.ano_mes),
     hoje: () => hojeEmSaoPaulo(),
-    async salvar(anoMes, estrategia, posts) {
+    async salvar(anoMes, estrategia, posts, redes) {
       const { data, error } = await db.rpc('criar_mes', {
-        p_cliente: quem.id, p_ano_mes: anoMes, p_estrategia: estrategia, p_origem: 'modelo', p_posts: posts,
+        p_cliente: quem.id, p_ano_mes: anoMes, p_estrategia: estrategia, p_origem: 'modelo', p_posts: posts, p_redes: redes,
       })
       if (error?.code === '23505') return 'repetido'
       if (error) throw error

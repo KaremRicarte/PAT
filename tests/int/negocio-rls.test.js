@@ -102,6 +102,21 @@ test('criar_mes pela chave de serviço grava mês e posts, e repetir dá 23505',
   expect(r2.error?.code).toBe('23505')
 })
 
+test('criar_mes grava as redes do mês; sem p_redes, as 4; rede desconhecida é recusada', async () => {
+  const a = await novoCliente(), b = await novoCliente(), c = await novoCliente()
+  const s = servico()
+  const args = (cliente) => ({ p_cliente: cliente.id, p_ano_mes: '2026-12', p_estrategia: 'vender', p_origem: 'modelo', p_posts: [] })
+  const r1 = await s.rpc('criar_mes', { ...args(a), p_redes: ['tiktok', 'whatsapp'] })
+  expect(r1.error).toBeNull()
+  const r2 = await s.rpc('criar_mes', args(b))
+  expect(r2.error).toBeNull()
+  const { data } = await s.from('meses').select('id, redes').in('id', [r1.data, r2.data])
+  expect(data.find((m) => m.id === r1.data).redes).toEqual(['tiktok', 'whatsapp'])
+  expect(data.find((m) => m.id === r2.data).redes).toEqual(['instagram', 'facebook', 'tiktok', 'whatsapp'])
+  expect((await s.rpc('criar_mes', { ...args(c), p_redes: ['orkut'] })).error).not.toBeNull()
+  expect((await s.rpc('criar_mes', { ...args(c), p_redes: [] })).error).not.toBeNull()
+})
+
 function postBase() {
   return {
     data: '2026-12-02', rede: 'instagram', tipo: 'feed', formato: 'arte', pilar: 'demo',

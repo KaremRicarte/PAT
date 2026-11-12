@@ -55,6 +55,11 @@ p.pequeno { font-size: 14px; margin: 6px 0 0; }
 .cartao:has(input:checked) { border-color: var(--pri); background: var(--pri-soft); }
 .cartao input { width: auto; margin: 4px 0 0; accent-color: var(--pri); }
 .cartao small { display: block; color: var(--muted); font-size: 14px; }
+.cartao { min-height: 48px; }
+.cartao input[type=checkbox] { width: 22px; height: 22px; margin: 0; flex: none; }
+.cartao:has(input[type=checkbox]) { align-items: center; }
+fieldset.redes { border: 0; padding: 0; margin: 24px 0 0; min-width: 0; }
+fieldset.redes legend { font-weight: 700; font-size: 18px; padding: 0; margin-bottom: 10px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
 .chip.ativo { background: var(--pri); color: var(--pri-ink); border-color: var(--pri); }
 .chip { background: var(--surface); color: var(--ink); border: 1px solid var(--line); padding: 8px 14px; font-size: 14px; font-weight: 600; min-height: 48px; }

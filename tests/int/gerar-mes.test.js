@@ -76,3 +76,25 @@ test('cliente sem ramo → 400', async () => {
   expect(await gerar(a.db))
     .toEqual({ status: 400, corpo: { erro: 'Seu ramo ainda não foi definido. Fale com a administração.' } })
 })
+
+test('gerar só com o TikTok grava só posts do TikTok e as redes do mês', async () => {
+  const a = await pronto()
+  await novoNegocio(a)
+  const r = await gerar(a.db, { estrategia: 'vender', redes: ['tiktok'] })
+  expect(r.status).toBe(201)
+  const { data: posts } = await a.db.from('posts').select('rede').eq('mes_id', r.corpo.id)
+  expect(posts.length).toBe(r.corpo.total)
+  expect(posts.length).toBeGreaterThan(0)
+  expect(new Set(posts.map((p) => p.rede))).toEqual(new Set(['tiktok']))
+  const { data: mes } = await a.db.from('meses').select('redes').eq('id', r.corpo.id).single()
+  expect(mes.redes).toEqual(['tiktok'])
+})
+
+test('redes vazias → 400 e nada é gravado', async () => {
+  const a = await pronto()
+  await novoNegocio(a)
+  expect(await gerar(a.db, { estrategia: 'vender', redes: [] }))
+    .toEqual({ status: 400, corpo: { erro: 'Escolha pelo menos uma rede.' } })
+  const { data: meses } = await servico().from('meses').select('id').eq('cliente_id', a.id)
+  expect(meses).toEqual([])
+})
