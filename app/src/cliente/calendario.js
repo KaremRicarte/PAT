@@ -1,6 +1,6 @@
 // Calendário do mês: topo, resumo, grade dos dias e a lista do dia escolhido.
 import { t } from '../textos.js'
-import { el, logo, mostrar, botaoSair, carregando, aviso } from '../comum.js'
+import { el, logo, mostrar, botaoSair, carregando, aviso, filhosValidos } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato } from './situacao.js'
@@ -112,8 +112,8 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
     b.setAttribute('aria-label', rotuloDoDia(data, doDia))
     b.setAttribute('aria-pressed', String(data === escolhido))
     b.classList.toggle('sem-post', !cor)
-    b.replaceChildren(el('span', { class: 'num', texto: String(Number(data.slice(8))) }),
-      cor ? el('span', { class: `bolinha ${cor}`, 'aria-hidden': 'true', texto: ICONE[cor] }) : null)
+    b.replaceChildren(...filhosValidos([el('span', { class: 'num', texto: String(Number(data.slice(8))) }),
+      cor ? el('span', { class: `bolinha ${cor}`, 'aria-hidden': 'true', texto: ICONE[cor] }) : null])) // o nativo escreveria "null"
   }
   const pintarGrade = () => botoesDia.forEach((b, data) => pintarDia(data, b))
 
@@ -121,9 +121,9 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
   const lista = el('section', { class: 'lista-dia' })
   const desenharLista = () => {
     const doDia = porDia.get(escolhido) ?? []
-    lista.replaceChildren(
+    lista.replaceChildren(...filhosValidos([ // o nativo escreveria "null" e "[object HTMLElement]"
       el('h2', {}, tituloDoDia(escolhido), escolhido === hoje ? el('span', { class: 'selo bom', texto: t('cal.hoje') }) : null),
-      doDia.length ? doDia.map(cartaoPost) : el('p', { class: 'muted', texto: t('cal.lista.vazia') }))
+      doDia.length ? doDia.map(cartaoPost) : el('p', { class: 'muted', texto: t('cal.lista.vazia') })]))
   }
 
   function escolherDia(data) {

@@ -97,9 +97,9 @@ export function aviso(texto, { desfazer } = {}) {
   const caixa = prepararAviso()
   const fechar = () => { clearTimeout(prazoDoAviso); caixa.replaceChildren() }
   const encher = () => {
-    caixa.replaceChildren(el('span', { texto }), desfazer
+    caixa.replaceChildren(...filhosValidos([el('span', { texto }), desfazer // o nativo escreveria "null"
       ? el('button', { type: 'button', class: 'pequeno', texto: t('comum.desfazer'), onclick: () => { fechar(); desfazer() } })
-      : null)
+      : null]))
     prazoDoAviso = setTimeout(fechar, desfazer ? 6000 : 3000)
   }
   clearTimeout(prazoDoAviso)
