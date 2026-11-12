@@ -100,6 +100,24 @@ const pt = {
   'cal.dicas.2': 'Toque no post para aprovar ou trocar a imagem.',
   'cal.dicas.3': 'Depois de postar, toque em ✓ Postei.',
   'cal.dicas.ok': 'Entendi',
+
+  // lembretes (spec §3.5)
+  'lembrete.aviso': 'Quer um lembrete na hora de postar?',
+  'lembrete.ativar': 'Ativar',
+  'lembrete.agoranao': 'Agora não',
+  'lembrete.ativados': 'Lembretes ativados ✓',
+  'lembrete.desligados': 'Lembretes desligados',
+  'lembrete.sino.ligado': 'Lembretes ligados',
+  'lembrete.sino.desligado': 'Lembretes desligados',
+  'lembrete.bloqueado.titulo': 'Lembretes bloqueados',
+  'lembrete.bloqueado': 'Os lembretes estão bloqueados. Para liberar, abra os ajustes do navegador > Notificações > PAT.',
+  'lembrete.iphone.titulo': 'Lembretes no iPhone',
+  'lembrete.iphone.dica': 'No iPhone, os lembretes só funcionam com o PAT na tela de início:',
+  'lembrete.iphone.1': 'Toque em Compartilhar (o quadrado com a seta para cima).',
+  'lembrete.iphone.2': 'Escolha "Adicionar à Tela de Início".',
+  'lembrete.iphone.3': 'Abra o PAT pelo ícone novo e toque em Ativar de novo.',
+  'lembrete.entendi': 'Entendi',
+  'lembrete.erro': 'Não deu para ativar os lembretes. Tente de novo.',
   'semramo.texto': 'Seu cadastro ainda está sendo preparado. Fale com a administração.',
 
   // quiz do negócio

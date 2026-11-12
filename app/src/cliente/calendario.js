@@ -8,6 +8,7 @@ import { miniatura } from '../artes/imagens.js'
 import { telaQuizMes, rotuloEstrategia, mesMostrado, preferirMes } from './mes.js'
 import { aplicarAcao } from './acoesPost.js'
 import { telaPost } from './post.js'
+import { montarLembretes } from './lembretes.js'
 
 const SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const ORDEM_REDE = { instagram: 0, facebook: 1, tiktok: 2, whatsapp: 3 }
@@ -207,20 +208,26 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
       }))
   }
 
+  // ---------- lembretes: o sino no topo e o aviso entre o resumo e a grade (chegam depois) ----------
+  const sino = el('div', { class: 'sino' })
+  const avisoLembrete = el('div', { class: 'lembrete-area' })
+
   ctx.aoMudarPost = redesenhar // um Desfazer tocado depois de voltar da tela do post redesenha o calendário
   desenharResumo()
   pintarGrade()
   desenharLista()
   mostrar(
     el('header', { class: 'topo' }, logo(),
-      el('div', { class: 'topo-dir' }, el('div', { class: 'sino' }), botaoSair(supabase))), // o sino chega na Task 10
+      el('div', { class: 'topo-dir' }, sino, botaoSair(supabase))),
     trocaMes,
     el('h1', { texto: t('mes.titulo', { mes: nomeDoMes(mes.ano_mes) }) }),
     el('p', {}, el('span', { class: 'selo neutro', texto: rotuloEstrategia(mes.estrategia, ctx.ramo) })),
     el('div', { class: 'acoes' }, proximo, editar),
     dicas,
     resumo,
+    avisoLembrete,
     grade,
     lista,
   )
+  montarLembretes({ supabase, sino, area: avisoLembrete }).catch((e) => console.error(e)) // sem lembretes, o calendário segue igual
 }

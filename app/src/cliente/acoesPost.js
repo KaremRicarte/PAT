@@ -1,6 +1,7 @@
 // Ações do post que gravam no banco (aprovar, descartar, Postei, os desfazer e a foto).
 import { t } from '../textos.js'
 import { aviso } from '../comum.js'
+import { ehIphone } from '../aparelho.js'
 import { proximoEstado, chaveFormato } from './situacao.js'
 
 const emAndamento = new Set() // ids dos posts com uma ação ainda gravando
@@ -73,10 +74,8 @@ export function nomeDoArquivo(post, pagina, ext) {
 
 // Como entregar o arquivo ao aparelho. No iPhone/iPad o <a download> leva ao app Arquivos;
 // o compartilhamento (Web Share) oferece "Salvar imagem", que leva às Fotos.
-// O iPad no modo computador se apresenta como Mac: a diferença é a tela de toque.
 export function modoDeSalvar({ userAgent = '', maxTouchPoints = 0, podeCompartilharArquivos = false }) {
-  const ehIos = /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1)
-  return ehIos && podeCompartilharArquivos ? 'compartilhar' : 'baixar'
+  return ehIphone(userAgent, maxTouchPoints) && podeCompartilharArquivos ? 'compartilhar' : 'baixar'
 }
 
 // Os arquivos para salvar, prontos antes do toque: um por página (_1, _2… quando há mais de um).

@@ -6,6 +6,9 @@
   <meta name="theme-color" content="#000000">
   <title>PAT</title>
   <link rel="icon" href="/img/pat-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/icone-192.png">
+  <meta name="apple-mobile-web-app-title" content="PAT">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Nunito+Sans:wght@400;600;700;800&family=Cormorant+Garamond:wght@600&family=Montserrat:wght@600;700;800&family=Fraunces:wght@500&family=DM+Sans:wght@600;700;800&family=Playfair+Display:wght@700&family=Source+Sans+3:wght@600;700;800&display=swap" rel="stylesheet">
@@ -16,5 +19,9 @@
     <img class="logo" src="/img/pat-logo.png" alt="PAT">
   </main>
   <script type="module" src="/src/cliente/main.js"></script>
+  <script>
+    // Service worker dos lembretes (sem cache offline). Precisa estar registrado para o app ser instalável.
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch((e) => console.error(e))
+  </script>
 </body>
 </html>

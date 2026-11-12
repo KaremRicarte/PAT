@@ -250,3 +250,15 @@ table.clientes td { padding: 12px; border-bottom: 1px solid var(--line); vertica
   table.clientes td[data-rotulo]::before { content: attr(data-rotulo); display: block; font-size: 12px; color: var(--muted); }
   .acoes-linha { justify-content: flex-start; padding-top: 12px !important; }
 }
+
+/* ===== Lembretes: sino no topo, aviso no calendário e passo a passo do iPhone ===== */
+.topo-dir { flex-wrap: wrap; justify-content: flex-end; }
+button.botao-sino { display: inline-flex; align-items: center; gap: 6px; min-height: 48px; }
+.lembrete-area:empty { display: none; }
+.lembrete-aviso { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; margin: 0 0 20px; }
+.lembrete-aviso p { margin: 0 0 12px; font-weight: 700; }
+.lembrete-aviso button { min-height: 48px; }
+.passos-iphone { list-style: none; counter-reset: passo; margin: 0 0 20px; padding: 0; }
+.passos-iphone li { counter-increment: passo; display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.passos-iphone li::before { content: counter(passo); flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--pri); color: var(--pri-ink); font-weight: 800; text-align: center; line-height: 28px; }
+.passos-iphone .icone { flex: none; font-size: 26px; }
