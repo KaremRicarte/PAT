@@ -432,3 +432,11 @@ verify_jwt = false
 # Mesma regra: a função confere o login por conta própria (auth.getUser).
 [functions.gerar-mes]
 verify_jwt = false
+
+# Chamada pelo pg_cron: confere o cabeçalho x-lembrete-secret por conta própria.
+[functions.lembrete]
+verify_jwt = false
+
+# A função confere o login por conta própria (auth.getUser).
+[functions.lembrete-teste]
+verify_jwt = false
