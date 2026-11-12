@@ -127,6 +127,12 @@ function novaTela(W, H) {
   return c
 }
 
+// Devolve a memória de um canvas temporário já usado (no iPhone a memória de canvas é curta).
+export function soltarCanvas(canvas) {
+  canvas.width = 0
+  canvas.height = 0
+}
+
 export const paraPng = (canvas) => new Promise((ok, falha) => canvas.toBlob((b) => (b ? ok(b) : falha(new Error('PNG não gerado'))), 'image/png'))
 
 // Um canvas por página da arte, no tamanho real (a arte grande da tela do post). [] se o post não tem arte.
@@ -147,8 +153,10 @@ export async function desenharPaginas(supabase, post, ctxDados) {
 }
 
 // PNG de cada página da arte, para "Baixar imagem". [] se o post não tem arte.
+// Os canvas são só de passagem: cada um é zerado depois de virar PNG.
 export async function gerarImagens(supabase, post, ctxDados) {
-  return Promise.all((await desenharPaginas(supabase, post, ctxDados)).map(paraPng))
+  const telas = await desenharPaginas(supabase, post, ctxDados)
+  return Promise.all(telas.map((c) => paraPng(c).finally(() => soltarCanvas(c))))
 }
 
 // A página 1 da arte, reduzida para `largura`. null se o post não tem arte.
@@ -165,6 +173,7 @@ export async function miniatura(supabase, post, ctxDados, largura = 240) {
   const ctx = pequena.getContext('2d')
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(grande, 0, 0, pequena.width, pequena.height)
+  soltarCanvas(grande)
   return pequena
 }
 
@@ -223,12 +232,13 @@ export async function previaDaMontagem(supabase, post, ctxDados) {
 }
 
 // O vídeo enviado pelo cliente, com título, assinatura e tela final. Erros: ver editarVideo.
-// opcoesDeAudio = { audioCtx, audioExtra }: o audioCtx vem de criarAudioDoGesto(), feito no clique.
-export async function gerarVideoEditado(supabase, post, ctxDados, arquivo, aoProgredir, opcoesDeAudio) {
+// opcoesDoGesto = { audioCtx, audioExtra, video }: audioCtx e video vêm de criarAudioDoGesto() e
+// criarVideoDoGesto(), feitos no toque; seguem iguais para editarVideo.
+export async function gerarVideoEditado(supabase, post, ctxDados, arquivo, aoProgredir, opcoesDoGesto) {
   const { soltar, opcoes } = await prepararVideo(supabase, post, ctxDados, [])
   try {
     const { pecas, look, cores, logo } = opcoes
-    return await editarVideo(arquivo, { pecas, look, cores, logo, assinatura: pecas.assinatura }, aoProgredir, opcoesDeAudio)
+    return await editarVideo(arquivo, { pecas, look, cores, logo, assinatura: pecas.assinatura }, aoProgredir, opcoesDoGesto)
   } finally {
     soltar()
   }

@@ -1,7 +1,7 @@
 import { estadoDosLembretes, ehIphone, chaveParaBytes, adiarAviso, avisoAdiado } from '../../app/src/cliente/lembretes.js'
 
 // ---------- estadoDosLembretes ----------
-const base = { temPush: true, permissao: 'default', iphone: false, instalado: false, inscrito: false }
+const base = { temPush: true, temChave: true, permissao: 'default', iphone: false, instalado: false, inscrito: false }
 const estado = (extra) => estadoDosLembretes({ ...base, ...extra })
 
 test('estadoDosLembretes: iPhone fora da tela inicial pede para instalar (mesmo sem push no Safari)', () => {
@@ -86,4 +86,10 @@ test('sem armazenamento no aparelho, o aviso aparece e adiar não quebra', () =>
   } finally {
     vi.unstubAllGlobals()
   }
+})
+
+test('estadoDosLembretes: sem a chave VAPID no app -> sem-suporte (até no iPhone fora da tela inicial)', () => {
+  expect(estado({ temChave: false })).toBe('sem-suporte')
+  expect(estado({ temChave: false, permissao: 'granted', inscrito: true })).toBe('sem-suporte')
+  expect(estado({ temChave: false, iphone: true, instalado: false })).toBe('sem-suporte')
 })

@@ -8,9 +8,10 @@ export { ehIphone }
 const CHAVE_ADIADO = 'pat-lembrete-adiado'
 const DIAS_ADIADO = 7
 
-// A primeira regra que valer: no iPhone fora da tela inicial o Safari nem oferece push,
-// por isso "instalar" vem antes de "sem-suporte".
-export function estadoDosLembretes({ temPush, permissao, iphone, instalado, inscrito }) {
+// A primeira regra que valer: sem a chave VAPID no app não há como inscrever (nem adianta instalar);
+// no iPhone fora da tela inicial o Safari nem oferece push, por isso "instalar" vem antes do resto.
+export function estadoDosLembretes({ temPush, temChave, permissao, iphone, instalado, inscrito }) {
+  if (!temChave) return 'sem-suporte'
   if (iphone && !instalado) return 'instalar'
   if (!temPush) return 'sem-suporte'
   if (permissao === 'denied') return 'bloqueado'
@@ -39,6 +40,7 @@ export function avisoAdiado(agora = new Date()) {
 // ---------- aparelho ----------
 const temPush = () => 'serviceWorker' in navigator && 'PushManager' in globalThis && 'Notification' in globalThis
 const permissaoAtual = () => ('Notification' in globalThis ? Notification.permission : 'default')
+const chaveVapid = () => import.meta.env.VITE_VAPID_PUBLIC_KEY ?? ''
 const instalado = () => globalThis.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true
 
 async function inscricaoDoAparelho() {
@@ -60,6 +62,7 @@ export async function lerEstado(supabase) {
   const permissao = permissaoAtual()
   return estadoDosLembretes({
     temPush: push,
+    temChave: Boolean(chaveVapid()),
     permissao,
     iphone: ehIphone(navigator.userAgent, navigator.maxTouchPoints),
     instalado: instalado(),
@@ -67,19 +70,34 @@ export async function lerEstado(supabase) {
   })
 }
 
-// Pede a permissão (tem de ser a primeira coisa depois do toque), inscreve o aparelho e pede a
-// notificação de teste. Devolve o novo estado: 'ativo', 'bloqueado' ou 'inativo' (o cliente fechou o pedido).
-// A inscrição passa pela RPC inscrever_push: o mesmo endpoint de outra conta passa a ser de quem ativou.
-export async function ativarLembretes(supabase) {
-  const permissao = await Notification.requestPermission()
-  if (permissao !== 'granted') return permissao === 'denied' ? 'bloqueado' : 'inativo'
+// Estado depois de um pedido de permissão que não deu 'granted'.
+const semPermissao = (permissao) => (permissao === 'denied' ? 'bloqueado' : 'inativo')
 
-  const chave = import.meta.env.VITE_VAPID_PUBLIC_KEY
-  if (!chave) throw new Error('VITE_VAPID_PUBLIC_KEY ausente')
-  await navigator.serviceWorker.register('/sw.js')
-  const registro = await navigator.serviceWorker.ready
-  const inscricao = (await registro.pushManager.getSubscription())
-    ?? await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chaveParaBytes(chave) })
+// Inscreve o aparelho e pede a notificação de teste. Devolve o novo estado: 'ativo', 'bloqueado'
+// ou 'inativo' (o cliente fechou o pedido). A inscrição passa pela RPC inscrever_push: o mesmo
+// endpoint de outra conta passa a ser de quem ativou.
+// registro: a registration do service worker já pronta (buscada quando a tela montou). Com ela,
+// o subscribe é a PRIMEIRA chamada do toque (o iPhone só pede a permissão dentro do gesto) e ele
+// mesmo pede a permissão. Sem ela, o caminho de reserva: permissão, registro, depois o subscribe.
+export async function ativarLembretes(supabase, registro = null) {
+  const chave = chaveVapid()
+  if (!chave) throw new Error('VITE_VAPID_PUBLIC_KEY ausente') // a tela nem mostra o botão (sem-suporte)
+  const opcoes = { userVisibleOnly: true, applicationServerKey: chaveParaBytes(chave) }
+  let inscricao
+  if (registro) {
+    try {
+      inscricao = await registro.pushManager.subscribe(opcoes) // a mesma chave devolve a inscrição que já existe
+    } catch (e) {
+      if (permissaoAtual() !== 'granted') return semPermissao(permissaoAtual())
+      throw e
+    }
+  } else {
+    const permissao = await Notification.requestPermission()
+    if (permissao !== 'granted') return semPermissao(permissao)
+    await navigator.serviceWorker.register('/sw.js')
+    const pronto = await navigator.serviceWorker.ready
+    inscricao = (await pronto.pushManager.getSubscription()) ?? await pronto.pushManager.subscribe(opcoes)
+  }
 
   const { endpoint, keys } = inscricao.toJSON()
   const { error } = await supabase.rpc('inscrever_push', { p_endpoint: endpoint, p_p256dh: keys.p256dh, p_auth: keys.auth })
@@ -131,6 +149,10 @@ export async function montarLembretes({ supabase, sino, area }) {
   try { estado = await lerEstado(supabase) } catch (e) { console.error(e); return }
   if (estado === 'sem-suporte' || !sino.isConnected) return
 
+  // A registration fica guardada desde já: no toque em Ativar, o subscribe não pode esperar nada antes.
+  let registro = null
+  navigator.serviceWorker.ready.then((r) => { registro = r }).catch((e) => console.error(e))
+
   const textoSino = el('span')
   const iconeSino = el('span', { 'aria-hidden': 'true' })
   const botaoSino = el('button', { type: 'button', class: 'secundario botao-sino', onclick: () => (estado === 'ativo' ? desligar() : ativar()) },
@@ -139,7 +161,7 @@ export async function montarLembretes({ supabase, sino, area }) {
   const cartao = el('section', { class: 'lembrete-aviso', 'aria-label': t('lembrete.aviso') },
     el('p', { texto: t('lembrete.aviso') }),
     el('div', { class: 'acoes-linha' },
-      el('button', { type: 'button', class: 'secundario', texto: t('lembrete.agoranao'), onclick: () => { adiarAviso(); desenhar() } }),
+      el('button', { type: 'button', class: 'secundario', texto: t('lembrete.agoranao'), onclick: () => { adiarAviso(); desenhar(); aviso(t('lembrete.adiado')) } }),
       botaoAtivar))
 
   // focoNoCartao: o foco estava no cartão antes de um botão dele ser desativado (e o foco escapar).
@@ -160,7 +182,7 @@ export async function montarLembretes({ supabase, sino, area }) {
     const focoNoCartao = cartao.contains(document.activeElement)
     ocupado(true)
     try {
-      estado = await ativarLembretes(supabase)
+      estado = await ativarLembretes(supabase, registro)
       if (estado === 'ativo') aviso(t('lembrete.ativados'))
     } catch (e) {
       console.error(e)

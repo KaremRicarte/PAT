@@ -181,6 +181,22 @@ function novaTela() {
   return c
 }
 
+// Devolve a memória do canvas da gravação (no iPhone a memória de canvas é curta).
+function soltarCanvas(c) {
+  c.width = 0
+  c.height = 0
+}
+
+// Pede para a tela não apagar durante a gravação (Screen Wake Lock). null se o navegador
+// não tem ou recusou: a gravação segue, e a dica "Mantenha a tela aberta" continua valendo.
+export async function manterTelaAcesa(nav = globalThis.navigator) {
+  try { return (await nav?.wakeLock?.request('screen')) ?? null } catch { return null }
+}
+
+export function soltarTela(trava) {
+  try { trava?.release()?.catch?.(() => {}) } catch { /* já solta */ }
+}
+
 function formatoDoAparelho() {
   if (!podeEditarVideo()) throw erroDeVideo('sem-suporte')
   const formato = escolherFormato((m) => MediaRecorder.isTypeSupported(m))
@@ -193,6 +209,7 @@ function formatoDoAparelho() {
 // Para quando o segundo passa de `total`. Se a tela for para segundo plano, aborta ('interrompido').
 // Para sempre as faixas do canvas; as de áudio são de quem chama.
 async function gravar({ canvas, formato, audios = [], total, quadro, aoProgredir, aoComecar }) {
+  const trava = await manterTelaAcesa() // a tela não apaga no meio (o iPhone apaga em 30 s sem toque)
   const stream = canvas.captureStream(30)
   for (const a of audios) stream.addTrack(a)
   let terminar, falhar, rec = null, pedidoDeQuadro = null
@@ -229,6 +246,7 @@ async function gravar({ canvas, formato, audios = [], total, quadro, aoProgredir
     document.removeEventListener('visibilitychange', aoEsconder)
     if (rec && rec.state !== 'inactive') { try { rec.stop() } catch { /* já parado */ } }
     stream.getVideoTracks().forEach((tr) => tr.stop())
+    soltarTela(trava)
   }
 }
 
@@ -242,28 +260,51 @@ export async function montarVideoDeFotos({ pecas, look, cores, fotos = [], logo 
   const opcoes = { pecas, look, cores, fotos: fotos.filter(Boolean), logo }
   desenharQuadroDeFotos(ctx, opcoes, 0)
   let t0 = null
-  return gravar({
-    canvas, formato, total: MONTAGEM, aoProgredir,
-    quadro: () => {
-      const agora = performance.now()
-      t0 ??= agora
-      const t = (agora - t0) / 1000
-      desenharQuadroDeFotos(ctx, opcoes, Math.min(t, MONTAGEM - 0.01))
-      return t
-    },
-  })
+  try {
+    return await gravar({
+      canvas, formato, total: MONTAGEM, aoProgredir,
+      quadro: () => {
+        const agora = performance.now()
+        t0 ??= agora
+        const t = (agora - t0) / 1000
+        desenharQuadroDeFotos(ctx, opcoes, Math.min(t, MONTAGEM - 0.01))
+        return t
+      },
+    })
+  } finally {
+    soltarCanvas(canvas)
+  }
 }
 
 const LIMITE_ABRIR = 15000 // ms sem metadados = vídeo que o navegador não abre
 const LIMITE_PARADO = 2000 // ms pausado sem ter acabado = gravação travada
 
-// O <video> não fica muted quando o som passa pelo Web Audio (senão a gravação sai muda).
-// O som vai só para o grafo, nunca para audioCtx.destination, então nada toca no alto-falante.
-function abrirVideo(arquivo) {
+// Cria o <video> da edição. Chame de forma SÍNCRONA dentro do toque do usuário, antes de qualquer
+// await: o iOS só deixa tocar com som (e fora da tela) um <video> que já recebeu play() num gesto.
+// Fica anexado à página, invisível (1 px, quase transparente), até editarVideo terminar e tirá-lo.
+// O src do arquivo entra depois, em editarVideo. Quem cria e não chega a editar tira com video.remove().
+export function criarVideoDoGesto() {
   const video = document.createElement('video')
   video.playsInline = true
   video.setAttribute('playsinline', '')
+  video.setAttribute('aria-hidden', 'true')
+  video.muted = false
   video.preload = 'auto'
+  Object.assign(video.style, { position: 'fixed', left: '0', top: '0', width: '1px', height: '1px', opacity: '0.01', pointerEvents: 'none' })
+  document.body.append(video)
+  try { video.load() } catch { /* sem src ainda */ }
+  // play() no gesto destrava o elemento; o pause() logo em seguida impede que o arquivo, quando
+  // chegar, comece a tocar sozinho (e com som) antes de a gravação ligar o som ao Web Audio.
+  try { video.play()?.catch?.(() => {}) } catch { /* sem src: o play só destrava o elemento */ }
+  try { video.pause() } catch { /* nada tocando */ }
+  return video
+}
+
+// O <video> não fica muted quando o som passa pelo Web Audio (senão a gravação sai muda).
+// O som vai só para o grafo, nunca para audioCtx.destination, então nada toca no alto-falante.
+// doGesto: o <video> de criarVideoDoGesto(); sem ele, um é criado aqui (fora do toque: pode ser recusado no iPhone).
+function abrirVideo(arquivo, doGesto = null) {
+  const video = doGesto ?? criarVideoDoGesto()
   const url = URL.createObjectURL(arquivo)
   let limite = null
   const pronto = new Promise((ok, falha) => {
@@ -278,8 +319,10 @@ function abrirVideo(arquivo) {
     video.pause()
     video.removeAttribute('src')
     video.load()
+    video.remove()
     URL.revokeObjectURL(url)
   }
+  video.pause()
   video.src = url
   return { video, pronto, fechar }
 }
@@ -326,19 +369,22 @@ function ligarSom(audioCtx, video, audioExtra) {
 // O som vai pelo Web Audio. `audioCtx` deve vir de criarAudioDoGesto(), criado dentro do clique,
 // e quem o passa é quem o fecha. Sem ele, um é criado aqui (plano B) e fechado no fim.
 // `audioExtra` (reservado para a narração da Etapa 4) é misturado ao som do vídeo e não é parado aqui.
+// `video`: o <video> de criarVideoDoGesto(), criado no toque; editarVideo põe o src e o tira da página no fim
+// (mesmo se der erro). Sem ele, um é criado aqui.
 // Erros: `erro.codigo` = 'sem-suporte' | 'longo' | 'invalido' | 'sem-permissao' | 'interrompido' | 'falhou'.
-export async function editarVideo(arquivo, { pecas, look, cores, logo = null, assinatura }, aoProgredir, { audioCtx, audioExtra } = {}) {
-  const formato = formatoDoAparelho()
+export async function editarVideo(arquivo, { pecas, look, cores, logo = null, assinatura }, aoProgredir, { audioCtx, audioExtra, video: doGesto } = {}) {
+  let formato
+  try { formato = formatoDoAparelho() } catch (e) { doGesto?.remove(); throw e }
   const audioProprio = audioCtx ? null : criarAudioDoGesto()
   const contexto = audioCtx ?? audioProprio
-  const { video, pronto, fechar } = abrirVideo(arquivo)
-  let som = null
+  const { video, pronto, fechar } = abrirVideo(arquivo, doGesto)
+  let som = null, canvas = null
   try {
     await pronto
     const validade = validarDuracao(video.duration)
     if (validade !== 'ok') throw erroDeVideo(validade)
     const plano = planoDoVideo(video.duration)
-    const canvas = novaTela()
+    canvas = novaTela()
     const ctx = canvas.getContext('2d')
     const opcoes = { pecas: { ...pecas, assinatura: assinatura ?? pecas.assinatura }, look, cores, logo, video }
     if (contexto) { try { som = ligarSom(contexto, video, audioExtra) } catch { som = null } }
@@ -375,6 +421,7 @@ export async function editarVideo(arquivo, { pecas, look, cores, logo = null, as
   } finally {
     som?.desligar()
     fechar()
+    if (canvas) soltarCanvas(canvas)
     if (audioProprio) { try { audioProprio.close()?.catch?.(() => {}) } catch { /* já fechado */ } }
   }
 }

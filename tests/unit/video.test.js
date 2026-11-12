@@ -70,3 +70,59 @@ test("codigoDoErro: mantém o código; autoplay recusado vira sem-permissao; o r
   expect(codigoDoErro(new Error("qualquer"))).toBe("falhou")
   expect(codigoDoErro(undefined)).toBe("falhou")
 })
+
+// ---------- tela acesa durante a gravação ----------
+test('manterTelaAcesa: pede a trava de tela; sem wakeLock ou com recusa devolve null', async () => {
+  const { manterTelaAcesa } = await import('../../app/src/artes/video.js')
+  const trava = { release: vi.fn() }
+  const request = vi.fn(async () => trava)
+  expect(await manterTelaAcesa({ wakeLock: { request } })).toBe(trava)
+  expect(request).toHaveBeenCalledWith('screen')
+  expect(await manterTelaAcesa({})).toBe(null)
+  expect(await manterTelaAcesa(undefined)).toBe(null)
+  expect(await manterTelaAcesa({ wakeLock: { request: async () => { throw new Error('NotAllowedError') } } })).toBe(null)
+  expect(await manterTelaAcesa({ wakeLock: { request: () => { throw new Error('síncrono') } } })).toBe(null)
+})
+
+test('soltarTela: libera a trava sem quebrar quando ela já foi solta ou não existe', async () => {
+  const { soltarTela } = await import('../../app/src/artes/video.js')
+  const trava = { release: vi.fn(async () => {}) }
+  soltarTela(trava)
+  expect(trava.release).toHaveBeenCalledTimes(1)
+  expect(() => soltarTela(null)).not.toThrow()
+  expect(() => soltarTela({ release: () => Promise.reject(new Error('já solta')) })).not.toThrow()
+  expect(() => soltarTela({ release: () => { throw new Error('já solta') } })).not.toThrow()
+})
+
+// ---------- <video> criado no toque (iPhone) ----------
+function documentoFalso() {
+  const anexados = []
+  const novoVideo = () => ({
+    style: {}, atributos: {}, muted: true, playsInline: false, chamadas: [],
+    setAttribute(k, val) { this.atributos[k] = val },
+    load() { this.chamadas.push('load') },
+    pause() { this.chamadas.push('pause') },
+    play() { this.chamadas.push('play'); return Promise.reject(Object.assign(new Error('sem src'), { name: 'NotSupportedError' })) },
+    remove() { anexados.splice(anexados.indexOf(this), 1) },
+  })
+  return { anexados, document: { createElement: (tag) => (tag === 'video' ? novoVideo() : null), body: { append: (n) => anexados.push(n) } } }
+}
+
+test('criarVideoDoGesto: <video> com som, playsinline, na página e invisível, já com play() no toque', async () => {
+  const { criarVideoDoGesto } = await import('../../app/src/artes/video.js')
+  const { document, anexados } = documentoFalso()
+  vi.stubGlobal('document', document)
+  try {
+    const video = criarVideoDoGesto()
+    expect(anexados).toEqual([video])
+    expect(video.muted).toBe(false)
+    expect(video.playsInline).toBe(true)
+    expect(video.atributos.playsinline).toBe('')
+    expect(video.atributos['aria-hidden']).toBe('true')
+    expect(video.style).toMatchObject({ position: 'fixed', width: '1px', height: '1px', opacity: '0.01', pointerEvents: 'none' })
+    expect(video.chamadas.slice(-2)).toEqual(['play', 'pause']) // destrava no toque e não deixa tocar sozinho; a recusa sem src não escapa
+    await Promise.resolve()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
