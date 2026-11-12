@@ -213,6 +213,28 @@ const pt = {
   'reprovar.cancelar': 'Cancelar',
   'reprovar.ok': 'Pronto: texto novo ✓',
 
+  // trocar imagem
+  'foto.titulo': 'Trocar imagem',
+  'foto.dica': 'Escolha a foto desta arte.',
+  'foto.opcao': 'Foto de {nome}',
+  'foto.opcao.enviada': 'Foto que você enviou',
+  'foto.atual': '✓ Atual',
+  'foto.enviar': 'Enviar outra foto',
+  'foto.semfoto': 'Sem foto',
+  'foto.semfoto.dica': 'A arte fica só com o texto.',
+  'foto.cancelar': 'Cancelar',
+  'foto.enviando': 'Enviando a foto…',
+  'foto.trocada': 'Imagem trocada ✓',
+  'foto.tirada': 'Pronto: arte sem foto ✓',
+  'foto.naoabriu': 'Não consegui abrir esta foto. Tente outra.',
+
+  // enviar meu vídeo
+  'video.editar.semsuporte': 'Seu celular não consegue editar vídeos aqui. Use o roteiro e edite no app da rede social.',
+  'video.editando': 'Editando seu vídeo… {p}%',
+  'video.pronto': 'Vídeo editado ✓',
+  'video.rotulo': 'Seu vídeo editado',
+  'video.escolher': 'Escolher outro',
+
   // erros de vídeo (erro.codigo)
   'video.erro.sem-suporte': 'Seu celular não consegue montar vídeos aqui. Use o roteiro e monte no app da rede social.',
   'video.erro.longo': 'Escolha um vídeo de até 60 segundos.',

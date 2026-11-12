@@ -1,15 +1,22 @@
-// Ações do post que gravam no banco (aprovar, descartar, Postei e os desfazer).
+// Ações do post que gravam no banco (aprovar, descartar, Postei, os desfazer e a foto).
 import { t } from '../textos.js'
 import { aviso } from '../comum.js'
 import { proximoEstado, chaveFormato } from './situacao.js'
 
 const emAndamento = new Set() // ids dos posts com uma ação ainda gravando
 
-// Otimista: muda o post na hora e chama aoMudar; se a gravação falhar, volta ao que era,
-// chama aoMudar de novo e avisa. Uma ação por post de cada vez (a outra é ignorada).
+// Uma ação de aprovação/Postei: a mudança vem de proximoEstado e é gravada por gravarMudanca.
 export async function aplicarAcao({ supabase, post, acao, aoMudar }) {
   if (emAndamento.has(post.id)) return false
   const mudanca = proximoEstado(post, acao) // lança se a ação não existe: antes de marcar o post
+  return gravarMudanca({ supabase, post, mudanca, aoMudar })
+}
+
+// Otimista: muda o post na hora e chama aoMudar; se a gravação falhar, volta ao que era,
+// chama aoMudar de novo e avisa. Uma gravação por post de cada vez (a outra é ignorada).
+// Serve às ações e à troca de foto ({ foto_path, sem_foto }).
+export async function gravarMudanca({ supabase, post, mudanca, aoMudar }) {
+  if (emAndamento.has(post.id)) return false
   emAndamento.add(post.id)
   const antes = Object.fromEntries(Object.keys(mudanca).map((k) => [k, post[k]]))
   Object.assign(post, mudanca)

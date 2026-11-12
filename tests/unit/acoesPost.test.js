@@ -169,3 +169,19 @@ test('arquivosParaSalvar: arquivo único sem número de página', () => {
   expect(arquivo.name).toBe('2026-11-07_instagram_montagem.mp4')
   expect(arquivo.type).toBe('video/mp4')
 })
+
+// ---------- Gravar a foto (Trocar imagem) ----------
+const { gravarMudanca } = await import('../../app/src/cliente/acoesPost.js')
+
+test('gravarMudanca: a foto volta à anterior se a gravação falhar', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const post = { id: 'p7', foto_path: null, sem_foto: false }
+  const vistos = []
+  const { supabase, chamadas } = falso(async () => ({ data: null, error: { message: 'offline' } }))
+  const ok = await gravarMudanca({ supabase, post, mudanca: { foto_path: 'u1/posts/p7.jpg', sem_foto: false }, aoMudar: () => vistos.push(post.foto_path) })
+  expect(ok).toBe(false)
+  expect(chamadas[0].mudanca).toEqual({ foto_path: 'u1/posts/p7.jpg', sem_foto: false })
+  expect(vistos).toEqual(['u1/posts/p7.jpg', null])
+  expect(post).toEqual({ id: 'p7', foto_path: null, sem_foto: false })
+  expect(aviso).toHaveBeenCalledWith('Sem conexão. Tente de novo.')
+})

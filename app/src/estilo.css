@@ -192,6 +192,31 @@ dialog.dialogo .opcao { margin-bottom: 14px; }
 dialog.dialogo .opcao p { margin: 6px 4px 0; }
 dialog.dialogo .erro { margin: 0 0 14px; }
 
+/* Trocar imagem: grade das fotos (quadrados de 96 px, a atual com borda e selo) */
+.trocar-foto { max-height: calc(100svh - 32px); overflow-y: auto; }
+.grade-fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-bottom: 16px; }
+dialog.dialogo button.foto-opcao {
+  position: relative; width: 100%; min-height: 96px; aspect-ratio: 1; padding: 0; overflow: hidden;
+  background: var(--sunk); border: 2px solid var(--line); border-radius: 14px;
+}
+.foto-opcao canvas { display: block; width: 100%; height: 100%; object-fit: cover; }
+dialog.dialogo button.foto-opcao.atual { border: 3px solid var(--pri); }
+.foto-opcao .selo-atual {
+  position: absolute; left: 6px; bottom: 6px; padding: 2px 8px; border-radius: 999px;
+  background: var(--pri); color: var(--pri-ink); font-size: 13px; font-weight: 800;
+}
+
+/* Enviar meu vídeo: progresso da edição e a prévia no lugar da capa */
+.video-enviado { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.video-enviado video {
+  display: block; width: auto; max-width: 100%; max-height: 55vh; max-height: 55svh;
+  margin: 0 auto; border-radius: 16px; background: #000;
+}
+.video-enviado button { width: 100%; min-height: 48px; }
+.video-enviado .editando { font-weight: 800; margin: 0; }
+.video-enviado progress { width: 100%; height: 12px; accent-color: var(--pri); }
+.video-enviado .erro { margin: 0; }
+
 /* ===== Painel de administração ===== */
 main.largo { max-width: 1040px; }
 .topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 32px; }

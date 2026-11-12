@@ -8,6 +8,8 @@ import { textoParaCopiar } from './mes.js'
 import { medidaDaArte } from '../artes/texto.js'
 import { desenharPaginas, gerarImagens, gerarVideoDeFotos, previaDaMontagem, paraPng } from '../artes/imagens.js'
 import { codigoDoErro } from '../artes/video.js'
+import { abrirTrocaDeFoto, gravarEscolhaDeFoto } from './trocarFoto.js'
+import { criarEnvioDeVideo } from './enviarVideo.js'
 
 const movimentoReduzido = () => Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
 
@@ -47,13 +49,17 @@ export function telaPost(ctx, post, aoVoltar) {
   let arquivos = null // os PNGs da arte, preparados logo depois de desenhar (o toque compartilha sem esperar)
   let preparando = false
   let videoPronto = null // a montagem já gravada, à espera do toque em "Salvar vídeo"
+  const arte = el('section', { class: 'arte-grande' })
+  // Para gravar: o vídeo enviado e editado aparece no lugar da capa.
+  const envioDeVideo = post.formato === 'gravar'
+    ? criarEnvioDeVideo({ supabase, post, ctx, modo, aoMostrarVideo: (sim) => { arte.hidden = sim } })
+    : null
 
   const voltar = el('button', {
     type: 'button', class: 'secundario voltar', texto: t('post.voltar'),
-    onclick: () => { pararPrevia?.(); aoVoltar() },
+    onclick: () => { pararPrevia?.(); envioDeVideo?.parar(); aoVoltar() },
   })
   const cabecalho = el('header', { class: 'cabecalho-post' })
-  const arte = el('section', { class: 'arte-grande' })
   const textos = el('section', { class: 'textos-post' })
   const acoes = el('section', { class: 'acoes-post' })
   const extras = el('section', { class: 'acoes-post extras-post' })
@@ -263,9 +269,31 @@ export function telaPost(ctx, post, aoVoltar) {
     aviso(t(textoOk), acaoDesfazer ? { desfazer: () => agir(acaoDesfazer, 'post.desfeito') } : undefined)
   }
 
-  // Lugares da Task 8.
-  const trocarImagem = () => aviso(t('comum.embreve'))
-  const enviarVideo = () => aviso(t('comum.embreve'))
+  // ---------- Trocar imagem ----------
+  // O calendário guarda a miniatura de cada post: a do texto ou da foto antiga não serve mais.
+  const esquecerMiniaturas = () => {
+    for (const chave of [...(ctx.miniaturas?.keys() ?? [])]) {
+      if (chave.startsWith(`${post.id}|`)) ctx.miniaturas.delete(chave)
+    }
+  }
+  async function escolherFoto(escolha) {
+    let ultima = null
+    // Chamado na hora (otimista), com a resposta do banco e, se falhar, ao voltar à foto anterior.
+    const aoMudarFoto = () => {
+      const chave = `${post.foto_path}|${post.sem_foto}`
+      if (chave === ultima) return // a resposta do banco igual ao que já está desenhado
+      ultima = chave
+      esquecerMiniaturas()
+      if (!arte.isConnected) return ctx.aoMudarPost?.(post) // já voltou ao calendário
+      videoPronto = null // a montagem gravada tinha a foto antiga
+      dizer('')
+      desenharArteGrande()
+    }
+    const ok = await gravarEscolhaDeFoto({ supabase, uid: ctx.cliente.id, post, escolha, aoMudar: aoMudarFoto })
+    if (ok) aviso(t(escolha.sem_foto ? 'foto.tirada' : 'foto.trocada'))
+  }
+  const trocarImagem = () => abrirTrocaDeFoto({ supabase, post, produtos: ctx.produtos, ramo: ctx.ramo, aoEscolher: escolherFoto })
+  const enviarVideo = () => envioDeVideo?.abrir() // direto no toque: o som e a galeria pedem o gesto
 
   function desenharAcoes() {
     const naTela = (no) => acoes.contains(no) || extras.contains(no)
@@ -351,9 +379,7 @@ export function telaPost(ctx, post, aoVoltar) {
       cancelar.disabled = descartar.disabled = false
       gerar.textContent = t('reprovar.gerar')
       if (r.post) {
-        for (const chave of [...(ctx.miniaturas?.keys() ?? [])]) {
-          if (chave.startsWith(`${post.id}|`)) ctx.miniaturas.delete(chave) // o texto mudou: redesenha a miniatura
-        }
+        esquecerMiniaturas() // o texto mudou: redesenha a miniatura
         Object.assign(post, r.post)
         dialogo.close()
         desenharTudo()
@@ -381,6 +407,7 @@ export function telaPost(ctx, post, aoVoltar) {
 
   function desenharTudo() {
     videoPronto = null // o texto mudou: a montagem gravada é do texto antigo
+    envioDeVideo?.limpar() // e o vídeo editado tinha o título antigo
     dizer('')
     desenharCabecalho()
     desenharTextos()
@@ -391,7 +418,7 @@ export function telaPost(ctx, post, aoVoltar) {
   desenharCabecalho()
   desenharTextos()
   desenharAcoes()
-  mostrar(voltar, cabecalho, arte, acoes, textos, extras) // ver, decidir e, se quiser, ler e baixar
+  mostrar(voltar, cabecalho, arte, envioDeVideo?.secao, acoes, textos, extras) // ver, decidir e, se quiser, ler e baixar
   window.scrollTo(0, 0)
   desenharArteGrande()
 }
