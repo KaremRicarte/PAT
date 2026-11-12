@@ -1,25 +1,15 @@
-// Tela do post: a arte grande, os textos e as ações (aprovar, Postei, copiar, baixar, reprovar).
+// Tela do post: a arte grande, as ações (aprovar, Postei, reprovar), os textos (copiar) e baixar/salvar.
 import { t } from '../textos.js'
-import { el, mostrar, aviso } from '../comum.js'
+import { el, mostrar, aviso, filhosValidos } from '../comum.js'
 import { situacaoDoPost, diaPorExtenso, chaveFormato } from './situacao.js'
-import { aplicarAcao, gerarOutro, nomeDoArquivo, trocasDoMes, LIMITE_TROCAS } from './acoesPost.js'
+import { aplicarAcao, gerarOutro, arquivosParaSalvar, trocasDoMes, LIMITE_TROCAS } from './acoesPost.js'
+import { entregar, baixarArquivos, modoDoAparelho } from './salvarArquivo.js'
 import { textoParaCopiar } from './mes.js'
 import { medidaDaArte } from '../artes/texto.js'
-import { desenharPaginas, gerarImagens, gerarVideoDeFotos, previaDaMontagem } from '../artes/imagens.js'
+import { desenharPaginas, gerarImagens, gerarVideoDeFotos, previaDaMontagem, paraPng } from '../artes/imagens.js'
 import { codigoDoErro } from '../artes/video.js'
 
 const movimentoReduzido = () => Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
-const pausa = (ms) => new Promise((ok) => setTimeout(ok, ms))
-
-// Entrega o arquivo ao aparelho por um <a download>.
-function salvar(blob, nome) {
-  const url = URL.createObjectURL(blob)
-  const a = el('a', { href: url, download: nome, hidden: true })
-  document.body.append(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 60000)
-}
 
 // Páginas do carrossel lado a lado (scroll-snap), com "1/5" e os botões Anterior/Próxima.
 function carrossel(telas, titulo) {
@@ -51,8 +41,12 @@ export function telaPost(ctx, post, aoVoltar) {
   const medida = medidaDaArte(post)
   const ehMontagem = post.tipo === 'video' && post.formato === 'montagem'
   const ehLista = post.tipo === 'lista'
+  const modo = modoDoAparelho()
   let pararPrevia = null
   let vezDaArte = 0
+  let arquivos = null // os PNGs da arte, preparados logo depois de desenhar (o toque compartilha sem esperar)
+  let preparando = false
+  let videoPronto = null // a montagem já gravada, à espera do toque em "Salvar vídeo"
 
   const voltar = el('button', {
     type: 'button', class: 'secundario voltar', texto: t('post.voltar'),
@@ -60,8 +54,9 @@ export function telaPost(ctx, post, aoVoltar) {
   })
   const cabecalho = el('header', { class: 'cabecalho-post' })
   const arte = el('section', { class: 'arte-grande' })
-  const textos = el('section', { class: 'texto-post' })
+  const textos = el('section', { class: 'textos-post' })
   const acoes = el('section', { class: 'acoes-post' })
+  const extras = el('section', { class: 'acoes-post extras-post' })
 
   // ---------- cabeçalho: rede, formato, título, quando e situação ----------
   function desenharCabecalho() {
@@ -79,12 +74,16 @@ export function telaPost(ctx, post, aoVoltar) {
     pararPrevia?.()
     pararPrevia = null
     const vez = ++vezDaArte
+    arquivos = null
+    preparando = Boolean(medida && !ehMontagem)
+    atualizarBaixar()
     if (!medida) {
       arte.replaceChildren(el('p', { class: 'muted sem-arte', texto: t('post.semarte') }))
       return
     }
     const espera = el('div', { class: 'espera', texto: t('post.desenhando') })
     espera.style.aspectRatio = `${medida.W} / ${medida.H}`
+    espera.style.width = `min(100%, calc(55svh * ${medida.W} / ${medida.H}))` // como a arte: até 55% da tela
     espera.style.background = ctx.negocio.cor2 // na cor do cliente enquanto desenha
     arte.replaceChildren(espera)
     try {
@@ -98,7 +97,9 @@ export function telaPost(ctx, post, aoVoltar) {
         return
       }
       const telas = await desenharPaginas(supabase, post, ctx)
-      if (vez !== vezDaArte || !arte.isConnected || !telas.length) return
+      if (vez !== vezDaArte) return
+      if (!arte.isConnected || !telas.length) { preparando = false; return atualizarBaixar() }
+      prepararArquivos(telas, vez)
       if (telas.length > 1) return arte.replaceChildren(carrossel(telas, post.titulo))
       telas[0].setAttribute('role', 'img')
       telas[0].setAttribute('aria-label', post.titulo)
@@ -106,18 +107,31 @@ export function telaPost(ctx, post, aoVoltar) {
     } catch (e) {
       console.error(e)
       espera.textContent = '' // fica o fundo na cor do cliente
+      if (vez === vezDaArte) { preparando = false; atualizarBaixar() } // o toque gera de novo e baixa
+    }
+  }
+
+  async function prepararArquivos(telas, vez) {
+    try {
+      const blobs = await Promise.all(telas.map(paraPng))
+      if (vez === vezDaArte) arquivos = arquivosParaSalvar(post, blobs, 'png')
+    } catch (e) {
+      console.error(e)
+    } finally {
+      if (vez === vezDaArte) { preparando = false; atualizarBaixar() }
     }
   }
 
   // ---------- legenda, hashtags e roteiro ----------
   function desenharTextos() {
-    textos.replaceChildren(
+    textos.replaceChildren(el('div', { class: 'texto-post' },
       el('p', { class: 'legenda', texto: post.legenda }),
       post.hashtags?.length ? el('p', { class: 'muted hashtags', texto: post.hashtags.join(' ') }) : null,
       post.roteiro
         ? el('div', { class: 'roteiro' }, el('h2', { texto: t('mes.roteiro') }),
           el('p', { class: 'legenda', texto: post.roteiro.replace(/^Como montar: /, '') }))
-        : null)
+        : null),
+    copiar)
   }
 
   // ---------- botões que guardam estado (ficam os mesmos entre um desenho e outro) ----------
@@ -134,55 +148,108 @@ export function telaPost(ctx, post, aoVoltar) {
     },
   })
 
-  const rotuloBaixar = () => (ehMontagem ? t('post.baixar.video')
-    : medida?.paginas > 1 ? t('post.baixar.varias', { n: medida.paginas }) : t('post.baixar'))
+  // No iPhone o botão diz "Salvar" (vai para as Fotos); nos outros, "Baixar".
+  const verbo = modo === 'compartilhar' ? 'post.salvar' : 'post.baixar'
+  const rotuloBaixar = () => (videoPronto ? t('post.salvar.video')
+    : ehMontagem ? t(`${verbo}.video`)
+      : medida?.paginas > 1 ? t(`${verbo}.varias`, { n: medida.paginas }) : t(verbo))
   const baixar = medida ? el('button', { type: 'button', class: 'secundario', 'data-acao': 'baixar', texto: rotuloBaixar() }) : null
   const progresso = el('progress', { max: '100', value: '0', hidden: true })
   const sobreBaixar = el('p', { class: 'pequeno', hidden: true })
   let baixando = false
-  baixar?.addEventListener('click', async () => {
-    if (baixando) return
+
+  // No iPhone, enquanto os PNGs não ficam prontos, o botão espera: o compartilhamento não pode esperar depois do toque.
+  function atualizarBaixar() {
+    if (!baixar || baixando) return
+    const esperando = preparando && modo === 'compartilhar'
+    baixar.disabled = esperando
+    baixar.textContent = esperando ? t('post.baixando') : rotuloBaixar()
+  }
+  function dizer(texto, classe = 'pequeno muted') {
+    sobreBaixar.className = classe
+    sobreBaixar.removeAttribute('role')
+    sobreBaixar.textContent = texto
+    sobreBaixar.hidden = !texto
+  }
+  function mostrarErro(e) {
+    console.error(e)
+    dizer(ehMontagem ? t(`video.erro.${codigoDoErro(e)}`) : t('erro.geral'), 'pequeno erro')
+    sobreBaixar.setAttribute('role', 'alert')
+  }
+  function avisarEntrega(resultado, lista) {
+    if (resultado === 'cancelado') return
+    if (resultado === 'compartilhado') return aviso(t('post.salvo'))
+    aviso(ehMontagem ? t('post.baixado.video') : lista.length > 1 ? t('post.baixadas', { n: lista.length }) : t('post.baixado'))
+  }
+  function ocupar(texto) {
     baixando = true
     baixar.disabled = true
-    sobreBaixar.hidden = true
-    sobreBaixar.removeAttribute('role')
+    if (texto) baixar.textContent = texto
+  }
+  function liberar() {
+    baixando = false
+    baixar.disabled = false
+    atualizarBaixar()
+  }
+
+  // Arquivos já prontos: entrega no mesmo toque (sem await antes do compartilhamento).
+  function entregarAgora(lista) {
+    dizer('')
+    baixando = true // um segundo toque com a janela de compartilhar aberta seria recusado
+    entregar(lista, modo)
+      .then((r) => avisarEntrega(r, lista))
+      .catch(mostrarErro)
+      .finally(() => { baixando = false })
+  }
+
+  // Montagem: gravar demora, então o primeiro toque grava e o "Salvar vídeo" pede um segundo toque.
+  async function montarVideo() {
+    ocupar(t('post.montando', { p: 0 }))
+    dizer(t('post.montando.dica'))
+    progresso.value = 0
+    progresso.hidden = false
+    const vez = vezDaArte // se o texto mudar (Gerar outro) durante a gravação, este vídeo fica velho
     try {
-      if (ehMontagem) {
-        sobreBaixar.className = 'pequeno muted'
-        sobreBaixar.textContent = t('post.montando.dica')
-        sobreBaixar.hidden = false
-        progresso.value = 0
-        progresso.hidden = false
-        baixar.textContent = t('post.montando', { p: 0 })
-        const { blob, ext } = await gerarVideoDeFotos(supabase, post, ctx, null, (p) => {
-          const pc = Math.round(p * 100)
-          progresso.value = pc
-          baixar.textContent = t('post.montando', { p: pc })
-        })
-        salvar(blob, nomeDoArquivo(post, null, ext))
-        aviso(t('post.baixado.video'))
-      } else {
-        baixar.textContent = t('post.baixando')
-        const blobs = await gerarImagens(supabase, post, ctx)
-        for (let i = 0; i < blobs.length; i++) {
-          if (i) await pausa(400) // um arquivo de cada vez: alguns navegadores barram vários juntos
-          salvar(blobs[i], nomeDoArquivo(post, blobs.length > 1 ? i + 1 : null, 'png'))
-        }
-        aviso(blobs.length > 1 ? t('post.baixadas', { n: blobs.length }) : t('post.baixado'))
-      }
-      sobreBaixar.hidden = true
+      const { blob, ext } = await gerarVideoDeFotos(supabase, post, ctx, null, (p) => {
+        const pc = Math.round(p * 100)
+        progresso.value = pc
+        baixar.textContent = t('post.montando', { p: pc })
+      })
+      if (vez === vezDaArte) {
+        videoPronto = arquivosParaSalvar(post, [blob], ext)
+        dizer(t('post.video.pronto'))
+        aviso(t('post.video.pronto'))
+      } else dizer('')
     } catch (e) {
-      console.error(e)
-      sobreBaixar.className = 'pequeno erro'
-      sobreBaixar.setAttribute('role', 'alert')
-      sobreBaixar.textContent = ehMontagem ? t(`video.erro.${codigoDoErro(e)}`) : t('erro.geral')
-      sobreBaixar.hidden = false
+      mostrarErro(e)
     } finally {
-      baixando = false
-      baixar.disabled = false
-      baixar.textContent = rotuloBaixar()
       progresso.hidden = true
+      liberar()
+      baixar.focus()
     }
+  }
+
+  // A arte não ficou pronta antes do toque (ainda desenhando ou falhou): gera e baixa.
+  async function gerarEBaixar() {
+    ocupar(t('post.baixando'))
+    dizer('')
+    try {
+      const lista = arquivosParaSalvar(post, await gerarImagens(supabase, post, ctx), 'png')
+      await baixarArquivos(lista)
+      avisarEntrega('baixado', lista)
+    } catch (e) {
+      mostrarErro(e)
+    } finally {
+      liberar()
+    }
+  }
+
+  baixar?.addEventListener('click', () => {
+    if (baixando) return
+    if (videoPronto) return entregarAgora(videoPronto)
+    if (ehMontagem) return montarVideo()
+    if (arquivos) return entregarAgora(arquivos)
+    gerarEBaixar()
   })
 
   // ---------- ações que gravam ----------
@@ -201,7 +268,8 @@ export function telaPost(ctx, post, aoVoltar) {
   const enviarVideo = () => aviso(t('comum.embreve'))
 
   function desenharAcoes() {
-    const focoAntes = acoes.contains(document.activeElement) ? document.activeElement.dataset?.acao : null
+    const naTela = (no) => acoes.contains(no) || extras.contains(no)
+    const focoAntes = naTela(document.activeElement) ? document.activeElement.dataset?.acao : null
     const sit = situacaoDoPost(post)
     const botao = (acao, texto, onclick, atributos = {}) =>
       el('button', { type: 'button', 'data-acao': acao, texto, onclick, ...atributos })
@@ -228,21 +296,27 @@ export function telaPost(ctx, post, aoVoltar) {
           : botao('aprovar', t('post.aprovar'), () => agir('aprovar', 'post.aprovar.ok')),
         aprovado ? dica(t('post.aprovado.dica')) : null,
         botao('postei', t('post.postei'), () => agir('postei', 'cal.postei.ok', 'despostar'), { class: aprovado ? null : 'secundario' }),
+        botao('reprovar', t('post.reprovar'), abrirReprovar, { class: 'secundario perigo' }),
       ]
     }
 
-    const mais = sit === 'reprovado' ? null : el('details', { class: 'mais' },
-      el('summary', { texto: t('post.mais') }),
-      el('div', { class: 'mais-lista' },
-        medida ? botao('trocarimagem', t('post.trocarimagem'), trocarImagem, { class: 'secundario' }) : null,
-        post.formato === 'gravar' ? botao('enviarvideo', t('post.enviarvideo'), enviarVideo, { class: 'secundario' }) : null,
-        sit === 'postado' ? null : botao('reprovar', t('post.reprovar'), abrirReprovar, { class: 'secundario perigo' })))
+    const outras = sit === 'reprovado' ? [] : [
+      medida ? botao('trocarimagem', t('post.trocarimagem'), trocarImagem, { class: 'secundario' }) : null,
+      post.formato === 'gravar' ? botao('enviarvideo', t('post.enviarvideo'), enviarVideo, { class: 'secundario' }) : null,
+    ].filter(Boolean)
+    const mais = outras.length
+      ? el('details', { class: 'mais' }, el('summary', { texto: t('post.mais') }), el('div', { class: 'mais-lista' }, outras))
+      : null
 
-    acoes.replaceChildren(
-      ...principais,
-      sit === 'reprovado' ? null : [copiar, baixar, progresso, sobreBaixar],
-      mais)
-    if (focoAntes) (acoes.querySelector(`[data-acao="${focoAntes}"]`) ?? acoes.querySelector('button'))?.focus()
+    // Logo abaixo da arte, o que decide; os textos vêm depois; baixar e "Mais opções" por último.
+    acoes.replaceChildren(...filhosValidos(principais)) // o replaceChildren nativo escreveria "null"
+    copiar.hidden = sit === 'reprovado'
+    extras.replaceChildren(...filhosValidos([sit === 'reprovado' ? null : [baixar, progresso, sobreBaixar], mais]))
+    extras.hidden = !extras.childElementCount
+    if (focoAntes) {
+      (acoes.querySelector(`[data-acao="${focoAntes}"]`) ?? extras.querySelector(`[data-acao="${focoAntes}"]`)
+        ?? acoes.querySelector('button'))?.focus()
+    }
   }
 
   // ---------- Reprovar: Gerar outro ou Só descartar ----------
@@ -306,6 +380,8 @@ export function telaPost(ctx, post, aoVoltar) {
   }
 
   function desenharTudo() {
+    videoPronto = null // o texto mudou: a montagem gravada é do texto antigo
+    dizer('')
     desenharCabecalho()
     desenharTextos()
     desenharAcoes()
@@ -315,7 +391,7 @@ export function telaPost(ctx, post, aoVoltar) {
   desenharCabecalho()
   desenharTextos()
   desenharAcoes()
-  mostrar(voltar, cabecalho, arte, textos, acoes) // ver, ler e decidir
+  mostrar(voltar, cabecalho, arte, acoes, textos, extras) // ver, decidir e, se quiser, ler e baixar
   window.scrollTo(0, 0)
   desenharArteGrande()
 }

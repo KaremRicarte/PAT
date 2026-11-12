@@ -127,7 +127,7 @@ function novaTela(W, H) {
   return c
 }
 
-const paraPng = (canvas) => new Promise((ok, falha) => canvas.toBlob((b) => (b ? ok(b) : falha(new Error('PNG não gerado'))), 'image/png'))
+export const paraPng = (canvas) => new Promise((ok, falha) => canvas.toBlob((b) => (b ? ok(b) : falha(new Error('PNG não gerado'))), 'image/png'))
 
 // Um canvas por página da arte, no tamanho real (a arte grande da tela do post). [] se o post não tem arte.
 export async function desenharPaginas(supabase, post, ctxDados) {

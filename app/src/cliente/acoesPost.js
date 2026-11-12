@@ -63,3 +63,16 @@ export async function gerarOutro({ supabase, post }) {
 export function nomeDoArquivo(post, pagina, ext) {
   return `${post.data}_${post.rede}_${chaveFormato(post)}${pagina ? `_${pagina}` : ''}.${ext}`
 }
+
+// Como entregar o arquivo ao aparelho. No iPhone/iPad o <a download> leva ao app Arquivos;
+// o compartilhamento (Web Share) oferece "Salvar imagem", que leva às Fotos.
+// O iPad no modo computador se apresenta como Mac: a diferença é a tela de toque.
+export function modoDeSalvar({ userAgent = '', maxTouchPoints = 0, podeCompartilharArquivos = false }) {
+  const ehIos = /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1)
+  return ehIos && podeCompartilharArquivos ? 'compartilhar' : 'baixar'
+}
+
+// Os arquivos para salvar, prontos antes do toque: um por página (_1, _2… quando há mais de um).
+export function arquivosParaSalvar(post, blobs, ext) {
+  return blobs.map((b, i) => new File([b], nomeDoArquivo(post, blobs.length > 1 ? i + 1 : null, ext), { type: b.type }))
+}

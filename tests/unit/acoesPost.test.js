@@ -128,3 +128,44 @@ test('nomeDoArquivo com e sem página', () => {
   expect(nomeDoArquivo({ data: '2026-11-07', rede: 'whatsapp', tipo: 'status', formato: 'status' }, null, 'png'))
     .toBe('2026-11-07_whatsapp_status.png')
 })
+
+// ---------- Salvar no aparelho ----------
+const { modoDeSalvar } = await import('../../app/src/cliente/acoesPost.js')
+const UA = {
+  iphone: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+  ipadMac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+  android: 'Mozilla/5.0 (Linux; Android 14; SM-A145M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36',
+  windows: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+}
+
+test('iPhone com compartilhamento de arquivos: compartilhar (vai para Fotos)', () => {
+  expect(modoDeSalvar({ userAgent: UA.iphone, maxTouchPoints: 5, podeCompartilharArquivos: true })).toBe('compartilhar')
+})
+test('iPhone sem compartilhamento de arquivos: baixar', () => {
+  expect(modoDeSalvar({ userAgent: UA.iphone, maxTouchPoints: 5, podeCompartilharArquivos: false })).toBe('baixar')
+})
+test('iPad que se apresenta como Mac: compartilhar; Mac de verdade: baixar', () => {
+  expect(modoDeSalvar({ userAgent: UA.ipadMac, maxTouchPoints: 5, podeCompartilharArquivos: true })).toBe('compartilhar')
+  expect(modoDeSalvar({ userAgent: UA.ipadMac, maxTouchPoints: 0, podeCompartilharArquivos: true })).toBe('baixar')
+})
+test('Android e Windows: baixar, mesmo podendo compartilhar', () => {
+  expect(modoDeSalvar({ userAgent: UA.android, maxTouchPoints: 5, podeCompartilharArquivos: true })).toBe('baixar')
+  expect(modoDeSalvar({ userAgent: UA.windows, maxTouchPoints: 0, podeCompartilharArquivos: true })).toBe('baixar')
+})
+
+const { arquivosParaSalvar } = await import('../../app/src/cliente/acoesPost.js')
+const carrosselDe3 = { data: '2026-11-04', rede: 'instagram', tipo: 'carrossel', formato: 'carrossel' }
+
+test('arquivosParaSalvar: um arquivo por página, com nome e tipo', () => {
+  const blobs = [1, 2, 3].map((n) => new Blob([String(n)], { type: 'image/png' }))
+  const arquivos = arquivosParaSalvar(carrosselDe3, blobs, 'png')
+  expect(arquivos.map((a) => a.name)).toEqual([
+    '2026-11-04_instagram_carrossel_1.png', '2026-11-04_instagram_carrossel_2.png', '2026-11-04_instagram_carrossel_3.png'])
+  expect(arquivos.every((a) => a instanceof File && a.type === 'image/png')).toBe(true)
+})
+test('arquivosParaSalvar: arquivo único sem número de página', () => {
+  const video = { data: '2026-11-07', rede: 'instagram', tipo: 'video', formato: 'montagem' }
+  const [arquivo] = arquivosParaSalvar(video, [new Blob(['v'], { type: 'video/mp4' })], 'mp4')
+  expect(arquivo.name).toBe('2026-11-07_instagram_montagem.mp4')
+  expect(arquivo.type).toBe('video/mp4')
+})
