@@ -209,15 +209,16 @@ function formatoDoAparelho() {
 // Para quando o segundo passa de `total`. Se a tela for para segundo plano, aborta ('interrompido').
 // Para sempre as faixas do canvas; as de áudio são de quem chama.
 async function gravar({ canvas, formato, audios = [], total, quadro, aoProgredir, aoComecar }) {
-  const trava = await manterTelaAcesa() // a tela não apaga no meio (o iPhone apaga em 30 s sem toque)
-  const stream = canvas.captureStream(30)
-  for (const a of audios) stream.addTrack(a)
-  let terminar, falhar, rec = null, pedidoDeQuadro = null
+  let terminar, falhar, rec = null, pedidoDeQuadro = null, trava = null, stream = null
   const fim = new Promise((ok, erro) => { terminar = ok; falhar = erro })
   fim.catch(() => {}) // a falha é tratada no await abaixo
   const aoEsconder = () => { if (document.hidden) falhar(erroDeVideo('interrompido')) }
   const pedacos = []
   try {
+    // Dentro do try: se o captureStream falhar, o finally solta a tela do mesmo jeito.
+    trava = await manterTelaAcesa() // a tela não apaga no meio (o iPhone apaga em 30 s sem toque)
+    stream = canvas.captureStream(30)
+    for (const a of audios) stream.addTrack(a)
     document.addEventListener('visibilitychange', aoEsconder)
     aoEsconder()
     rec = new MediaRecorder(stream, { mimeType: formato.mime, videoBitsPerSecond: BITS })
@@ -245,7 +246,7 @@ async function gravar({ canvas, formato, audios = [], total, quadro, aoProgredir
     if (pedidoDeQuadro !== null) cancelAnimationFrame(pedidoDeQuadro)
     document.removeEventListener('visibilitychange', aoEsconder)
     if (rec && rec.state !== 'inactive') { try { rec.stop() } catch { /* já parado */ } }
-    stream.getVideoTracks().forEach((tr) => tr.stop())
+    stream?.getVideoTracks().forEach((tr) => tr.stop())
     soltarTela(trava)
   }
 }

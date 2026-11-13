@@ -151,7 +151,8 @@ export async function montarLembretes({ supabase, sino, area }) {
 
   // A registration fica guardada desde já: no toque em Ativar, o subscribe não pode esperar nada antes.
   let registro = null
-  navigator.serviceWorker.ready.then((r) => { registro = r }).catch((e) => console.error(e))
+  // `?.`: no navegador de dentro do Instagram/Facebook no iPhone não há serviceWorker, e o aviso "instalar" tem de aparecer mesmo assim.
+  navigator.serviceWorker?.ready.then((r) => { registro = r }).catch((e) => console.error(e))
 
   const textoSino = el('span')
   const iconeSino = el('span', { 'aria-hidden': 'true' })
