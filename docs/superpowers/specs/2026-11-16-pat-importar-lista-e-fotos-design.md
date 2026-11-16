@@ -187,8 +187,8 @@ Combinado: **o app sugere e o cliente confirma**.
 - **"Gerar outro" num post de preço:** o post novo usa os preços **atuais** do item e grava `preco_de`/`preco_por` de novo. Se a vaga regerada não for mais de preço, os campos ficam vazios.
 - **Palavras permitidas em cada tratamento:**
   - promoção: tudo;
-  - vitrine: `R$`, mas sem "promoção", "desconto", "oferta", "off" e "black friday";
-  - sem preço: nada disso;
+  - vitrine: `R$`, mas sem "promoção", "desconto", "off" e "black friday";
+  - sem preço: sem `R$`. A palavra "oferta" segue permitida, porque os modelos de turismo já a usam em sentido geral ("As respostas viram as próximas ofertas");
   - ramos `noPromo`: nada disso, como hoje.
 - **Limite de fotos ao juntar:** as fotos que o item já tinha ficam. As novas entram até o limite, e as que sobram aparecem no resumo como "ficaram de fora".
 
