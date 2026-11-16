@@ -163,16 +163,18 @@ export function telaPost(ctx, post, aoVoltar) {
 
   // ---------- Enviar para a rede social: a janela de compartilhar do celular (Instagram, WhatsApp…) ----------
   // Não aparece no vídeo para gravar (o vídeo editado tem o próprio botão) nem em aparelho que não compartilha.
+  // O botão diz a rede do post, para o cliente achar o app certo na lista do celular.
+  const rotuloEnviar = t(`post.enviar.${post.rede}`)
   const enviar = aparelhoEnvia() && (ehLista || (medida && post.formato !== 'gravar'))
-    ? el('button', { type: 'button', 'data-acao': 'enviar', texto: t('post.enviar') }) : null
-  const sobreEnviar = enviar ? el('p', { class: 'pequeno muted', texto: t(ehLista ? 'post.enviar.dica.lista' : 'post.enviar.dica') }) : null
+    ? el('button', { type: 'button', 'data-acao': 'enviar', texto: rotuloEnviar }) : null
+  const sobreEnviar = enviar ? el('p', { class: 'pequeno muted', texto: ehLista ? t('post.enviar.dica.lista') : t('post.enviar.dica', { app: t(`post.enviar.app.${post.rede}`) }) }) : null
   // Os arquivos ficam prontos depois do desenho (o compartilhar não pode esperar depois do toque).
   function atualizarEnviar() {
     if (!enviar) return
     const falhou = !ehLista && !ehMontagem && !preparando && !arquivos // a arte não virou PNG: só o Baixar gera de novo
     enviar.hidden = sobreEnviar.hidden = (ehMontagem && !videoPronto) || falhou
     enviar.disabled = !ehLista && !ehMontagem && !arquivos
-    enviar.textContent = enviar.disabled ? t('post.baixando') : t('post.enviar')
+    enviar.textContent = enviar.disabled ? t('post.baixando') : rotuloEnviar
   }
   enviar?.addEventListener('click', () => {
     const texto = textoParaCopiar(post)
