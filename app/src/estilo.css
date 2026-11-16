@@ -267,3 +267,22 @@ button.botao-sino { display: inline-flex; align-items: center; gap: 6px; min-hei
 .passos-iphone li { counter-increment: passo; display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .passos-iphone li::before { content: counter(passo); flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--pri); color: var(--pri-ink); font-weight: 800; text-align: center; line-height: 28px; }
 .passos-iphone .icone { flex: none; font-size: 26px; }
+
+/* ===== Senha: olho, "Esqueci minha senha" e contato ===== */
+.campo-senha { position: relative; }
+.campo-senha input { padding-right: 56px; }
+.campo-senha .olho {
+  position: absolute; top: 0; right: 0; width: 52px; height: 100%; min-height: 48px; padding: 0;
+  display: grid; place-items: center; background: transparent; color: var(--muted); border-radius: 12px;
+}
+.campo-senha .olho[aria-pressed="true"] { color: var(--pri); }
+button.link {
+  display: block; margin: 16px auto 0; min-height: 48px; padding: 12px 8px; background: transparent;
+  color: var(--pri); font-weight: 700; text-decoration: underline; text-underline-offset: 3px;
+}
+a.botao {
+  display: inline-flex; align-items: center; justify-content: center; flex: 1 1 auto; min-height: 48px;
+  padding: 12px 20px; border-radius: 999px; background: var(--pri); color: var(--pri-ink); font-weight: 700; text-decoration: none;
+}
+a.botao:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
+.contato { font-family: var(--display); font-size: 24px; font-weight: 800; margin: 8px 0 0; letter-spacing: .02em; }

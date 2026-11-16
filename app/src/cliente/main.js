@@ -1,4 +1,5 @@
 import supabase from '../supabase.js'
+import { veioDaRecuperacao } from '../linkDoEmail.js'
 import { t } from '../textos.js'
 import { el, logo, mostrar, carregando, botaoSair, prepararAviso } from '../comum.js'
 import { telaInicial } from './tela.js'
@@ -9,6 +10,7 @@ import { limparImagens } from '../artes/imagens.js'
 prepararAviso() // a região dos avisos existe desde o início
 
 let acessoRegistrado = false // um evento 'acesso' por abertura do app
+let recuperando = veioDaRecuperacao // abriu pelo link de "Esqueci minha senha" e ainda não criou a senha nova
 let usuarioMostrado // id do usuário da tela atual (undefined = nenhuma tela ainda)
 const TELAS_DO_APP = ['sem-ramo', 'quiz-negocio', 'quiz-mes', 'mes'] // cliente ativo, já com a senha dele
 
@@ -30,7 +32,7 @@ async function atualizar() {
     if (error) return telaErro()
     cliente = data
   }
-  if (cliente && cliente.situacao === 'ativo' && !cliente.senha_provisoria) {
+  if (cliente && cliente.situacao === 'ativo' && !cliente.senha_provisoria && !recuperando) {
     try {
       ({ negocio, produtos } = await carregarNegocio(supabase, cliente.id))
       const r = await supabase.from('meses').select('id, ano_mes, estrategia, redes, gerado_em')
@@ -43,19 +45,21 @@ async function atualizar() {
     }
   }
 
-  const tela = telaInicial({ sessao, cliente, negocio, produtos, mes: meses[0] ?? null })
+  const tela = telaInicial({ sessao, cliente, negocio, produtos, mes: meses[0] ?? null, recuperando })
   if (TELAS_DO_APP.includes(tela) && !acessoRegistrado) {
     acessoRegistrado = true
     const { error } = await supabase.from('eventos').insert({ cliente_id: cliente.id, tipo: 'acesso' })
     if (error) { acessoRegistrado = false; console.error(error) }
   }
-  desenhar(tela, { supabase, cliente, negocio, produtos, meses, atualizar })
+  desenhar(tela, { supabase, cliente, negocio, produtos, meses, atualizar, fimDaRecuperacao: () => { recuperando = false } })
 }
 
 // O supabase-js avisa: não chamar o próprio supabase dentro do callback; por isso o setTimeout.
 // Só redesenha quando muda quem está logado (o SIGNED_IN repetido ao voltar à aba não apaga formulários).
 supabase.auth.onAuthStateChange((evento, sessao) => {
   const id = sessao?.user.id ?? null
+  if (evento === 'PASSWORD_RECOVERY') { recuperando = true; setTimeout(atualizar, 0); return }
+  if (evento === 'SIGNED_OUT') recuperando = false
   if (evento === 'INITIAL_SESSION' || evento === 'SIGNED_OUT' || id !== usuarioMostrado) {
     if (evento === 'SIGNED_OUT') { acessoRegistrado = false; limparImagens() } // fecha as fotos da conta que saiu
     setTimeout(atualizar, 0)

@@ -23,3 +23,18 @@ test('nova senha igual à provisória tem mensagem própria', () => {
   expect(erroTrocaSenha({ code: 'weak_password' })).toBe('senha.fraca')
   expect(erroTrocaSenha({ code: 'outra_coisa' })).toBe('erro.geral')
 })
+
+// Link de "Esqueci minha senha": a sessão de recuperação vai para a tela de nova senha, mesmo bloqueado.
+test.each([
+  [{ sessao: {}, recuperando: true, cliente: c() }, 'nova-senha'],
+  [{ sessao: {}, recuperando: true, cliente: c({ situacao: 'bloqueado' }) }, 'nova-senha'],
+  [{ sessao: {}, recuperando: true, cliente: null }, 'nova-senha'],
+  [{ sessao: null, recuperando: true, cliente: null }, 'entrar'],
+])('recuperação: %o → %s', (e, tela) => expect(telaInicial(e)).toBe(tela))
+
+import { erroEsqueci } from '../../app/src/cliente/tela.js'
+test('pedido de link repetido demais tem mensagem própria', () => {
+  expect(erroEsqueci({ status: 429 })).toBe('esqueci.limite')
+  expect(erroEsqueci({ code: 'over_email_send_rate_limit' })).toBe('esqueci.limite')
+  expect(erroEsqueci({ status: 500 })).toBe('erro.geral')
+})

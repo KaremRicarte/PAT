@@ -17,10 +17,30 @@ const pt = {
   'senha.diferente': 'As senhas não são iguais.',
   'senha.igual': 'Escolha uma senha diferente da provisória.',
   'senha.fraca': 'Essa senha é muito fraca. Tente outra.',
+  'senha.mostrar': 'Mostrar senha',
+  'senha.esconder': 'Esconder senha',
+  'senha.nova.titulo': 'Crie uma nova senha',
+  'senha.nova.texto': 'Escolha uma senha com pelo menos 8 caracteres.',
+  'senha.salva': 'Senha salva ✓',
+
+  // esqueci minha senha
+  'esqueci.link': 'Esqueci minha senha',
+  'esqueci.titulo': 'Esqueci minha senha',
+  'esqueci.texto': 'Digite o e-mail do seu cadastro. Vamos enviar um link para você criar uma nova senha.',
+  'esqueci.botao': 'Enviar link',
+  'esqueci.email': 'Digite um e-mail válido.',
+  'esqueci.limite': 'Você pediu o link várias vezes. Espere alguns minutos e tente de novo.',
+  'esqueci.enviado.titulo': 'Confira seu e-mail',
+  'esqueci.enviado.texto': 'Se {email} estiver cadastrado, você vai receber um link para criar uma nova senha.',
+  'esqueci.enviado.spam': 'Não chegou em alguns minutos? Olhe a caixa de spam.',
+  'esqueci.voltar': 'Voltar para entrar',
+  'esqueci.vencido': 'Esse link já foi usado ou venceu. Toque em "Esqueci minha senha" para receber outro.',
 
   // acesso pausado
   'pausado.titulo': 'Seu acesso está pausado.',
-  'pausado.texto': 'Fale com a administração para reativar.',
+  'pausado.texto': 'Fale com a administração para reativar:',
+  'pausado.whatsapp': 'Chamar no WhatsApp',
+  'pausado.mensagem': 'Olá! Meu acesso ao PAT está pausado. Pode me ajudar?',
 
   // início
   'inicio.ola': 'Olá, {nome}!',
@@ -181,6 +201,7 @@ const pt = {
   'comum.carregando': 'Carregando…',
   'comum.tentar': 'Tentar de novo',
   'comum.desfazer': 'Desfazer',
+  'comum.voltar': 'Voltar',
   'comum.embreve': 'Em breve',
 
   // tela do post

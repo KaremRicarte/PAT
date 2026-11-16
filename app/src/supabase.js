@@ -1,3 +1,4 @@
+import './linkDoEmail.js' // lê o #... do link do e-mail antes do supabase-js limpá-lo
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(

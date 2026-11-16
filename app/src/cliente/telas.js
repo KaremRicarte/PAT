@@ -1,36 +1,45 @@
 import { t } from '../textos.js'
-import { el, logo, campo, mostrar, aoEnviar, telaEntrar, botaoSair } from '../comum.js'
-import { erroTrocaSenha } from './tela.js'
+import { el, logo, mostrar, telaEntrar, botaoSair, formSenha, aviso } from '../comum.js'
+import { CONTATO_ADMIN, linkWhatsApp } from '../contato.js'
 import { telaQuiz } from './quiz.js'
 import { telaQuizMes } from './mes.js'
 import { telaCalendario } from './calendario.js'
 
-// ctx: { supabase, cliente, negocio, produtos, meses, atualizar }
+// ctx: { supabase, cliente, negocio, produtos, meses, atualizar, fimDaRecuperacao }
 export function desenhar(tela, ctx) {
   const { supabase, cliente, atualizar } = ctx
   if (tela === 'entrar') return telaEntrar(supabase)
 
   if (tela === 'trocar-senha') {
-    const form = el('form', { novalidate: true },
-      el('h1', { texto: t('senha.titulo') }),
-      campo(t('senha.nova'), { name: 'senha', type: 'password', autocomplete: 'new-password', minlength: 8, required: true }),
-      campo(t('senha.repetir'), { name: 'repetir', type: 'password', autocomplete: 'new-password', required: true }),
-      el('div', { class: 'acoes' }, el('button', { type: 'submit', texto: t('senha.botao') }), botaoSair(supabase)),
-    )
-    let senhaJaTrocada = false // se só a marcação falhar, a nova tentativa refaz só ela
-    aoEnviar(form, async (d) => {
-      const senha = String(d.get('senha'))
-      if (senha.length < 8) return t('senha.curta')
-      if (senha !== String(d.get('repetir'))) return t('senha.diferente')
-      if (!senhaJaTrocada) {
-        const { error } = await supabase.auth.updateUser({ password: senha })
-        if (error) return t(erroTrocaSenha(error))
-        senhaJaTrocada = true
-      }
-      const { error: e2 } = await supabase.rpc('marcar_senha_trocada')
-      if (e2) return t('erro.geral')
-      await atualizar()
-      return null
+    const form = formSenha(supabase, {
+      titulo: t('senha.titulo'),
+      extras: [botaoSair(supabase)],
+      aoSalvar: async () => {
+        const { error } = await supabase.rpc('marcar_senha_trocada')
+        if (error) return t('erro.geral')
+        await atualizar()
+        return null
+      },
+    })
+    return mostrar(logo(), form)
+  }
+
+  // Chegou pelo link de "Esqueci minha senha": a sessão já é dele, falta só a senha nova.
+  if (tela === 'nova-senha') {
+    const form = formSenha(supabase, {
+      titulo: t('senha.nova.titulo'),
+      texto: t('senha.nova.texto'),
+      aoSalvar: async () => {
+        // quem ainda tinha a senha provisória acabou de criar a dele
+        if (cliente?.senha_provisoria) {
+          const { error } = await supabase.rpc('marcar_senha_trocada')
+          if (error) return t('erro.geral')
+        }
+        ctx.fimDaRecuperacao()
+        aviso(t('senha.salva'))
+        await atualizar()
+        return null
+      },
     })
     return mostrar(logo(), form)
   }
@@ -39,7 +48,10 @@ export function desenhar(tela, ctx) {
     return mostrar(logo(),
       el('h1', { texto: t('pausado.titulo') }),
       el('p', { class: 'muted', texto: t('pausado.texto') }),
-      el('div', { class: 'acoes' }, botaoSair(supabase)))
+      el('p', { class: 'contato', texto: CONTATO_ADMIN.exibir }),
+      el('div', { class: 'acoes' },
+        el('a', { class: 'botao', href: linkWhatsApp(CONTATO_ADMIN.whatsapp, t('pausado.mensagem')), target: '_blank', rel: 'noopener', texto: t('pausado.whatsapp') }),
+        botaoSair(supabase)))
   }
 
   if (tela === 'sem-ramo') {
