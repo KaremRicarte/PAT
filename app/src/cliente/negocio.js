@@ -98,35 +98,49 @@ export async function salvarNegocio(supabase, uid, dados, itens, aoProgredir, op
   const { data: antigos, error: e2 } = await supabase.from('produtos').select('id, foto_path, fotos').eq('cliente_id', uid)
   if (e2) throw e2
   const pathsDe = (a) => [...new Set([...(a.fotos ?? []), ...(a.foto_path ? [a.foto_path] : [])])]
+  // fotos ainda usadas por posts (via "Trocar imagem") não saem do Storage
+  const { data: dePosts } = await supabase.from('posts').select('foto_path').not('foto_path', 'is', null)
+  const emUso = new Set((dePosts ?? []).map((x) => x.foto_path))
+  const limpar = async (paths) => {
+    const lista = paths.filter((p) => !emUso.has(p))
+    if (lista.length) await marcas.remove(lista) // melhor esforço
+  }
   const ficam = new Set(itens.map((i) => i.id))
   const sair = antigos.filter((a) => !ficam.has(a.id))
   if (sair.length) {
     const { error } = await supabase.from('produtos').delete().in('id', sair.map((a) => a.id))
     if (error) throw error
-    await marcas.remove(sair.flatMap((a) => [`${uid}/produtos/${a.id}.jpg`, ...pathsDe(a)])) // melhor esforço
+    await limpar(sair.flatMap((a) => [`${uid}/produtos/${a.id}.jpg`, ...pathsDe(a)]))
   }
 
   const total = itens.reduce((n, i) => n + i.fotos.filter((f) => f.arquivo).length, 0)
   let feitas = 0
+  const enviadas = []
   const linhas = []
-  for (const [ordem, i] of itens.entries()) {
-    const fotos = []
-    for (const f of i.fotos) {
-      if (f.arquivo) {
-        const blob = await reduzir(f.arquivo)
-        fotos.push(await enviar(`${uid}/produtos/${i.id}/${crypto.randomUUID()}.jpg`, blob, 'image/jpeg'))
-        aoProgredir?.(++feitas, total)
-      } else fotos.push(f.path)
+  try {
+    for (const [ordem, i] of itens.entries()) {
+      const fotos = []
+      for (const f of i.fotos) {
+        if (f.arquivo) {
+          const blob = await reduzir(f.arquivo)
+          const caminho = await enviar(`${uid}/produtos/${i.id}/${crypto.randomUUID()}.jpg`, blob, 'image/jpeg')
+          enviadas.push(caminho)
+          fotos.push(caminho)
+          aoProgredir?.(++feitas, total)
+        } else fotos.push(f.path)
+      }
+      const preco = i.preco ?? null
+      linhas.push({ id: i.id, cliente_id: uid, nome: i.nome.trim(), descricao: i.descricao?.trim() || null,
+        preco, preco_promo: preco === null ? null : i.preco_promo ?? null, fotos, foto_path: fotos[0] ?? null, ordem })
     }
-    const preco = i.preco ?? null
-    linhas.push({ id: i.id, cliente_id: uid, nome: i.nome.trim(), descricao: i.descricao?.trim() || null,
-      preco, preco_promo: preco === null ? null : i.preco_promo ?? null, fotos, foto_path: fotos[0] ?? null, ordem })
+    const r3 = await supabase.from('produtos').upsert(linhas)
+    if (r3.error) throw r3.error
+  } catch (e) {
+    if (enviadas.length) { try { await marcas.remove(enviadas) } catch { /* melhor esforço */ } }
+    throw e
   }
-  const r3 = await supabase.from('produtos').upsert(linhas)
-  if (r3.error) throw r3.error
 
-  // fotos que o item tinha e não tem mais (melhor esforço)
+  // fotos que o item tinha e não tem mais
   const novos = new Map(linhas.map((l) => [l.id, new Set(l.fotos)]))
-  const soltas = antigos.filter((a) => novos.has(a.id)).flatMap((a) => pathsDe(a).filter((p) => !novos.get(a.id).has(p)))
-  if (soltas.length) await marcas.remove(soltas)
+  await limpar(antigos.filter((a) => novos.has(a.id)).flatMap((a) => pathsDe(a).filter((p) => !novos.get(a.id).has(p))))
 }

@@ -52,8 +52,7 @@ test('salva 2 fotos novas, depois remove 1: banco e Storage acompanham', async (
     { id, nome: 'Corte', descricao: '', preco: 100, preco_promo: 80,
       fotos: [{ arquivo: jpg(), nome: '1.jpg' }, { arquivo: jpg(), nome: '2.jpg' }] },
   ], (f, t) => progresso.push([f, t]), opc)
-  expect(progresso.at(-1)).toEqual(progresso.at(-1)) // chamado
-  expect(progresso.length).toBeGreaterThan(0)
+  expect(progresso).toEqual([[1, 2], [2, 2]])
   const { produtos } = await carregarNegocio(a.db, a.id)
   expect(produtos[0].fotos).toHaveLength(2)
   expect(produtos[0].foto_path).toBe(produtos[0].fotos[0])
@@ -96,4 +95,32 @@ test('preço promocional gravado', async () => {
   const { produtos } = await carregarNegocio(a.db, a.id)
   expect(produtos.map((p) => [p.preco, p.preco_promo])).toEqual([[100, 79.9], [null, null]])
   await servico().storage.from('marcas').remove([`${a.id}/logo.png`])
+})
+
+test('foto trocada que ainda é usada por um post continua no Storage', async () => {
+  const a = await novoCliente({ senha_provisoria: false, ramo: 'beleza' })
+  const id = randomUUID()
+  await salvarNegocio(a.db, a.id, dados(), [
+    { id, nome: 'Corte', descricao: '', preco: 100, preco_promo: null, fotos: [{ arquivo: jpg(), nome: '1.jpg' }] },
+  ], undefined, opc)
+  const { produtos } = await carregarNegocio(a.db, a.id)
+  const velha = produtos[0].fotos[0]
+  const s = servico()
+  const { data: mes, error: e1 } = await s.from('meses')
+    .insert({ cliente_id: a.id, ano_mes: '2026-12', estrategia: 'vender', origem: 'modelo' }).select('id').single()
+  if (e1) throw e1
+  const { error: e2 } = await s.from('posts').insert({
+    mes_id: mes.id, data: '2026-12-01', rede: 'instagram', tipo: 'feed', formato: 'arte', pilar: 'demo',
+    titulo: 'T', legenda: 'L', horario: '12:00', produto_id: id, ordem: 0, foto_path: velha,
+  })
+  if (e2) throw e2
+
+  await salvarNegocio(a.db, a.id, dados({ logoBlob: null }), [
+    { id, nome: 'Corte', descricao: '', preco: 100, preco_promo: null, fotos: [{ arquivo: jpg(), nome: '2.jpg' }] },
+  ], undefined, opc)
+  const depois = await carregarNegocio(a.db, a.id)
+  expect(depois.produtos[0].fotos).toHaveLength(1)
+  expect(depois.produtos[0].fotos[0]).not.toBe(velha)
+  expect(await nomes(`${a.id}/produtos/${id}`)).toContain(velha.split('/').pop())
+  await s.storage.from('marcas').remove([velha, depois.produtos[0].fotos[0], `${a.id}/logo.png`])
 })

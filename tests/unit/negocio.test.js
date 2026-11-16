@@ -50,3 +50,43 @@ test('validarItens: promoção e fotos', () => {
   expect(validarItens([{ ...ok, fotos: Array.from({ length: 6 }, (_, i) => ({ path: `p${i}` })) }])).toBeNull()
   expect(validarItens([{ ...ok, precoTexto: '', promoTexto: '80' }], { noPromo: true })).toBeNull()
 })
+
+test('toda chave que validarItens devolve existe em textos', async () => {
+  const { t } = await import('../../app/src/textos.js')
+  const ok = { nome: 'Corte', precoTexto: '100', promoTexto: '80', fotos: [] }
+  const casos = [
+    [[]], [Array.from({ length: 21 }, () => ok)], [[{ ...ok, nome: 'a' }]],
+    [[{ ...ok, nome: 'Corte R$ 10' }], { noPromo: true }],
+    [[{ ...ok, precoTexto: '' }]], [[{ ...ok, promoTexto: '200' }]],
+    [[{ ...ok, fotos: Array(7).fill({ path: 'x' }) }]],
+  ]
+  for (const [itens, ramo] of casos) {
+    const k = validarItens(itens, ramo)
+    expect(k).not.toBeNull()
+    expect(() => t(k, { max: 20 })).not.toThrow()
+  }
+})
+
+test('salvarNegocio: se o 2º envio falha, remove o 1º já enviado e repassa o erro', async () => {
+  const { salvarNegocio } = await import('../../app/src/cliente/negocio.js')
+  const enviados = [], removidos = []
+  let n = 0
+  const consulta = (data) => {
+    const q = { select: () => q, eq: () => q, not: () => q, upsert: async () => ({ error: null }),
+      then: (ok) => ok({ data, error: null }) }
+    return q
+  }
+  const supabase = {
+    from: () => consulta([]),
+    storage: { from: () => ({
+      upload: async (c) => { if (++n === 2) return { error: new Error('falhou') }; enviados.push(c); return { error: null } },
+      remove: async (l) => { removidos.push(...l); return { error: null } },
+    }) },
+  }
+  const dados = { nome: 'X', insta: null, assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000000', cor2: '#ffffff', logo_path: null }
+  const itens = [{ id: 'i1', nome: 'Item', descricao: '', preco: 10, preco_promo: null,
+    fotos: [{ arquivo: 'a' }, { arquivo: 'b' }] }]
+  await expect(salvarNegocio(supabase, 'u1', dados, itens, undefined, { reduzir: async (b) => b })).rejects.toThrow('falhou')
+  expect(enviados).toHaveLength(1)
+  expect(removidos).toEqual(enviados)
+})
