@@ -10,7 +10,7 @@ describe('lerLista', () => {
   })
   test('colunas ausentes e comentarios', () => {
     expect(lerLista('portugal').linhas[0]).toMatchObject({ preco: undefined, promo: undefined })
-    const r = lerLista('# comentário\n\n  \nX;10;')
+    const r = lerLista('# comentário\n\n  \nXy;10;')
     expect(r.linhas).toHaveLength(1)
     expect(r.linhas[0]).toMatchObject({ preco: 10, promo: undefined })
   })
