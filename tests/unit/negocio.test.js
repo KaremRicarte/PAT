@@ -12,11 +12,11 @@ test.each([
 const item = (nome, preco = null) => ({ nome, preco })
 test('validarItens', () => {
   expect(validarItens([])).toBe('quiz.itens.min')
-  expect(validarItens(Array.from({ length: 13 }, (_, i) => item(`Item ${i}`)))).toBe('quiz.itens.max')
+  expect(validarItens(Array.from({ length: 21 }, (_, i) => item(`Item ${i}`)))).toBe('quiz.itens.max')
   expect(validarItens([item(' a ')])).toBe('quiz.itens.nome')
   expect(validarItens([item('x'.repeat(81))])).toBe('quiz.itens.nome')
   expect(validarItens([item('Furadeira'), item('  Trena  ')])).toBeNull()
-  expect(validarItens(Array.from({ length: 12 }, (_, i) => item(`Item ${i}`)))).toBeNull()
+  expect(validarItens(Array.from({ length: 20 }, (_, i) => item(`Item ${i}`)))).toBeNull()
 })
 
 test.each([

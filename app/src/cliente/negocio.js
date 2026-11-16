@@ -2,7 +2,8 @@
 // O cliente do Supabase vem por parâmetro, para as funções puras poderem ser testadas sem rede.
 import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
 
-export const MAX_ITENS = 12
+export const MAX_ITENS = 20
+export const MAX_FOTOS = 6
 export const FOTO_MAX = 1600 // lado maior das fotos, em px
 export const LOGO_MAX = 800
 
