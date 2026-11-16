@@ -3,7 +3,7 @@
 -- Produto: preço promocional (só vale com preço normal, e nunca acima dele) e até 6 fotos.
 alter table public.produtos
   add column preco_promo numeric(10, 2)
-    check (preco_promo > 0 and (preco is not null and preco_promo <= preco)),
+    check (preco_promo is null or (preco_promo > 0 and preco is not null and preco_promo <= preco)),
   add column fotos text[] not null default '{}'
     check (cardinality(fotos) <= 6);
 
