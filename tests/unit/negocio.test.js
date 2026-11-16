@@ -90,3 +90,28 @@ test('salvarNegocio: se o 2º envio falha, remove o 1º já enviado e repassa o 
   expect(enviados).toHaveLength(1)
   expect(removidos).toEqual(enviados)
 })
+
+test('salvarNegocio: se a leitura dos posts falha, não limpa o Storage e salva mesmo assim', async () => {
+  const { salvarNegocio } = await import('../../app/src/cliente/negocio.js')
+  const removidos = []
+  const consulta = (tabela) => {
+    const q = { select: () => q, eq: () => q, not: () => q, delete: () => q, in: () => q,
+      upsert: async () => ({ error: null }),
+      then: (ok) => ok(tabela === 'posts' ? { data: null, error: new Error('posts falhou') }
+        : tabela === 'produtos' ? { data: [{ id: 'i1', foto_path: 'u1/produtos/i1/a.jpg', fotos: ['u1/produtos/i1/a.jpg'] },
+          { id: 'i2', foto_path: null, fotos: [] }], error: null }
+        : { data: [], error: null }) }
+    return q
+  }
+  const supabase = {
+    from: consulta,
+    storage: { from: () => ({ upload: async () => ({ error: null }), remove: async (l) => { removidos.push(...l); return { error: null } } }) },
+  }
+  const dados = { nome: 'X', insta: null, assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000000', cor2: '#ffffff', logo_path: null }
+  const itens = [{ id: 'i1', nome: 'Item', descricao: '', preco: 10, preco_promo: null, fotos: [] }]
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+  await expect(salvarNegocio(supabase, 'u1', dados, itens)).resolves.toBeUndefined()
+  expect(removidos).toEqual([])
+  expect(log).toHaveBeenCalled()
+  log.mockRestore()
+})

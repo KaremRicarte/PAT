@@ -99,9 +99,11 @@ export async function salvarNegocio(supabase, uid, dados, itens, aoProgredir, op
   if (e2) throw e2
   const pathsDe = (a) => [...new Set([...(a.fotos ?? []), ...(a.foto_path ? [a.foto_path] : [])])]
   // fotos ainda usadas por posts (via "Trocar imagem") não saem do Storage
-  const { data: dePosts } = await supabase.from('posts').select('foto_path').not('foto_path', 'is', null)
+  const { data: dePosts, error: e4 } = await supabase.from('posts').select('foto_path').not('foto_path', 'is', null)
   const emUso = new Set((dePosts ?? []).map((x) => x.foto_path))
+  if (e4) console.error(e4) // sem saber o que os posts usam, não apaga nada do Storage
   const limpar = async (paths) => {
+    if (e4) return
     const lista = paths.filter((p) => !emUso.has(p))
     if (lista.length) await marcas.remove(lista) // melhor esforço
   }
