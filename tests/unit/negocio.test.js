@@ -39,3 +39,14 @@ test('em ramo sem promoção, item com preço ou promoção no texto é recusado
   expect(validarItens([{ nome: 'Psicoterapia 100% online', descricao: 'promover bem-estar' }], { noPromo: true })).toBeNull()
   expect(validarItens([{ nome: 'Corte com desconto', descricao: '' }], { noPromo: false })).toBeNull()
 })
+
+test('validarItens: promoção e fotos', () => {
+  const ok = { nome: 'Corte', precoTexto: '100', promoTexto: '80', fotos: [] }
+  expect(validarItens([ok])).toBeNull()
+  expect(validarItens([{ ...ok, precoTexto: '' }])).toBe('quiz.itens.semnormal')
+  expect(validarItens([{ ...ok, promoTexto: '120' }])).toBe('quiz.itens.promomaior')
+  expect(validarItens([{ ...ok, promoTexto: '100' }])).toBeNull()
+  expect(validarItens([{ ...ok, fotos: Array.from({ length: 7 }, (_, i) => ({ path: `p${i}` })) }])).toBe('quiz.itens.fotos')
+  expect(validarItens([{ ...ok, fotos: Array.from({ length: 6 }, (_, i) => ({ path: `p${i}` })) }])).toBeNull()
+  expect(validarItens([{ ...ok, precoTexto: '', promoTexto: '80' }], { noPromo: true })).toBeNull()
+})

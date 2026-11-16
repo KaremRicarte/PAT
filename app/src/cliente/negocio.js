@@ -20,6 +20,14 @@ export function validarItens(itens, ramo = { noPromo: false }) {
   if (itens.length > MAX_ITENS) return 'quiz.itens.max'
   if (itens.some((i) => { const n = String(i.nome ?? '').trim(); return n.length < 2 || n.length > 80 })) return 'quiz.itens.nome'
   if (ramo.noPromo && itens.some((i) => temPromocao(`${i.nome} ${i.descricao ?? ''}`))) return 'quiz.itens.promo'
+  if (!ramo.noPromo) {
+    for (const i of itens) {
+      const normal = precoDoTexto(i.precoTexto), promo = precoDoTexto(i.promoTexto)
+      if (promo !== null && normal === null) return 'quiz.itens.semnormal'
+      if (promo !== null && promo > normal) return 'quiz.itens.promomaior'
+    }
+  }
+  if (itens.some((i) => (i.fotos?.length ?? 0) > MAX_FOTOS)) return 'quiz.itens.fotos'
   return null
 }
 
@@ -58,18 +66,24 @@ export async function carregarNegocio(supabase, uid) {
   const [n, p] = await Promise.all([
     supabase.from('negocios').select('nome, insta, assinatura, tom, horario, cor1, cor2, logo_path')
       .eq('cliente_id', uid).maybeSingle(),
-    supabase.from('produtos').select('id, nome, descricao, preco, foto_path').eq('cliente_id', uid).order('ordem'),
+    supabase.from('produtos').select('id, nome, descricao, preco, preco_promo, fotos, foto_path').eq('cliente_id', uid).order('ordem'),
   ])
   if (n.error) throw n.error
   if (p.error) throw p.error
-  return { negocio: n.data, produtos: p.data ?? [] }
+  const produtos = (p.data ?? []).map((x) => ({
+    ...x, fotos: x.fotos?.length ? x.fotos : x.foto_path ? [x.foto_path] : [],
+  }))
+  return { negocio: n.data, produtos }
 }
 
 // dados: { nome, insta, assinatura, tom, horario, cor1, cor2, logo_path, logoBlob? }
-// itens: [{ id, nome, descricao, preco, foto_path, fotoBlob? }] — id já gerado no aparelho.
-export async function salvarNegocio(supabase, uid, dados, itens) {
+// itens: [{ id, nome, descricao, preco, preco_promo, fotos: [{ path } | { arquivo, nome }] }] — id já gerado no aparelho.
+// opcoes.reduzir: redutor de fotos (troca-se nos testes, onde não há canvas).
+export async function salvarNegocio(supabase, uid, dados, itens, aoProgredir, opcoes = {}) {
+  const reduzir = opcoes.reduzir ?? ((arquivo) => reduzirFoto(arquivo, FOTO_MAX, 'image/jpeg'))
+  const marcas = supabase.storage.from('marcas')
   const enviar = async (caminho, blob, tipo) => {
-    const { error } = await supabase.storage.from('marcas').upload(caminho, blob, { upsert: true, contentType: tipo })
+    const { error } = await marcas.upload(caminho, blob, { upsert: true, contentType: tipo })
     if (error) throw error
     return caminho
   }
@@ -81,22 +95,38 @@ export async function salvarNegocio(supabase, uid, dados, itens) {
   })
   if (r1.error) throw r1.error
 
-  const { data: antigos, error: e2 } = await supabase.from('produtos').select('id').eq('cliente_id', uid)
+  const { data: antigos, error: e2 } = await supabase.from('produtos').select('id, foto_path, fotos').eq('cliente_id', uid)
   if (e2) throw e2
+  const pathsDe = (a) => [...new Set([...(a.fotos ?? []), ...(a.foto_path ? [a.foto_path] : [])])]
   const ficam = new Set(itens.map((i) => i.id))
-  const sair = antigos.map((a) => a.id).filter((id) => !ficam.has(id))
+  const sair = antigos.filter((a) => !ficam.has(a.id))
   if (sair.length) {
-    const { error } = await supabase.from('produtos').delete().in('id', sair)
+    const { error } = await supabase.from('produtos').delete().in('id', sair.map((a) => a.id))
     if (error) throw error
-    await supabase.storage.from('marcas').remove(sair.map((id) => `${uid}/produtos/${id}.jpg`)) // melhor esforço
+    await marcas.remove(sair.flatMap((a) => [`${uid}/produtos/${a.id}.jpg`, ...pathsDe(a)])) // melhor esforço
   }
 
+  const total = itens.reduce((n, i) => n + i.fotos.filter((f) => f.arquivo).length, 0)
+  let feitas = 0
   const linhas = []
   for (const [ordem, i] of itens.entries()) {
-    const foto_path = i.fotoBlob ? await enviar(`${uid}/produtos/${i.id}.jpg`, i.fotoBlob, 'image/jpeg') : i.foto_path ?? null
+    const fotos = []
+    for (const f of i.fotos) {
+      if (f.arquivo) {
+        const blob = await reduzir(f.arquivo)
+        fotos.push(await enviar(`${uid}/produtos/${i.id}/${crypto.randomUUID()}.jpg`, blob, 'image/jpeg'))
+        aoProgredir?.(++feitas, total)
+      } else fotos.push(f.path)
+    }
+    const preco = i.preco ?? null
     linhas.push({ id: i.id, cliente_id: uid, nome: i.nome.trim(), descricao: i.descricao?.trim() || null,
-      preco: i.preco ?? null, foto_path, ordem })
+      preco, preco_promo: preco === null ? null : i.preco_promo ?? null, fotos, foto_path: fotos[0] ?? null, ordem })
   }
   const r3 = await supabase.from('produtos').upsert(linhas)
   if (r3.error) throw r3.error
+
+  // fotos que o item tinha e não tem mais (melhor esforço)
+  const novos = new Map(linhas.map((l) => [l.id, new Set(l.fotos)]))
+  const soltas = antigos.filter((a) => novos.has(a.id)).flatMap((a) => pathsDe(a).filter((p) => !novos.get(a.id).has(p)))
+  if (soltas.length) await marcas.remove(soltas)
 }

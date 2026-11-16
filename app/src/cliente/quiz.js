@@ -54,7 +54,9 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
     logo_path: n?.logo_path ?? null, logoBlob: null,
     itens: (inicial?.produtos ?? []).map((p) => ({
       id: p.id, nome: p.nome, descricao: p.descricao ?? '',
-      precoTexto: p.preco ? String(p.preco).replace('.', ',') : '', foto_path: p.foto_path, fotoBlob: null,
+      precoTexto: p.preco ? String(p.preco).replace('.', ',') : '',
+      promoTexto: p.preco_promo ? String(p.preco_promo).replace('.', ',') : '',
+      fotos: p.fotos?.length ? p.fotos.map((path) => ({ path })) : p.foto_path ? [{ path: p.foto_path }] : [],
     })),
   }
 
@@ -76,7 +78,7 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
       const lista = el('div', { class: 'itens' })
       const sugestoes = el('div', { class: 'chips' })
       const adicionar = el('button', { type: 'button', class: 'secundario', texto: t('quiz.item.adicionar') })
-      const novo = (nome = '') => ({ id: crypto.randomUUID(), nome, descricao: '', precoTexto: '', foto_path: null, fotoBlob: null })
+      const novo = (nome = '') => ({ id: crypto.randomUUID(), nome, descricao: '', precoTexto: '', promoTexto: '', fotos: [] })
       adicionar.addEventListener('click', () => { estado.itens.push(novo()); redesenhar(); lista.querySelector('fieldset:last-child input')?.focus() })
 
       const editor = (item, i) => {
@@ -98,7 +100,7 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
           el('legend', { texto: `${ramo.itemOne} ${i + 1}` }),
           rNome, iNome, el('label', { for: idDesc, texto: t('quiz.item.descricao') }), desc, preco,
           campoFoto(t('quiz.item.foto'), {
-            maximo: FOTO_MAX, tipo: 'image/jpeg', jaTem: !!item.foto_path, aoEscolher: (b) => { item.fotoBlob = b },
+            maximo: FOTO_MAX, tipo: 'image/jpeg', jaTem: item.fotos.length > 0, aoEscolher: (b) => { item.fotos = [{ arquivo: b, nome: 'foto.jpg' }, ...item.fotos.slice(1)] },
           }),
           el('div', { class: 'acoes' }, remover))
       }
@@ -196,7 +198,11 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
       try {
         await salvarNegocio(supabase, cliente.id,
           { ...estado, insta: normalizarInsta(estado.insta) },
-          estado.itens.map((i) => ({ ...i, preco: ramo.noPromo ? null : precoDoTexto(i.precoTexto) })))
+          estado.itens.map((i) => {
+            const preco = ramo.noPromo ? null : precoDoTexto(i.precoTexto)
+            return { id: i.id, nome: i.nome, descricao: i.descricao, preco,
+              preco_promo: ramo.noPromo ? null : (preco ? precoDoTexto(i.promoTexto) : null), fotos: i.fotos }
+          }))
         await aoSalvar()
       } catch (e) {
         console.error(e)
