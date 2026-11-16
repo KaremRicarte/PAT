@@ -37,3 +37,32 @@ test('Android e computador: baixa, sem compartilhar', async () => {
   expect(nav.share).not.toHaveBeenCalled()
   expect(baixar).toHaveBeenCalledWith(arquivos)
 })
+
+// ---------- Enviar para a rede social ----------
+const { enviarParaRede, aparelhoEnvia } = await import('../../app/src/cliente/salvarArquivo.js')
+
+test('enviar: abre o compartilhar já no toque, só com os arquivos', async () => {
+  const { nav } = aparelho()
+  const r = enviarParaRede({ arquivos, texto: 'legenda' }, nav)
+  expect(nav.share).toHaveBeenCalledWith({ files: arquivos })
+  expect(await r).toBe('compartilhado')
+})
+test('enviar: mensagem de lista vai como texto', async () => {
+  const { nav } = aparelho()
+  expect(await enviarParaRede({ arquivos: null, texto: 'oi' }, nav)).toBe('compartilhado')
+  expect(nav.share).toHaveBeenCalledWith({ text: 'oi' })
+})
+test('enviar: cancelar não é erro; outra falha é', async () => {
+  const cancelou = aparelho({ share: () => Promise.reject(Object.assign(new Error('x'), { name: 'AbortError' })) })
+  expect(await enviarParaRede({ arquivos }, cancelou.nav)).toBe('cancelado')
+  const falhou = aparelho({ share: () => Promise.reject(Object.assign(new Error('x'), { name: 'NotAllowedError' })) })
+  await expect(enviarParaRede({ arquivos }, falhou.nav)).rejects.toThrow('x')
+})
+test('enviar: aparelho que não compartilha', async () => {
+  const { nav } = aparelho({ podeCompartilhar: false })
+  expect(await enviarParaRede({ arquivos }, nav)).toBe('sem-suporte')
+  expect(nav.share).not.toHaveBeenCalled()
+  expect(aparelhoEnvia(nav)).toBe(false)
+  expect(aparelhoEnvia(aparelho().nav)).toBe(true)
+  expect(aparelhoEnvia(undefined)).toBe(false)
+})

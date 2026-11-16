@@ -236,7 +236,7 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
       el('p', { texto: t(semFoto === 1 ? 'fotos.aviso.1' : 'fotos.aviso.n', { n: semFoto }) }),
       el('div', { class: 'acoes-linha' },
         el('button', { type: 'button', class: 'secundario', texto: t('lembrete.agoranao'),
-          onclick: () => { adiarAvisoFotos(); avisoFotos.remove(); botoesDia.get(escolhido)?.focus() } }),
+          onclick: () => { adiarAvisoFotos(); avisoFotos.remove(); botoesDia.get(escolhido)?.focus(); aviso(t('fotos.adiado')) } }),
         el('button', { type: 'button', texto: t('fotos.aviso.botao'), onclick: () => editarNegocio(ctx) })))
   }
 

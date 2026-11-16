@@ -3,7 +3,7 @@ import { t } from '../textos.js'
 import { el, mostrar, aviso, filhosValidos } from '../comum.js'
 import { situacaoDoPost, diaPorExtenso, chaveFormato } from './situacao.js'
 import { aplicarAcao, gerarOutro, arquivosParaSalvar, trocasDoMes, LIMITE_TROCAS, rotuloDoBaixar } from './acoesPost.js'
-import { entregar, baixarArquivos, modoDoAparelho } from './salvarArquivo.js'
+import { entregar, baixarArquivos, modoDoAparelho, aparelhoEnvia, enviarParaRede } from './salvarArquivo.js'
 import { textoParaCopiar } from './mes.js'
 import { medidaDaArte } from '../artes/texto.js'
 import { desenharPaginas, gerarImagens, gerarVideoDeFotos, previaDaMontagem, paraPng } from '../artes/imagens.js'
@@ -161,8 +161,34 @@ export function telaPost(ctx, post, aoVoltar) {
   const sobreBaixar = el('p', { class: 'pequeno', hidden: true })
   let baixando = false
 
+  // ---------- Enviar para a rede social: a janela de compartilhar do celular (Instagram, WhatsApp…) ----------
+  // Não aparece no vídeo para gravar (o vídeo editado tem o próprio botão) nem em aparelho que não compartilha.
+  const enviar = aparelhoEnvia() && (ehLista || (medida && post.formato !== 'gravar'))
+    ? el('button', { type: 'button', 'data-acao': 'enviar', texto: t('post.enviar') }) : null
+  const sobreEnviar = enviar ? el('p', { class: 'pequeno muted', texto: t(ehLista ? 'post.enviar.dica.lista' : 'post.enviar.dica') }) : null
+  // Os arquivos ficam prontos depois do desenho (o compartilhar não pode esperar depois do toque).
+  function atualizarEnviar() {
+    if (!enviar) return
+    const falhou = !ehLista && !ehMontagem && !preparando && !arquivos // a arte não virou PNG: só o Baixar gera de novo
+    enviar.hidden = sobreEnviar.hidden = (ehMontagem && !videoPronto) || falhou
+    enviar.disabled = !ehLista && !ehMontagem && !arquivos
+    enviar.textContent = enviar.disabled ? t('post.baixando') : t('post.enviar')
+  }
+  enviar?.addEventListener('click', () => {
+    const texto = textoParaCopiar(post)
+    // Tudo no mesmo toque, sem await antes: o compartilhar e o copiar pedem o gesto.
+    const envio = enviarParaRede({ arquivos: ehLista ? null : ehMontagem ? videoPronto : arquivos, texto })
+    const copia = ehLista ? Promise.resolve(false)
+      : (navigator.clipboard?.writeText(texto) ?? Promise.reject(new Error('sem área de transferência'))).then(() => true, () => false)
+    Promise.all([envio, copia]).then(([r, copiou]) => {
+      if (r === 'compartilhado') aviso(t(ehLista ? 'post.enviado.lista' : copiou ? 'post.enviado' : 'post.enviado.semlegenda'))
+      else if (r === 'sem-suporte') aviso(t('post.enviar.semsuporte'))
+    }).catch((e) => { console.error(e); aviso(t('erro.geral')) })
+  })
+
   // No iPhone, enquanto os PNGs não ficam prontos, o botão espera: o compartilhamento não pode esperar depois do toque.
   function atualizarBaixar() {
+    atualizarEnviar()
     if (!baixar || baixando) return
     const esperando = preparando && modo === 'compartilhar'
     baixar.disabled = esperando
@@ -337,7 +363,8 @@ export function telaPost(ctx, post, aoVoltar) {
     // Logo abaixo da arte, o que decide; os textos vêm depois; baixar e "Mais opções" por último.
     acoes.replaceChildren(...filhosValidos(principais)) // o replaceChildren nativo escreveria "null"
     copiar.hidden = sit === 'reprovado'
-    extras.replaceChildren(...filhosValidos([sit === 'reprovado' ? null : [baixar, progresso, sobreBaixar], mais]))
+    extras.replaceChildren(...filhosValidos([sit === 'reprovado' ? null : [enviar, sobreEnviar, baixar, progresso, sobreBaixar], mais]))
+    atualizarEnviar()
     extras.hidden = !extras.childElementCount
     if (focoAntes) {
       (acoes.querySelector(`[data-acao="${focoAntes}"]`) ?? extras.querySelector(`[data-acao="${focoAntes}"]`)

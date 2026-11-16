@@ -44,3 +44,24 @@ export function entregar(arquivos, modo, { nav = globalThis.navigator, baixar = 
     return baixarTudo()
   })
 }
+
+// O aparelho abre a janela de compartilhar com arquivos (iPhone, Android e alguns computadores)?
+export function aparelhoEnvia(nav = globalThis.navigator) {
+  try {
+    return Boolean(nav?.canShare?.({ files: [new File([''], 'teste.png', { type: 'image/png' })] }))
+  } catch {
+    return false
+  }
+}
+
+// "Enviar para a rede social": abre a janela de compartilhar do celular (Instagram, WhatsApp…).
+// Só os arquivos (com texto junto, alguns apps descartam a imagem); sem arte, só o texto.
+// Chamar direto no toque, sem await antes. Resolve 'compartilhado' | 'cancelado' | 'sem-suporte'.
+export function enviarParaRede({ arquivos, texto }, nav = globalThis.navigator) {
+  const dados = arquivos?.length ? { files: arquivos } : { text: texto }
+  if (!nav?.canShare?.(dados)) return Promise.resolve('sem-suporte')
+  return nav.share(dados).then(() => 'compartilhado', (e) => {
+    if (e?.name === 'AbortError') return 'cancelado'
+    throw e
+  })
+}
