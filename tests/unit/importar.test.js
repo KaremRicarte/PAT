@@ -115,8 +115,7 @@ describe('juntarImportacao', () => {
   test('não mexe na lista original', () => {
     const atual = [{ id: 'a', nome: 'Gramado', precoTexto: '2000', fotos: [{ path: 'p' }] }, { id: 'b', nome: 'Bonito', foto_path: 'x' }]
     const antes = structuredClone(atual)
-    juntarImportacao(atual, ent('Gramado;2199
-Novo', [arq('gramado_1.jpg'), arq('bonito_1.jpg')]), opc())
+    juntarImportacao(atual, ent('Gramado;2199\nNovo', [arq('gramado_1.jpg'), arq('bonito_1.jpg')]), opc())
     expect(atual).toEqual(antes)
   })
 })
