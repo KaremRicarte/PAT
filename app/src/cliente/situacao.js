@@ -55,16 +55,28 @@ export function gradeDoMes(anoMes) {
   return dias
 }
 
-// Foto do post: sem_foto em ramo só de texto -> nenhuma; senão a do post, a do produto
-// e, fora dos ramos só de texto, a primeira foto de produto.
+// Foto do post (null = arte só com texto):
+// 1. sem_foto em ramo só de texto -> nenhuma; 2. a foto escolhida para o post;
+// 3. post de um serviço -> só a foto DELE (nunca a de outro serviço);
+// 4. post geral (fora dos ramos só de texto) -> reveza as fotos pela ordem do post;
+//    com uma foto só, alterna foto e só texto, para não repetir a mesma foto o mês todo.
 export function fotoDoPost(post, produtos, ramo) {
   const soTexto = Boolean(ramo?.textOnly)
   if (post.sem_foto && soTexto) return null
   if (post.foto_path) return post.foto_path
-  const doProduto = produtos.find((p) => p.id === post.produto_id)?.foto_path
-  if (doProduto) return doProduto
+  const produto = post.produto_id ? produtos.find((p) => p.id === post.produto_id) : null
+  if (produto) return produto.foto_path ?? null
   if (soTexto) return null
-  return produtos.find((p) => p.foto_path)?.foto_path ?? null
+  const fotos = produtos.map((p) => p.foto_path).filter(Boolean)
+  if (!fotos.length) return null
+  const ciclo = fotos.length === 1 ? [fotos[0], null] : fotos
+  return ciclo[(post.ordem ?? 0) % ciclo.length]
+}
+
+// Quantos serviços estão sem foto (para o aviso do calendário). Nos ramos só de texto a foto é opcional.
+export function servicosSemFoto(produtos, ramo) {
+  if (ramo?.textOnly) return 0
+  return produtos.filter((p) => !p.foto_path).length
 }
 
 // Textos da arte. Legenda: gancho (1º), meio (2º) e convite (penúltimo; o último se houver até 3).

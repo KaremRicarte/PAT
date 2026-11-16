@@ -30,7 +30,7 @@ test('opcoesDeFoto: sem foto_path, a atual é a do produto do post', () => {
 test('opcoesDeFoto: produtos sem foto ficam fora', () => {
   const { fotos } = opcoesDeFoto(produtos, RAMOS.beleza, { produto_id: 'b', foto_path: null, sem_foto: false })
   expect(fotos.map((f) => f.path)).toEqual(['u1/produtos/a.jpg', 'u1/produtos/c.jpg'])
-  expect(fotos.find((f) => f.atual)?.path).toBe('u1/produtos/a.jpg') // fora do textOnly vale a primeira foto
+  expect(fotos.find((f) => f.atual)).toBeUndefined() // o serviço do post não tem foto: arte só com texto, nenhuma marcada
 })
 
 test('opcoesDeFoto: a foto enviada para o post entra primeiro, marcada', () => {

@@ -128,6 +128,12 @@ const pt = {
   'cal.dicas.3': 'Depois de postar, toque em ✓ Postei.',
   'cal.dicas.ok': 'Entendi',
 
+  // aviso dos serviços sem foto
+  'fotos.aviso.rotulo': 'Fotos dos serviços',
+  'fotos.aviso.1': '1 serviço está sem foto. Com fotos, suas artes ficam mais variadas.',
+  'fotos.aviso.n': '{n} serviços estão sem foto. Com fotos, suas artes ficam mais variadas.',
+  'fotos.aviso.botao': 'Adicionar fotos',
+
   // lembretes (spec §3.5)
   'lembrete.aviso': 'Quer um lembrete na hora de postar?',
   'lembrete.ativar': 'Ativar',

@@ -58,7 +58,7 @@ test('gradeDoMes: semana começa no domingo e o tamanho é múltiplo de 7', () =
   expect(dez.filter(Boolean)).toHaveLength(31)
 })
 
-test('fotoDoPost: sem_foto, foto própria, foto do produto e primeira foto', () => {
+test('fotoDoPost: sem_foto, foto própria e foto do produto', () => {
   const produtos = [{ id: 'a', foto_path: null }, { id: 'b', foto_path: 'fb.jpg' }, { id: 'c', foto_path: 'fc.jpg' }]
   const loja = RAMOS.beleza
   const texto = RAMOS.advocacia
@@ -67,10 +67,36 @@ test('fotoDoPost: sem_foto, foto própria, foto do produto e primeira foto', () 
   expect(fotoDoPost({ foto_path: 'x.jpg' }, produtos, texto)).toBe('x.jpg')
   expect(fotoDoPost({ foto_path: 'x.jpg', produto_id: 'c' }, produtos, loja)).toBe('x.jpg')
   expect(fotoDoPost({ produto_id: 'c' }, produtos, loja)).toBe('fc.jpg')
-  expect(fotoDoPost({ produto_id: 'a' }, produtos, loja)).toBe('fb.jpg')
-  expect(fotoDoPost({}, produtos, loja)).toBe('fb.jpg')
   expect(fotoDoPost({}, produtos, texto)).toBeNull()
   expect(fotoDoPost({}, [], loja)).toBeNull()
+})
+
+test('fotoDoPost: post de um serviço sem foto nunca pega a foto de outro serviço', () => {
+  const produtos = [{ id: 'a', foto_path: null }, { id: 'b', foto_path: 'fb.jpg' }]
+  expect(fotoDoPost({ produto_id: 'a', ordem: 0 }, produtos, RAMOS.beleza)).toBeNull()
+  expect(fotoDoPost({ produto_id: 'a', ordem: 1 }, produtos, RAMOS.beleza)).toBeNull()
+})
+
+test('fotoDoPost: posts gerais revezam as fotos pela ordem do post', () => {
+  const produtos = [{ id: 'a', foto_path: 'fa.jpg' }, { id: 'b', foto_path: null }, { id: 'c', foto_path: 'fc.jpg' }, { id: 'd', foto_path: 'fd.jpg' }]
+  const fotos = [0, 1, 2, 3, 4].map((ordem) => fotoDoPost({ ordem }, produtos, RAMOS.beleza))
+  expect(fotos).toEqual(['fa.jpg', 'fc.jpg', 'fd.jpg', 'fa.jpg', 'fc.jpg'])
+  // produto apagado (produto_id sem produto na lista): conta como post geral
+  expect(fotoDoPost({ produto_id: 'zz', ordem: 1 }, produtos, RAMOS.beleza)).toBe('fc.jpg')
+})
+
+test('fotoDoPost: com uma foto só, os posts gerais alternam foto e só texto', () => {
+  const produtos = [{ id: 'a', foto_path: 'fa.jpg' }, { id: 'b', foto_path: null }]
+  const fotos = [0, 1, 2, 3].map((ordem) => fotoDoPost({ ordem }, produtos, RAMOS.beleza))
+  expect(fotos).toEqual(['fa.jpg', null, 'fa.jpg', null])
+})
+
+import { servicosSemFoto } from '../../app/src/cliente/situacao.js'
+test('servicosSemFoto: conta os serviços sem foto; nos ramos só de texto a foto é opcional', () => {
+  const produtos = [{ foto_path: 'f.jpg' }, { foto_path: null }, {}]
+  expect(servicosSemFoto(produtos, RAMOS.beleza)).toBe(2)
+  expect(servicosSemFoto(produtos, RAMOS.psicologia)).toBe(0)
+  expect(servicosSemFoto([], RAMOS.beleza)).toBe(0)
 })
 
 test('pecasDaArte: legenda de 5 parágrafos', () => {

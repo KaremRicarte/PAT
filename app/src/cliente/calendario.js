@@ -3,7 +3,7 @@ import { t } from '../textos.js'
 import { el, logo, mostrar, botaoSair, carregando, aviso, filhosValidos } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
-import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato } from './situacao.js'
+import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto } from './situacao.js'
 import { miniatura } from '../artes/imagens.js'
 import { telaQuizMes, rotuloEstrategia, mesMostrado, preferirMes } from './mes.js'
 import { aplicarAcao } from './acoesPost.js'
@@ -16,6 +16,8 @@ const SITUACOES = ['pendente', 'aprovado', 'reprovado', 'postado'] // ordem no r
 const RESUMO = ['postado', 'aprovado', 'pendente', 'reprovado'] // ordem do resumo (spec §3.1)
 const ICONE = { postado: '↑', aprovado: '✓', pendente: '…', reprovado: '✕' } // dentro da bolinha: a cor nunca vem sozinha
 const CHAVE_DICAS = 'pat.dicas.vistas'
+const CHAVE_FOTOS_ADIADO = 'pat.fotos.adiado' // quando o cliente tocou "Agora não" no aviso das fotos
+const DIAS_FOTOS_ADIADO = 7
 const COLUNAS = 'id, data, rede, tipo, formato, titulo, legenda, hashtags, roteiro, horario, ordem, estado, foto_path, sem_foto, postado_em, produto_id, trocas'
 
 const tituloDoDia = (data) => `${SEMANA[new Date(`${data}T00:00:00Z`).getUTCDay()]}, ${diaPorExtenso(data)}`
@@ -44,6 +46,16 @@ function dicasJaVistas() {
 }
 function marcarDicasVistas() {
   try { localStorage.setItem(CHAVE_DICAS, '1') } catch { /* sem armazenamento: volta na próxima visita */ }
+}
+
+function avisoFotosAdiado(agora = Date.now()) {
+  try {
+    const desde = Date.parse(localStorage.getItem(CHAVE_FOTOS_ADIADO) ?? '')
+    return Number.isFinite(desde) && agora - desde < DIAS_FOTOS_ADIADO * 24 * 60 * 60 * 1000
+  } catch { return false }
+}
+function adiarAvisoFotos() {
+  try { localStorage.setItem(CHAVE_FOTOS_ADIADO, new Date().toISOString()) } catch { /* sem armazenamento: volta na próxima visita */ }
 }
 
 let vezDoDesenho = 0 // só a última chamada desenha (troca rápida de mês)
@@ -216,6 +228,18 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
       }))
   }
 
+  // ---------- aviso das fotos: serviços sem foto deixam as artes só com texto ----------
+  const semFoto = servicosSemFoto(ctx.produtos ?? [], ctx.ramo)
+  let avisoFotos = null
+  if (semFoto && !avisoFotosAdiado()) {
+    avisoFotos = el('section', { class: 'lembrete-aviso', 'aria-label': t('fotos.aviso.rotulo') },
+      el('p', { texto: t(semFoto === 1 ? 'fotos.aviso.1' : 'fotos.aviso.n', { n: semFoto }) }),
+      el('div', { class: 'acoes-linha' },
+        el('button', { type: 'button', class: 'secundario', texto: t('lembrete.agoranao'),
+          onclick: () => { adiarAvisoFotos(); avisoFotos.remove(); botoesDia.get(escolhido)?.focus() } }),
+        el('button', { type: 'button', texto: t('fotos.aviso.botao'), onclick: () => editarNegocio(ctx) })))
+  }
+
   // ---------- lembretes: o sino no topo e o aviso entre o resumo e a grade (chegam depois) ----------
   const sino = el('div', { class: 'sino' })
   const avisoLembrete = el('div', { class: 'lembrete-area' })
@@ -233,6 +257,7 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
     el('div', { class: 'acoes' }, proximo, editar),
     dicas,
     resumo,
+    avisoFotos,
     avisoLembrete,
     grade,
     lista,
