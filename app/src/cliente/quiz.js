@@ -4,8 +4,9 @@ import { el, logo, campo, mostrar } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
 import {
-  MAX_ITENS, FOTO_MAX, LOGO_MAX, validarItens, precoDoTexto, normalizarInsta, reduzirFoto, salvarNegocio,
+  MAX_ITENS, LOGO_MAX, validarItens, precoDoTexto, normalizarInsta, reduzirFoto, salvarNegocio,
 } from './negocio.js'
+import { montarImportacao, faixaDeFotos } from './importarTela.js'
 
 const HORARIOS = [['07:00', 'manha'], ['12:00', 'almoco'], ['19:00', 'noite']]
 const ASSINATURAS = ['ambos', 'logo', 'insta']
@@ -76,6 +77,7 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
     // 2. itens (produtos, serviços ou temas)
     () => {
       const lista = el('div', { class: 'itens' })
+      let urls = [] // miniaturas temporárias; liberadas a cada redesenho
       const sugestoes = el('div', { class: 'chips' })
       const adicionar = el('button', { type: 'button', class: 'secundario', texto: t('quiz.item.adicionar') })
       const novo = (nome = '') => ({ id: crypto.randomUUID(), nome, descricao: '', precoTexto: '', promoTexto: '', fotos: [] })
@@ -92,20 +94,24 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
         if (!ramo.noPromo) {
           const [rPreco, iPreco] = campo(t('quiz.item.preco'), { value: item.precoTexto, inputmode: 'decimal', placeholder: 'Ex.: 49,90' })
           iPreco.addEventListener('input', () => { item.precoTexto = iPreco.value })
-          preco = [rPreco, iPreco]
+          const [rPromo, iPromo] = campo(t('quiz.item.promo'), { value: item.promoTexto, inputmode: 'decimal', placeholder: 'Ex.: 39,90' })
+          iPromo.addEventListener('input', () => { item.promoTexto = iPromo.value })
+          preco = el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo))
         }
+        const selos = el('span', { class: 'selos-item' })
         const remover = el('button', { type: 'button', class: 'secundario pequeno', texto: t('quiz.item.remover') })
         remover.addEventListener('click', () => { estado.itens.splice(estado.itens.indexOf(item), 1); redesenhar() })
         return el('fieldset', {},
-          el('legend', { texto: `${ramo.itemOne} ${i + 1}` }),
+          el('legend', { texto: `${ramo.itemOne} ${i + 1}` }), selos,
           rNome, iNome, el('label', { for: idDesc, texto: t('quiz.item.descricao') }), desc, preco,
-          campoFoto(t('quiz.item.foto'), {
-            maximo: FOTO_MAX, tipo: 'image/jpeg', jaTem: item.fotos.length > 0, aoEscolher: (b) => { item.fotos = [{ arquivo: b, nome: 'foto.jpg' }, ...item.fotos.slice(1)] },
-          }),
+          el('p', { class: 'rotulo', texto: t('quiz.item.fotos') }),
+          faixaDeFotos({ item, supabase, urls, selos }),
           el('div', { class: 'acoes' }, remover))
       }
 
       function redesenhar() {
+        for (const u of urls) URL.revokeObjectURL(u)
+        urls = []
         lista.replaceChildren(...estado.itens.map(editor))
         const usados = new Set(estado.itens.map((i) => i.nome.trim().toLowerCase()))
         const cheio = estado.itens.length >= MAX_ITENS
@@ -119,7 +125,7 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
       redesenhar()
       return {
         titulo: ramo.itensQ,
-        corpo: [el('p', { class: 'muted', texto: t('quiz.itens.dica', { max: MAX_ITENS }) }), sugestoes, lista, adicionar],
+        corpo: [...montarImportacao({ ramo, estado, aoMudar: redesenhar }), el('p', { class: 'muted', texto: t('quiz.itens.dica', { max: MAX_ITENS }) }), sugestoes, lista, adicionar],
         validar: () => { const k = validarItens(estado.itens, ramo); return k ? t(k, { max: MAX_ITENS }) : null },
       }
     },
@@ -195,6 +201,7 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
       if (!ultimo) { atual++; desenhar(); window.scrollTo(0, 0); return }
       continuar.disabled = true
       erro.hidden = true
+      const textoBotao = continuar.textContent
       try {
         await salvarNegocio(supabase, cliente.id,
           { ...estado, insta: normalizarInsta(estado.insta) },
@@ -202,13 +209,15 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
             const preco = ramo.noPromo ? null : precoDoTexto(i.precoTexto)
             return { id: i.id, nome: i.nome, descricao: i.descricao, preco,
               preco_promo: ramo.noPromo ? null : (preco ? precoDoTexto(i.promoTexto) : null), fotos: i.fotos }
-          }))
+          }),
+          (feitas, total) => { continuar.textContent = t('quiz.salvando.fotos', { feitas, total }) })
         await aoSalvar()
       } catch (e) {
         console.error(e)
         erro.textContent = t('erro.geral')
         erro.hidden = false
         continuar.disabled = false
+        continuar.textContent = textoBotao
       }
     })
     mostrar(logo(), form)
