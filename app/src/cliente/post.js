@@ -164,10 +164,10 @@ export function telaPost(ctx, post, aoVoltar) {
   // ---------- Enviar para a rede social: a janela de compartilhar do celular (Instagram, WhatsApp…) ----------
   // Não aparece no vídeo para gravar (o vídeo editado tem o próprio botão) nem em aparelho que não compartilha.
   // O botão diz a rede do post, para o cliente achar o app certo na lista do celular.
-  const rotuloEnviar = t(`post.enviar.${post.rede}`)
+  const rotuloEnviar = t(`post.enviar.${post.rede}.${post.tipo}`) // ex.: "Enviar para o Instagram – Story"
   const enviar = aparelhoEnvia() && (ehLista || (medida && post.formato !== 'gravar'))
     ? el('button', { type: 'button', 'data-acao': 'enviar', texto: rotuloEnviar }) : null
-  const sobreEnviar = enviar ? el('p', { class: 'pequeno muted', texto: ehLista ? t('post.enviar.dica.lista') : t('post.enviar.dica', { app: t(`post.enviar.app.${post.rede}`) }) }) : null
+  const sobreEnviar = enviar ? el('p', { class: 'pequeno muted', texto: t(`post.enviar.dica.${post.rede}.${post.tipo}`) }) : null
   // Os arquivos ficam prontos depois do desenho (o compartilhar não pode esperar depois do toque).
   function atualizarEnviar() {
     if (!enviar) return
