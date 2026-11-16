@@ -47,7 +47,7 @@ export function lerLista(texto) {
     const preco = lerPreco(partes[1])
     const promo = lerPreco(partes[2])
     const erro = (chave) => erros.push({ linha, chave })
-    if ((nome.match(/\p{L}/gu) || []).length < 1) return erro('importar.erro.nome')
+    if (nome.length < 2 || nome.length > 80) return erro('importar.erro.nome')
     if (preco === 'erro' || promo === 'erro') return erro('importar.erro.preco')
     if (typeof promo === 'number' && preco === null) return erro('importar.erro.semnormal')
     if (typeof promo === 'number' && typeof preco === 'number' && promo > preco) return erro('importar.erro.promomaior')

@@ -15,15 +15,16 @@ describe('lerLista', () => {
     expect(r.linhas[0]).toMatchObject({ preco: 10, promo: undefined })
   })
   test('formato brasileiro e separadores', () => {
-    expect(lerLista('A;R$ 2.199,90;1.999,90').linhas[0]).toMatchObject({ preco: 2199.9, promo: 1999.9 })
+    expect(lerLista('AB;R$ 2.199,90;1.999,90').linhas[0]).toMatchObject({ preco: 2199.9, promo: 1999.9 })
     expect(lerLista('Gramado,2199,1799').linhas[0]).toMatchObject({ nome: 'Gramado', preco: 2199, promo: 1799 })
-    expect(lerLista('A;1,50;1').linhas[0]).toMatchObject({ preco: 1.5, promo: 1 })
+    expect(lerLista('AB;1,50;1').linhas[0]).toMatchObject({ preco: 1.5, promo: 1 })
   })
   test('erros', () => {
-    expect(lerLista('A;0;10').erros).toEqual([{ linha: 1, chave: 'importar.erro.semnormal' }])
-    expect(lerLista('A;100;150').erros).toEqual([{ linha: 1, chave: 'importar.erro.promomaior' }])
-    expect(lerLista('X;abc;1').erros).toEqual([{ linha: 1, chave: 'importar.erro.preco' }])
-    expect(lerLista('1;5;5').erros).toEqual([{ linha: 1, chave: 'importar.erro.nome' }])
+    expect(lerLista('AB;0;10').erros).toEqual([{ linha: 1, chave: 'importar.erro.semnormal' }])
+    expect(lerLista('AB;100;150').erros).toEqual([{ linha: 1, chave: 'importar.erro.promomaior' }])
+    expect(lerLista('XY;abc;1').erros).toEqual([{ linha: 1, chave: 'importar.erro.preco' }])
+    expect(lerLista('A;5;5').erros).toEqual([{ linha: 1, chave: 'importar.erro.nome' }])
+    expect(lerLista('a'.repeat(81) + ';5;5').erros).toEqual([{ linha: 1, chave: 'importar.erro.nome' }])
   })
 })
 
