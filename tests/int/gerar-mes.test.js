@@ -98,3 +98,19 @@ test('redes vazias → 400 e nada é gravado', async () => {
   const { data: meses } = await servico().from('meses').select('id').eq('cliente_id', a.id)
   expect(meses).toEqual([])
 })
+
+it('criar_mes grava preco_de e preco_por', async () => {
+  const a = await pronto()
+  const s = servico()
+  const post = {
+    data: '2026-12-02', rede: 'instagram', tipo: 'feed', formato: 'arte', pilar: 'demo',
+    titulo: 'Título', legenda: 'Legenda', hashtags: ['#a'], horario: '19:00', roteiro: null,
+    produto_id: null, ordem: 0, preco_de: 2199, preco_por: 1799,
+  }
+  const r = await s.rpc('criar_mes', {
+    p_cliente: a.id, p_ano_mes: '2026-12', p_estrategia: 'vender', p_origem: 'modelo', p_posts: [post],
+  })
+  expect(r.error).toBeNull()
+  const { data } = await s.from('posts').select('preco_de,preco_por').eq('mes_id', r.data)
+  expect(data).toEqual([{ preco_de: 2199, preco_por: 1799 }])
+})

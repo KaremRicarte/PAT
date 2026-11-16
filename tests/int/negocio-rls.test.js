@@ -160,3 +160,17 @@ test('cliente não grava nem altera produto de outro', async () => {
   const { data } = await servico().from('produtos').select('nome, cliente_id').eq('id', produtos[0].id).single()
   expect(data).toEqual({ nome: produtos[0].nome, cliente_id: b.id })
 })
+
+it('produto guarda preço promocional e até 6 fotos', async () => {
+  const a = await novoCliente({ senha_provisoria: false })
+  await novoNegocio(a)
+  const fotos = (n) => Array.from({ length: n }, (_, i) => `${a.id}/p${i}.jpg`)
+  const base = { cliente_id: a.id, nome: 'Furadeira' }
+  const ok = await a.db.from('produtos').upsert({ ...base, preco: 2199, preco_promo: 1799, fotos: fotos(6) }).select('preco_promo,fotos').single()
+  expect(ok.error).toBeNull()
+  expect(ok.data.preco_promo).toBe(1799)
+  expect(ok.data.fotos).toHaveLength(6)
+  expect((await a.db.from('produtos').insert({ ...base, preco: 2199, fotos: fotos(7) })).error).not.toBeNull()
+  expect((await a.db.from('produtos').insert({ ...base, preco: 2199, preco_promo: 2500 })).error).not.toBeNull()
+  expect((await a.db.from('produtos').insert({ ...base, preco: null, preco_promo: 10 })).error).not.toBeNull()
+})
