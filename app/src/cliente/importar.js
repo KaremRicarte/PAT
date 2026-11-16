@@ -65,7 +65,7 @@ function precoParaTexto(v) {
 export function juntarImportacao(itens, { linhas = [], erros = [], arquivosDeFoto = [] }, { noPromo = false, novoId } = {}) {
   const lista = itens.map((i) => ({
     ...i,
-    fotos: i.fotos ?? (i.foto_path ? [{ path: i.foto_path }] : []),
+    fotos: [...(i.fotos ?? (i.foto_path ? [{ path: i.foto_path }] : []))],
     promoTexto: i.promoTexto ?? '',
     fotosNovas: 0,
   }))

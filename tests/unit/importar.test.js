@@ -112,4 +112,11 @@ describe('juntarImportacao', () => {
     expect(r.itens).toHaveLength(1)
     expect(r.resumo.erros).toHaveLength(1)
   })
+  test('não mexe na lista original', () => {
+    const atual = [{ id: 'a', nome: 'Gramado', precoTexto: '2000', fotos: [{ path: 'p' }] }, { id: 'b', nome: 'Bonito', foto_path: 'x' }]
+    const antes = structuredClone(atual)
+    juntarImportacao(atual, ent('Gramado;2199
+Novo', [arq('gramado_1.jpg'), arq('bonito_1.jpg')]), opc())
+    expect(atual).toEqual(antes)
+  })
 })
