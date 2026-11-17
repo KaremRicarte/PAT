@@ -1,5 +1,5 @@
 // Liga o desenho aos dados: carrega foto e logo do Storage, espera as fontes e gera os PNGs.
-import { pecasDaArte, fotoDoPost } from '../cliente/situacao.js'
+import { pecasDaArte, fotoDoPost, fotosDoPost } from '../cliente/situacao.js'
 import { lookDoRamo, fontesDoLook } from './looks.js'
 import { medidaDaArte, assinaturaDaArte } from './texto.js'
 import { desenharArte } from './desenho.js'
@@ -182,7 +182,7 @@ export async function miniatura(supabase, post, ctxDados, largura = 240) {
 async function prepararVideo(supabase, post, { negocio, produtos, ramo }, fotoPaths) {
   const look = lookDoRamo(ramo?.id)
   const pecas = pecasDaArte(post, negocio, ramo)
-  const paths = (fotoPaths ?? [fotoDoPost(post, produtos ?? [], ramo)]).filter(Boolean)
+  const paths = (fotoPaths ?? fotosDoPost(post, produtos ?? [], ramo)).filter(Boolean)
   const logoPath = pecas.assinatura.logo ? negocio.logo_path : null
   const soltar = prenderImagens([...paths, logoPath])
   const [logo, , ...fotos] = await Promise.all([

@@ -55,28 +55,48 @@ export function gradeDoMes(anoMes) {
   return dias
 }
 
+// Fotos de um item: as do banco, ou a foto única de antes (foto_path) quando não houver lista.
+export const fotosDoProduto = (p) => (p.fotos?.length ? p.fotos : p.foto_path ? [p.foto_path] : [])
+
+// Todas as fotos de todos os itens, na ordem dos itens e sem repetir.
+export const todasAsFotos = (produtos) => [...new Set(produtos.flatMap(fotosDoProduto))]
+
 // Foto do post (null = arte só com texto):
 // 1. sem_foto em ramo só de texto -> nenhuma; 2. a foto escolhida para o post;
-// 3. post de um serviço -> só a foto DELE (nunca a de outro serviço);
-// 4. post geral (fora dos ramos só de texto) -> reveza as fotos pela ordem do post;
+// 3. post de um item -> só as fotos DELE, revezando pela ordem do post (nunca a de outro item);
+// 4. post geral (fora dos ramos só de texto) -> reveza todas as fotos pela ordem do post;
 //    com uma foto só, alterna foto e só texto, para não repetir a mesma foto o mês todo.
 export function fotoDoPost(post, produtos, ramo) {
   const soTexto = Boolean(ramo?.textOnly)
   if (post.sem_foto && soTexto) return null
   if (post.foto_path) return post.foto_path
   const produto = post.produto_id ? produtos.find((p) => p.id === post.produto_id) : null
-  if (produto) return produto.foto_path ?? null
+  if (produto) {
+    const f = fotosDoProduto(produto)
+    return f.length ? f[(post.ordem ?? 0) % f.length] : null
+  }
   if (soTexto) return null
-  const fotos = produtos.map((p) => p.foto_path).filter(Boolean)
+  const fotos = todasAsFotos(produtos)
   if (!fotos.length) return null
   const ciclo = fotos.length === 1 ? [fotos[0], null] : fotos
   return ciclo[(post.ordem ?? 0) % ciclo.length]
 }
 
-// Quantos serviços estão sem foto (para o aviso do calendário). Nos ramos só de texto a foto é opcional.
+// Fotos para a montagem de vídeo: as do item a partir da foto da vez, até `max`; post geral -> só a foto da vez.
+export function fotosDoPost(post, produtos, ramo, max = 4) {
+  const primeira = fotoDoPost(post, produtos, ramo)
+  if (!primeira) return []
+  const produto = post.produto_id ? produtos.find((p) => p.id === post.produto_id) : null
+  const f = produto ? fotosDoProduto(produto) : []
+  const i = f.indexOf(primeira)
+  if (i < 0) return [primeira]
+  return [...f.slice(i), ...f.slice(0, i)].slice(0, max)
+}
+
+// Quantos itens estão sem foto (para o aviso do calendário). Nos ramos só de texto a foto é opcional.
 export function servicosSemFoto(produtos, ramo) {
   if (ramo?.textOnly) return 0
-  return produtos.filter((p) => !p.foto_path).length
+  return produtos.filter((p) => !fotosDoProduto(p).length).length
 }
 
 // Textos da arte. Legenda: gancho (1º), meio (2º) e convite (penúltimo; o último se houver até 3).

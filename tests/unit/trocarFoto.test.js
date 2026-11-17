@@ -121,3 +121,10 @@ test('post com outra gravação em andamento: avisa para esperar em vez de ficar
   liberar()
   await primeira
 })
+
+test('opcoesDeFoto lista todas as fotos de todos os itens, sem repetir', () => {
+  const ps = [{ id: 'x', fotos: ['a', 'b'] }, { id: 'y', fotos: ['b', 'c'] }]
+  const { fotos } = opcoesDeFoto(ps, RAMOS.beleza, { produto_id: 'x', ordem: 1, foto_path: null, sem_foto: false })
+  expect(fotos.map((f) => f.path)).toEqual(['a', 'b', 'c'])
+  expect(fotos.find((f) => f.atual).path).toBe('b')
+})

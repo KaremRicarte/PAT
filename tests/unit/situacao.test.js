@@ -137,3 +137,31 @@ test('proximoEstado: as 6 ações', () => {
   expect(r.estado).toBe('aprovado')
   expect(new Date(r.postado_em).toISOString()).toBe(r.postado_em)
 })
+
+import { fotoDoPost as fotoDoPostN, fotosDoPost } from '../../app/src/cliente/situacao.js'
+
+describe('fotos do item', () => {
+  const prods = [
+    { id: 'x', fotos: ['a', 'b', 'c'], foto_path: 'a' },
+    { id: 'y', fotos: ['d'], foto_path: 'd' },
+  ]
+  const semFotos = { id: 'z', fotos: [], foto_path: null }
+  test('post de item reveza as fotos dele', () => {
+    const r = [0, 1, 2, 3].map((ordem) => fotoDoPostN({ produto_id: 'x', ordem }, prods, RAMOS.beleza))
+    expect(r).toEqual(['a', 'b', 'c', 'a'])
+    expect(fotoDoPostN({ produto_id: 'z', ordem: 0 }, [semFotos], RAMOS.beleza)).toBeNull()
+  })
+  test('post geral reveza todas as fotos', () => {
+    const r = [0, 1, 2, 3, 4].map((ordem) => fotoDoPostN({ produto_id: null, ordem }, prods, RAMOS.beleza))
+    expect(r).toEqual(['a', 'b', 'c', 'd', 'a'])
+  })
+  test('fotosDoPost devolve até 4 fotos do item começando pela da vez', () => {
+    const p = [{ id: 'x', fotos: ['a', 'b', 'c', 'd', 'e'] }]
+    expect(fotosDoPost({ produto_id: 'x', ordem: 2 }, p, RAMOS.beleza)).toEqual(['c', 'd', 'e', 'a'])
+    expect(fotosDoPost({ produto_id: null, ordem: 1 }, prods, RAMOS.beleza)).toEqual(['b'])
+    expect(fotosDoPost({ produto_id: 'z', ordem: 0 }, [semFotos], RAMOS.beleza)).toEqual([])
+  })
+  test('servicosSemFoto usa fotos', () => {
+    expect(servicosSemFoto([...prods, semFotos], RAMOS.beleza)).toBe(1)
+  })
+})

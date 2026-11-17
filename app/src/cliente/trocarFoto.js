@@ -2,7 +2,7 @@
 // e a gravação da escolha (foto nova: reduz, envia ao Storage e grava o caminho).
 import { t } from '../textos.js'
 import { el, aviso } from '../comum.js'
-import { fotoDoPost } from './situacao.js'
+import { fotoDoPost, fotosDoProduto, todasAsFotos } from './situacao.js'
 import { reduzirFoto, FOTO_MAX } from './negocio.js'
 import { gravarMudanca, postOcupado } from './acoesPost.js'
 import { carregarImagem, prenderImagens, esquecerImagem } from '../artes/imagens.js'
@@ -16,7 +16,7 @@ export const caminhoDaFotoDoPost = (uid, postId) => `${uid}/posts/${postId}.jpg`
 // `atual` marca a que a arte usa agora (a mesma regra de fotoDoPost). semFoto: só nos ramos textOnly.
 export function opcoesDeFoto(produtos, ramo, post) {
   const atual = fotoDoPost(post, produtos, ramo)
-  const paths = [...new Set([post.foto_path, ...produtos.map((p) => p.foto_path)].filter(Boolean))]
+  const paths = [...new Set([post.foto_path, ...todasAsFotos(produtos)].filter(Boolean))]
   return {
     fotos: paths.map((path) => ({ path, atual: path === atual })),
     semFoto: Boolean(ramo?.textOnly),
@@ -43,7 +43,7 @@ async function desenharMini(supabase, path, caixa) {
 // Tocar na foto atual só fecha a janela.
 export function abrirTrocaDeFoto({ supabase, post, produtos, ramo, aoEscolher }) {
   const { fotos, semFoto } = opcoesDeFoto(produtos ?? [], ramo, post)
-  const nomePorPath = new Map((produtos ?? []).filter((p) => p.foto_path).map((p) => [p.foto_path, p.nome]))
+  const nomePorPath = new Map((produtos ?? []).flatMap((p) => fotosDoProduto(p).map((f) => [f, p.nome])))
   const ids = { titulo: 'trocar-foto-titulo', dica: 'trocar-foto-dica', semfoto: 'trocar-foto-sem' }
   const semFotoAtual = semFoto && post.sem_foto
 
