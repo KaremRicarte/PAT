@@ -28,7 +28,7 @@ calendário de datas comemorativas (projeto separado).
 |---|---|
 | Texto | IA (Claude) com gancho, retenção, desejo de compra e reputação, pesados pela estratégia do mês |
 | Foto × legenda | **A legenda nasce da foto**: a IA vê cada foto, guarda uma descrição, e escreve o post a partir dela |
-| Post sem foto do cliente | **Banco de imagens (Pexels)** nos posts de tema geral, sem repetir foto entre clientes; **só texto** como reserva. Serviço sem foto continua pedindo a foto real |
+| Post sem foto do cliente | Nos posts de tema geral, nesta ordem: **banco próprio da Karem** (por ramo) → **Pexels** → **Pixabay** → **só texto**. Fotos do Pexels/Pixabay não se repetem entre clientes. Serviço sem foto continua pedindo a foto real |
 | Organização | 4A (textos + fotos) primeiro; 4B (narração) depois |
 | Tempo de espera | **Opção 2:** o mês aparece na hora (modelos); a IA melhora os posts em seguida, semana a semana, mostrando o progresso |
 
@@ -56,10 +56,18 @@ calendário de datas comemorativas (projeto separado).
 
 ### 3.4 Post sem foto
 - **Post de um serviço que não tem foto:** só texto (como hoje) e o aviso do calendário continua pedindo a foto real.
-- **Post de tema geral** (dica, bastidores, mitos e verdades…): a IA escolhe palavras de busca, o app busca no Pexels,
-  a IA escolhe a imagem que serve e escreve a partir dela. A foto é copiada para a pasta do cliente. Se nenhuma servir:
-  só texto.
-- Uma foto do Pexels usada por um cliente não é oferecida a outro.
+- **Post de tema geral** (dica, bastidores, mitos e verdades…): a IA define o tema da imagem e o app procura, nesta ordem:
+  1. **banco próprio** da Karem, nas fotos do ramo do cliente (já descritas pela IA, então a escolha é pela descrição);
+  2. **Pexels**; 3. **Pixabay** (busca por palavras; a IA vê as candidatas e escolhe a que serve).
+  A IA escreve a partir da foto escolhida, que é copiada para a pasta do cliente. Se nenhuma servir: só texto.
+- Uma foto do Pexels ou do Pixabay usada por um cliente não é oferecida a outro.
+
+### 3.6 Banco de imagens próprio (painel da administradora)
+- Nova área **"Banco de imagens"** no painel: escolher o ramo, subir várias fotos de uma vez (arrastar ou escolher),
+  ver as fotos do ramo em grade com a descrição feita pela IA e o selo "serve / não serve", e remover fotos.
+- Cada foto enviada é descrita e avaliada pela IA uma vez (mesma regra das fotos dos clientes).
+- Aviso fixo na tela: "Use só fotos suas ou com licença que permita uso nos posts de vários clientes."
+- O cliente não vê o banco; as fotos chegam a ele já escolhidas nos posts.
 
 ### 3.5 Ações no post
 - **"Gerar outro":** passa a pedir à IA um texto novo para o mesmo lugar (mesma foto), na hora (alguns segundos, com
@@ -88,13 +96,13 @@ calendário de datas comemorativas (projeto separado).
 ## 5. Custos e limites
 
 - Modelo: **Claude Opus 5.5** (o mais capaz para esse uso). Estimativa: ~US$ 1 por cliente por mês para escrever o
-  mês; ~R$ 0,03 por foto descrita (uma vez só). Pexels gratuito.
+  mês; ~R$ 0,03 por foto descrita (uma vez só), inclusive as do banco próprio. Pexels e Pixabay gratuitos.
 - **Limite por cliente** para evitar custo descontrolado: no máximo N chamadas de IA por mês por cliente (valor
   inicial a definir no plano, folgado para o uso normal: mês + refazer + trocas). Passou do limite: segue com modelos,
   sem erro.
 - **Registro de uso:** cada chamada grava cliente, tipo (foto, post, troca), tokens e custo estimado — base para o
   painel e para a cobrança no futuro (sem tela agora).
-- Chaves: `ANTHROPIC_API_KEY` e `PEXELS_API_KEY` como segredos do Supabase (a Karem cria as contas com o passo a passo).
+- Chaves: `ANTHROPIC_API_KEY`, `PEXELS_API_KEY` e `PIXABAY_API_KEY` como segredos do Supabase (a Karem cria as contas com o passo a passo).
 
 ## 6. Abordagens consideradas (para o tempo de geração)
 
@@ -115,7 +123,7 @@ calendário de datas comemorativas (projeto separado).
 6. "Gerar outro" e "Trocar imagem" usam a IA na hora, com limite de espera (~20 s) e o modelo como reserva.
 7. Refazer posts (depois de mudar serviços) e trocar estratégia voltam o post para modelo e entram na mesma fila de
    melhoria.
-8. Sem tela nova no painel da administradora agora; o uso fica registrado no banco.
+8. Sem tela de uso/custo no painel agora (a única tela nova do painel é o banco de imagens, §3.6); o uso fica registrado no banco.
 9. **Qual foto o post usa:** a regra de hoje escolhe (fotos do serviço revezando pela ordem do post; post geral → banco de
    imagens), **pulando as fotos reprovadas**; a IA escreve a partir dessa foto e ela é gravada no post (`foto_path`).
    Se o cliente já tinha escolhido uma foto no post ("Trocar imagem"), a IA escreve a partir da dele.
@@ -128,8 +136,13 @@ calendário de datas comemorativas (projeto separado).
     continuar igual ao que ela leu (gravação condicional no banco): **qualquer ação do cliente durante o trabalho vence.**
 13. **Limite por cliente:** conta toda chamada à IA (fotos, posts, novas tentativas, trocas), por mês do calendário; valor
     inicial 400. Estourou: tudo segue com modelos, em silêncio; "Gerar outro" continua contando nas 10 trocas como hoje.
-14. **Post de tema geral** = post sem serviço ligado. A licença do Pexels não exige crédito ao fotógrafo; guardamos o id e o
-    nome do autor mesmo assim. Se o banco não tiver foto inédita que sirva, o post fica só texto.
+14. **Post de tema geral** = post sem serviço ligado. As licenças do Pexels e do Pixabay não exigem crédito ao fotógrafo;
+    guardamos a origem, o id e o autor mesmo assim. Se nenhuma fonte tiver foto que sirva, o post fica só texto.
+17. **Banco próprio:** as fotos ficam num espaço só da administradora (o cliente não lista nem baixa o banco); ao ser usada,
+    a foto é copiada para a pasta do cliente. A mesma foto do banco próprio **pode** aparecer para clientes diferentes (o
+    banco é pequeno), mas o mesmo cliente não recebe a mesma foto de novo por 90 dias.
+18. **Ordem de busca:** banco próprio → Pexels → Pixabay → só texto. Chave do Pixabay (`PIXABAY_API_KEY`, gratuita) entra
+    nos segredos junto com as outras.
 15. **Modelo:** Claude Opus 5.5 em todas as chamadas (fotos, posts, trocas); o registro de uso guarda os tokens de cada uma.
 16. **Clientes e meses atuais:** ao publicar, os posts que faltam do mês em andamento (não aprovados, não postados) entram na
     fila uma vez. O selo "✨ Escrito para você" aparece só nos posts escritos pela IA.
