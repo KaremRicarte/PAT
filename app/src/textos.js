@@ -437,6 +437,22 @@ const pt = {
   'admin.reativar.confirma': 'Reativar o acesso de {nome}?',
   'admin.vazio': 'Nenhum cliente ainda.',
 
+  // banco de imagens (painel)
+  'banco.titulo': 'Banco de imagens',
+  'banco.licenca': 'Use só fotos suas ou com licença que permita uso nos posts de vários clientes.',
+  'banco.enviar': 'Enviar fotos',
+  'banco.escolha': 'Escolha o ramo primeiro.',
+  'banco.resumo': '{total} fotos · {servem} servem',
+  'banco.vazio': 'Nenhuma foto neste ramo ainda.',
+  'banco.serve': 'Serve',
+  'banco.naoserve': 'Não serve',
+  'banco.sem': 'Sem descrição',
+  'banco.remover': 'Remover',
+  'banco.remover.confirma': 'Remover esta foto do banco?',
+  'banco.enviando': 'Enviando foto {i} de {n}…',
+  'banco.descrevendo': 'Descrevendo…',
+  'banco.falhas': '{n} foto(s) não puderam ser enviadas (formato não aceito, como HEIC).',
+
   // artes
   'arte.arraste': 'Arraste para o lado →',
 }

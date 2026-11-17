@@ -2,6 +2,7 @@ import { t } from '../textos.js'
 import { el, logo, campo, mostrar, aoEnviar, botaoSair } from '../comum.js'
 import { listarClientes, criarCliente, redefinirSenha, definirSituacao, definirRamo, definirRedes } from './dados.js'
 import { listaRamos } from './ramo.js'
+import { areaBanco } from './banco.js'
 
 export function telaSoAdmin(supabase) {
   mostrar(logo(),
@@ -41,7 +42,7 @@ export async function telaPainel(supabase) {
   mostrar(
     el('header', { class: 'topo' }, logo(), botaoSair(supabase)),
     el('div', { class: 'titulo' }, el('h1', { texto: t('admin.titulo') }), botaoNovo),
-    formulario, aviso, lista,
+    formulario, aviso, lista, areaBanco(),
   )
 
   async function recarregar() {
