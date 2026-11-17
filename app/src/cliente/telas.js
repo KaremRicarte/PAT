@@ -1,7 +1,10 @@
 import { t } from '../textos.js'
 import { el, logo, mostrar, telaEntrar, botaoSair, formSenha, aviso } from '../comum.js'
 import { CONTATO_ADMIN, linkWhatsApp } from '../contato.js'
-import { telaQuiz } from './quiz.js'
+import { telaQuiz, telaPassos } from './quiz.js'
+import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
+import { PERGUNTAS_FIXAS, estadoDoNegocio } from './perguntas.js'
+import { salvarDadosNegocio, normalizarInsta } from './negocio.js'
 import { telaQuizMes } from './mes.js'
 import { telaCalendario } from './calendario.js'
 import { depoisDeSalvar } from './refazer.js'
@@ -63,9 +66,15 @@ export function desenhar(tela, ctx) {
   }
 
   if (tela === 'quiz-negocio') {
-    // se o cadastro ficou pela metade, reabre com o que já foi salvo
-    const inicial = ctx.negocio ? { negocio: ctx.negocio, produtos: ctx.produtos } : null
-    return telaQuiz({ supabase, cliente, inicial, aoSalvar: atualizar })
+    const ramo = RAMOS[cliente.ramo]
+    return telaPassos({
+      perguntas: PERGUNTAS_FIXAS, rotuloFinal: t('quiz.salvar'),
+      ctx: { ramo, estado: estadoDoNegocio(ctx.negocio, ctx.produtos, ramo), supabase },
+      aoSalvar: async (estado) => {
+        await salvarDadosNegocio(supabase, cliente.id, { ...estado, insta: normalizarInsta(estado.insta) })
+        await atualizar()
+      },
+    })
   }
 
   if (tela === 'quiz-mes') return telaQuizMes(ctx)

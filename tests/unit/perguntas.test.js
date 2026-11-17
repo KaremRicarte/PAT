@@ -41,7 +41,7 @@ test('resumoDaPergunta', () => {
 
 test('nomesDasRedes na ordem de REDES', () => {
   expect(nomesDasRedes(['whatsapp', 'instagram'])).toBe('Instagram, WhatsApp')
-  expect(nomesDasRedes(['instagram', 'facebook', 'tiktok', 'whatsapp'])).toBe('Instagram, Facebook, TikTok, WhatsApp')
+  expect(nomesDasRedes(['instagram', 'facebook', 'tiktok', 'whatsapp'])).toBe('Instagram, Facebook, TikTok / Reels, WhatsApp')
   expect(nomesDasRedes([])).toBe('')
   expect(nomesDasRedes(undefined)).toBe('')
 })

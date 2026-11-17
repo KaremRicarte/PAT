@@ -9,8 +9,9 @@ test.each([
   [{ sessao: {}, cliente: c() }, 'sem-ramo'],
   [{ sessao: {}, cliente: c({ ramo: 'padaria' }) }, 'sem-ramo'],
   [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: null }, 'quiz-negocio'],
-  // negócio salvo pela metade (sem itens): volta ao quiz em vez de travar no quiz do mês
-  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [], mes: null }, 'quiz-negocio'],
+  // negócio sem itens e sem mês: os itens agora são pedidos junto com o mês
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [], mes: null }, 'quiz-mes'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [], mes: {} }, 'mes'],
   [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [{}], mes: null }, 'quiz-mes'],
   [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [{}], mes: {} }, 'mes'],
   [{ sessao: {}, cliente: c({ ramo: 'beleza', senha_provisoria: true }), negocio: {}, mes: {} }, 'trocar-senha'],

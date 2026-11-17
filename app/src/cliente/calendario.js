@@ -1,5 +1,6 @@
 // Calendário do mês: topo, resumo, grade dos dias e a lista do dia escolhido.
 import { t } from '../textos.js'
+import { telaMeuNegocio } from './meuNegocio.js'
 import { el, logo, mostrar, botaoSair, carregando, aviso, filhosValidos } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
@@ -107,7 +108,6 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
   const proximo = alvo
     ? el('button', { type: 'button', texto: t('mes.gerarproximo', { mes: nomeDoMes(alvo.anoMes) }), onclick: () => telaQuizMes(ctx) })
     : null
-  const editar = el('button', { type: 'button', class: 'secundario', texto: t('mes.editar'), onclick: () => editarNegocio(ctx) })
   const trocaMes = meses.length > 1
     ? el('div', { class: 'chips' }, meses.slice(0, 3).map((m) => el('button', {
       type: 'button', class: m.id === mes.id ? 'chip ativo' : 'chip', 'aria-pressed': String(m.id === mes.id),
@@ -250,11 +250,13 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
   desenharLista()
   mostrar(
     el('header', { class: 'topo' }, logo(),
-      el('div', { class: 'topo-dir' }, sino, botaoSair(supabase))),
+      el('div', { class: 'topo-dir' },
+        el('button', { type: 'button', class: 'secundario', texto: t('meu.botao'), onclick: () => telaMeuNegocio(ctx) }),
+        sino, botaoSair(supabase))),
     trocaMes,
     el('h1', { texto: t('mes.titulo', { mes: nomeDoMes(mes.ano_mes) }) }),
     el('p', {}, el('span', { class: 'selo neutro', texto: rotuloEstrategia(mes.estrategia, ctx.ramo) })),
-    el('div', { class: 'acoes' }, proximo, editar),
+    el('div', { class: 'acoes' }, proximo),
     dicas,
     resumo,
     avisoFotos,

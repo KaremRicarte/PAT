@@ -310,3 +310,11 @@ a.botao:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
 .redes-admin { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .rede-caixa { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 14px; cursor: pointer; }
 .rede-caixa input { width: 20px; height: 20px; margin: 0; }
+
+/* ===== Meu negócio ===== */
+.linha-negocio { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.linha-negocio > div { min-width: 0; }
+.linha-negocio .rotulo-linha { display: block; font-size: 14px; color: var(--muted); }
+.linha-negocio .valor { display: flex; align-items: center; gap: 6px; font-weight: 700; overflow-wrap: anywhere; }
+.linha-negocio button { min-height: 44px; min-width: 44px; flex: none; }
+.quadrado-cor { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); display: inline-block; }
