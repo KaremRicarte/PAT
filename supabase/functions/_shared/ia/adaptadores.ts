@@ -19,10 +19,11 @@ const bloco = (c: ConteudoIA): Bloco => (c.tipo === 'texto'
   : { type: 'image', source: { type: 'url', url: c.url } })
 
 // ChamarIA com o Claude Opus 5.5. Sem chave: sempre { ok:false, motivo:'erro' } (o app segue com os modelos).
-export function criarChamarIA(apiKey: string | undefined, opcoes: { timeoutMs: number, maxRetries?: number }): ChamarIA {
+// Sem novas tentativas escondidas no SDK (maxRetries: 0): cada chamada à API passa por comLimiteEUso,
+// que conta e registra cada uma no limite do mês. Quem quiser tentar de novo chama outra vez.
+export function criarChamarIA(apiKey: string | undefined, opcoes: { timeoutMs: number }): ChamarIA {
   if (!apiKey) return async () => ({ ok: false, motivo: 'erro' })
-  const maxRetries = opcoes.maxRetries ?? 1
-  const client = new Anthropic({ apiKey, maxRetries, timeout: opcoes.timeoutMs })
+  const client = new Anthropic({ apiKey, maxRetries: 0, timeout: opcoes.timeoutMs })
 
   return async (pedido): Promise<RespostaIA> => {
     try {
@@ -39,9 +40,9 @@ export function criarChamarIA(apiKey: string | undefined, opcoes: { timeoutMs: n
         system: pedido.sistema,
         messages: [{ role: 'user', content: pedido.conteudo.map(bloco) }],
       }, {
-        // o timeout do SDK vale por tentativa; o signal corta o total (tentativas incluídas)
+        // uma tentativa só; o signal garante o corte mesmo se o timeout do SDK não pegar
         timeout: opcoes.timeoutMs,
-        maxRetries,
+        maxRetries: 0,
         signal: AbortSignal.timeout(opcoes.timeoutMs),
       })
 
