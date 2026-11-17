@@ -28,7 +28,7 @@ calendário de datas comemorativas (projeto separado).
 |---|---|
 | Texto | IA (Claude) com gancho, retenção, desejo de compra e reputação, pesados pela estratégia do mês |
 | Foto × legenda | **A legenda nasce da foto**: a IA vê cada foto, guarda uma descrição, e escreve o post a partir dela |
-| Post sem foto do cliente | Nos posts de tema geral, nesta ordem: **banco próprio da Karem** (por ramo) → **Pexels** → **Pixabay** → **só texto**. Fotos do Pexels/Pixabay não se repetem entre clientes. Serviço sem foto continua pedindo a foto real |
+| Post sem foto do cliente | Nos posts de tema geral, nesta ordem: **fotos do próprio cliente** (particulares, só ele usa) → **banco próprio da Karem** (por ramo) → **Pexels** → **Pixabay** → **só texto**. Fotos do Pexels/Pixabay não se repetem entre clientes. Serviço sem foto continua pedindo a foto real |
 | Organização | 4A (textos + fotos) primeiro; 4B (narração) depois |
 | Tempo de espera | **Opção 2:** o mês aparece na hora (modelos); a IA melhora os posts em seguida, semana a semana, mostrando o progresso |
 
@@ -57,8 +57,9 @@ calendário de datas comemorativas (projeto separado).
 ### 3.4 Post sem foto
 - **Post de um serviço que não tem foto:** só texto (como hoje) e o aviso do calendário continua pedindo a foto real.
 - **Post de tema geral** (dica, bastidores, mitos e verdades…): a IA define o tema da imagem e o app procura, nesta ordem:
-  1. **banco próprio** da Karem, nas fotos do ramo do cliente (já descritas pela IA, então a escolha é pela descrição);
-  2. **Pexels**; 3. **Pixabay** (busca por palavras; a IA vê as candidatas e escolhe a que serve).
+  1. **fotos do próprio cliente**: as de "Minhas fotos" (§3.7) e as dos serviços, escolhidas pela descrição;
+  2. **banco próprio** da Karem, nas fotos do ramo do cliente (já descritas pela IA, então a escolha é pela descrição);
+  3. **Pexels**; 4. **Pixabay** (busca por palavras; a IA vê as candidatas e escolhe a que serve).
   A IA escreve a partir da foto escolhida, que é copiada para a pasta do cliente. Se nenhuma servir: só texto.
 - Uma foto do Pexels ou do Pixabay usada por um cliente não é oferecida a outro.
 
@@ -68,6 +69,17 @@ calendário de datas comemorativas (projeto separado).
 - Cada foto enviada é descrita e avaliada pela IA uma vez (mesma regra das fotos dos clientes).
 - Aviso fixo na tela: "Use só fotos suas ou com licença que permita uso nos posts de vários clientes."
 - O cliente não vê o banco; as fotos chegam a ele já escolhidas nos posts.
+
+### 3.7 Minhas fotos (cliente)
+- Em **⚙ Meu negócio**, nova linha **"Minhas fotos"** (ex.: "8 fotos") com **Alterar**: a mesma faixa de fotos dos serviços
+  (adicionar várias, ✕ para remover, aviso de foto que não serve), para fotos do negócio que não são de um serviço:
+  fachada, equipe, ambiente, bastidores, clientes satisfeitos (com autorização).
+- **Particulares:** as fotos que o cliente sobe (em Minhas fotos ou nos serviços) só aparecem nos posts **dele**; nunca
+  vão para o banco da administradora nem para outro cliente.
+- Fotos que o app buscou no Pexels/Pixabay para um cliente ficam na pasta dele, mas **não** viram "dele": continuam
+  com a origem registrada e seguem a regra de não repetir entre clientes.
+- Decisão da Karem (17/11): "as fotos que os clientes sobem também podem ficar no banco de imagem, mas somente ele poderá
+  usar" (leitura B: fotos vindas de banco público não viram particulares).
 
 ### 3.5 Ações no post
 - **"Gerar outro":** passa a pedir à IA um texto novo para o mesmo lugar (mesma foto), na hora (alguns segundos, com
@@ -141,7 +153,9 @@ calendário de datas comemorativas (projeto separado).
 17. **Banco próprio:** as fotos ficam num espaço só da administradora (o cliente não lista nem baixa o banco); ao ser usada,
     a foto é copiada para a pasta do cliente. A mesma foto do banco próprio **pode** aparecer para clientes diferentes (o
     banco é pequeno), mas o mesmo cliente não recebe a mesma foto de novo por 90 dias.
-18. **Ordem de busca:** banco próprio → Pexels → Pixabay → só texto. Chave do Pixabay (`PIXABAY_API_KEY`, gratuita) entra
+18. **Ordem de busca:** fotos do cliente → banco próprio → Pexels → Pixabay → só texto.
+19. **Minhas fotos:** até 30 fotos por cliente; ficam em Meu negócio (são do negócio, não do mês); não refazem posts ao
+    serem alteradas (entram nos próximos posts de tema geral e no refazer, quando houver). Chave do Pixabay (`PIXABAY_API_KEY`, gratuita) entra
     nos segredos junto com as outras.
 15. **Modelo:** Claude Opus 5.5 em todas as chamadas (fotos, posts, trocas); o registro de uso guarda os tokens de cada uma.
 16. **Clientes e meses atuais:** ao publicar, os posts que faltam do mês em andamento (não aprovados, não postados) entram na
