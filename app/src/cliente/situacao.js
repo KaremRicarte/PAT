@@ -75,14 +75,15 @@ export function progressoIA(posts, hoje) {
 export const todasAsFotos = (produtos, fotosInfo) => [...new Set(produtos.flatMap((p) => fotosDoProduto(p, fotosInfo)))]
 
 // Foto do post (null = arte só com texto):
-// 1. sem_foto em ramo só de texto -> nenhuma; 2. a foto escolhida para o post;
+// 1. sem_foto em ramo só de texto -> nenhuma; 2. a foto escolhida para o post (mesmo reprovada pela IA:
+//    a escolha do cliente vale; o aviso aparece em Meu negócio);
 // 3. post de um item -> só as fotos DELE, revezando pela ordem do post (nunca a de outro item);
 // 4. post geral (fora dos ramos só de texto) -> reveza todas as fotos pela ordem do post;
 //    com uma foto só, alterna foto e só texto, para não repetir a mesma foto o mês todo.
 export function fotoDoPost(post, produtos, ramo, fotosInfo) {
   const soTexto = Boolean(ramo?.textOnly)
   if (post.sem_foto && soTexto) return null
-  if (post.foto_path && fotosQueServem([post.foto_path], fotosInfo).length) return post.foto_path
+  if (post.foto_path) return post.foto_path
   const produto = post.produto_id ? produtos.find((p) => p.id === post.produto_id) : null
   if (produto) {
     const f = fotosDoProduto(produto, fotosInfo)

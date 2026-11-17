@@ -30,3 +30,16 @@ describe('textoDoResumo', () => {
     expect(textoDoResumo({ ...base, naoAbriram: ['a.heic', 'b.heic'] })).toContain('⚠ 2 fotos não abriram (use JPG ou PNG): a.heic, b.heic')
   })
 })
+
+describe('textoDoAvisoDeFoto', async () => {
+  const { textoDoAvisoDeFoto } = await import('../../app/src/cliente/importarTela.js')
+  test('o motivo da IA é uma frase inteira, seguida de "Se puder, envie outra."', () => {
+    expect(textoDoAvisoDeFoto(2, 'A foto está escura; tente tirar perto de uma janela.'))
+      .toBe('Foto 2: A foto está escura; tente tirar perto de uma janela. Se puder, envie outra.')
+    expect(textoDoAvisoDeFoto(1, '  A foto está tremida ')).toBe('Foto 1: A foto está tremida. Se puder, envie outra.')
+  })
+  test('sem motivo: texto padrão', () => {
+    expect(textoDoAvisoDeFoto(3, null)).toBe('Foto 3: Ela ficou fora do ideal. Se puder, envie outra.')
+    expect(textoDoAvisoDeFoto(3, '  ')).toBe('Foto 3: Ela ficou fora do ideal. Se puder, envie outra.')
+  })
+})

@@ -46,12 +46,12 @@ export function telaMeuNegocio(ctx) {
           await salvarFotosDoNegocio(supabase, cliente.id, novo.fotosNegocio, aoProgredir, { aoFotosInfo: (m) => { ctx.fotosInfo = m } })
           const { negocio, produtos } = await carregarNegocio(supabase, cliente.id)
           const fotosInfo = await carregarFotosInfo(supabase, cliente.id)
-          ctx.fotosInfo = fotosInfo
-          return telaMeuNegocio({ ...ctx, negocio, produtos, fotosInfo })
+          // o mesmo objeto: a descrição que chega depois (aoFotosInfo) atualiza o ctx da tela mostrada
+          return telaMeuNegocio(Object.assign(ctx, { negocio, produtos, fotosInfo }))
         }
         await salvarDadosNegocio(supabase, cliente.id, { ...novo, insta: normalizarInsta(novo.insta) })
         const { negocio, produtos } = await carregarNegocio(supabase, cliente.id)
-        telaMeuNegocio({ ...ctx, negocio, produtos })
+        telaMeuNegocio(Object.assign(ctx, { negocio, produtos }))
       },
     })
   }

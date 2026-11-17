@@ -69,6 +69,13 @@ function pintarSelos(destino, item) {
     ...(novas ? [el('span', { class: 'selo neutro', texto: novas === 1 ? t('quiz.item.maisfoto') : t('quiz.item.maisfotos', { n: novas }) })] : []))
 }
 
+// Aviso de foto reprovada pela IA: o motivo (uma frase inteira) e depois "Se puder, envie outra.".
+export function textoDoAvisoDeFoto(n, motivo) {
+  const m = (motivo ?? '').trim()
+  const frase = m ? (/[.!?…]$/.test(m) ? m : `${m}.`) : t('quiz.item.fotos.motivo')
+  return t('quiz.item.fotos.ruim', { n, motivo: frase })
+}
+
 // Faixa de miniaturas do item. `urls` guarda os endereços temporários, para o quiz liberar ao redesenhar.
 export function faixaDeFotos({ item, supabase, urls, selos, fotosInfo, max = MAX_FOTOS }) {
   const faixa = el('div', { class: 'faixa-fotos' })
@@ -102,11 +109,12 @@ export function faixaDeFotos({ item, supabase, urls, selos, fotosInfo, max = MAX
       const x = el('button', { type: 'button', class: 'remover-foto', 'aria-label': t('quiz.item.fotos.remover', { n: i + 1 }), texto: '✕' })
       x.addEventListener('click', () => { item.fotos.splice(i, 1); pintar(true) })
       const info = foto.path ? fotosInfo?.get(foto.path) : null
-      const ruim = info?.serve === false
-        ? el('p', { class: 'aviso-foto', texto: t('quiz.item.fotos.ruim', { motivo: info.motivo || t('quiz.item.fotos.motivo') }) })
-        : null
-      return el('div', { class: ruim ? 'miniatura com-aviso' : 'miniatura' }, img, x, ruim)
-    })
+      const miniatura = el('div', { class: 'miniatura' }, img, x)
+      // o aviso ocupa a largura da faixa, logo depois da foto (não cabe embaixo da miniatura)
+      return info?.serve === false
+        ? [miniatura, el('p', { class: 'aviso-foto', texto: textoDoAvisoDeFoto(i + 1, info.motivo) })]
+        : [miniatura]
+    }).flat()
     adicionar.hidden = item.fotos.length >= max
     faixa.replaceChildren(...miniaturas, adicionar, entrada)
     pintarSelos(selos, item)

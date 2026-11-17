@@ -44,7 +44,7 @@ export async function definirRedes(id, redes) {
 export async function listarBanco(ramo) {
   const { data, error } = await supabase.from('fotos_ia')
     .select('path, descricao, serve, motivo')
-    .eq('origem', 'banco').eq('ramo', ramo).order('path')
+    .eq('origem', 'banco').eq('ramo', ramo).is('cliente_id', null).order('path')
   if (error) throw error
   return data
 }

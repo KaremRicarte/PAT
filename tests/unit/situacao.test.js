@@ -184,11 +184,13 @@ describe('fotos reprovadas pela análise', () => {
     expect(servicosSemFoto(produtos, ramo)).toBe(0)
     expect(servicosSemFoto(produtos, ramo, info)).toBe(1)
   })
-  test('fotoDoPost ignora foto reprovada', () => {
+  test('fotoDoPost ignora foto reprovada, menos a escolhida pelo cliente', () => {
     const produtos = [{ id: 1, fotos: ['x.jpg', 'y.jpg'] }]
     const post = { produto_id: 1, ordem: 0 }
     expect(fotoDoPost(post, produtos, { textOnly: false })).toBe('x.jpg')
     expect(fotoDoPost(post, produtos, { textOnly: false }, info)).toBe('y.jpg')
-    expect(fotoDoPost({ foto_path: 'x.jpg' }, produtos, { textOnly: false }, info)).not.toBe('x.jpg')
+    // a foto que o cliente escolheu para o post vale mesmo reprovada (o aviso aparece em Meu negócio)
+    expect(fotoDoPost({ foto_path: 'x.jpg' }, produtos, { textOnly: false }, info)).toBe('x.jpg')
+    expect(fotoDoPost({ foto_path: 'x.jpg', produto_id: 1, ordem: 0 }, produtos, { textOnly: false }, info)).toBe('x.jpg')
   })
 })
