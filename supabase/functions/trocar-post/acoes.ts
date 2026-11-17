@@ -79,7 +79,8 @@ export async function trocarPostDoCliente(entrada: unknown, deps: DepsTroca): Pr
   const modelo: CamposTroca = {
     titulo: novo.titulo, legenda: novo.legenda, hashtags: novo.hashtags, roteiro: novo.roteiro,
     pilar: novo.pilar, produto_id: novo.produto_id, preco_de: novo.preco_de, preco_por: novo.preco_por,
-    estado: 'gerado', foto_path: null, sem_foto: false, trocas: post.trocas + 1, origem: 'modelo', ia_estado: 'pulado',
+    // sem a IA também fica a foto que o cliente escolheu, se o serviço do lugar não mudou (como no texto da IA)
+    estado: 'gerado', foto_path: fotoEscolhida(cliente.id, post, novo), sem_foto: false, trocas: post.trocas + 1, origem: 'modelo', ia_estado: 'pulado',
   }
   const daIA = await textoDaIA(deps, cliente.id, cliente.ramo, post, novo, negocio, produtos)
   const campos: CamposTroca = daIA
@@ -88,6 +89,12 @@ export async function trocarPostDoCliente(entrada: unknown, deps: DepsTroca): Pr
   await deps.gravar(post.id, campos)
   const { cliente_id: _c, ano_mes: _a, estrategia: _e, ...lugar } = post
   return { status: 200, corpo: { post: { ...lugar, ...campos } } }
+}
+
+// A foto que o cliente escolheu no post vale no novo texto se o serviço do lugar não mudou (só da pasta dele).
+function fotoEscolhida(clienteId: string, post: PostDoMes, novo: PostGerado): string | null {
+  const mesmoServico = (post.produto_id ?? null) === (novo.produto_id ?? null)
+  return !post.sem_foto && mesmoServico && post.foto_path && daPastaDoCliente(clienteId)(post.foto_path) ? post.foto_path : null
 }
 
 // O texto da IA para o novo lugar (mesmo serviço e preço que o modelo escolheu); null = fica o modelo.
@@ -101,8 +108,7 @@ async function textoDaIA(
   try {
     const doCliente = daPastaDoCliente(clienteId)
     const comFotos = produtos.map((p) => ({ id: p.id, fotos: fotosDoProduto(p).filter(doCliente) }))
-    const mesmoServico = (post.produto_id ?? null) === (novo.produto_id ?? null)
-    const escolhida = !post.sem_foto && mesmoServico && post.foto_path && doCliente(post.foto_path) ? post.foto_path : null
+    const escolhida = fotoEscolhida(clienteId, post, novo)
     const servico = novo.produto_id ? comFotos.find((p) => p.id === novo.produto_id) : null
     const candidatas = escolhida ? [escolhida] : servico?.fotos ?? []
     const info: Record<string, InfoFoto> = candidatas.length ? await deps.fotosInfo(candidatas) : {}

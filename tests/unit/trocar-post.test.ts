@@ -314,3 +314,27 @@ test('limite de trocas e post alheio barram antes da IA', async () => {
   expect((await trocarPostDoCliente({ post_id: ID }, b.deps)).status).toBe(404)
   expect([...a.pedidos, ...b.pedidos]).toHaveLength(0)
 })
+
+test('sem a IA (ou com ela falhando), a foto que o cliente escolheu fica se o serviço do lugar não mudou', async () => {
+  const escolheu = async () => ({ ...POST, data: '2026-12-09', ordem: 15, foto_path: 'c1/posts/x.jpg' })
+  const semChave = falsos({ post: escolheu })
+  expect((await trocarPostDoCliente({ post_id: ID }, semChave)).status).toBe(200)
+  expect(gravado(semChave)).toMatchObject({ origem: 'modelo', produto_id: null, foto_path: 'c1/posts/x.jpg' })
+  const falhou = comIA(() => ({ ok: false, motivo: 'ocupado' }) as RespostaIA, { post: escolheu })
+  await trocarPostDoCliente({ post_id: ID }, falhou.deps)
+  expect(gravado(falhou.deps)).toMatchObject({ origem: 'modelo', foto_path: 'c1/posts/x.jpg' })
+})
+
+test('sem a IA: serviço do lugar mudou, foto de outra pasta ou "sem foto" → sem foto escolhida', async () => {
+  // o lugar de 02/12 vira de serviço: a foto escolhida no post de tema geral não vale para ele
+  const mudou = falsos({ post: async () => ({ ...POST, foto_path: 'c1/posts/x.jpg' }) })
+  await trocarPostDoCliente({ post_id: ID }, mudou)
+  expect(gravado(mudou).produto_id).not.toBeNull()
+  expect(gravado(mudou).foto_path).toBeNull()
+  const alheia = falsos({ post: async () => ({ ...POST, data: '2026-12-09', ordem: 15, foto_path: 'c2/posts/x.jpg' }) })
+  await trocarPostDoCliente({ post_id: ID }, alheia)
+  expect(gravado(alheia).foto_path).toBeNull()
+  const semFoto = falsos({ post: async () => ({ ...POST, data: '2026-12-09', ordem: 15, foto_path: 'c1/posts/x.jpg', sem_foto: true }) })
+  await trocarPostDoCliente({ post_id: ID }, semFoto)
+  expect(gravado(semFoto).foto_path).toBeNull()
+})
