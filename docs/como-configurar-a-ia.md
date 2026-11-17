@@ -10,9 +10,9 @@ Para a IA escrever os posts, o PAT precisa de **3 chaves** (pense nelas como sen
 
 Tempo estimado: uns 20 minutos. Os nomes de menus podem mudar um pouco com o tempo; se algo não estiver exatamente onde escrevi, procure um item parecido.
 
-> **Regra de ouro:** chave é segredo. Nunca cole em conversas, e-mails, mensagens ou dentro do app. Se vazar, é só apagar a chave no site e criar outra (veja a seção 8).
+> **Regra de ouro:** chave é segredo. Nunca cole em conversas (nem aqui no Claude Code), e-mails, mensagens ou dentro do app. O único lugar onde ela entra é o Supabase (seção 4). Se vazar, é só apagar a chave no site e criar outra (veja a seção 8).
 
-Dica: abra o Bloco de Notas e vá colando as chaves lá enquanto cria. Apague o arquivo no final.
+Dica: abra o Bloco de Notas e vá colando as chaves lá enquanto cria. **Não salve o arquivo**: no final, feche o Bloco de Notas e escolha **"Não salvar"**.
 
 ---
 
@@ -59,7 +59,7 @@ Isso evita surpresas na fatura.
 
 ## 4. Colocar as 3 chaves no Supabase de teste
 
-As chaves ficam guardadas como **segredos** no projeto de teste (`pat-dev`). Escolha **uma** das opções.
+As chaves ficam guardadas como **segredos** no projeto de teste (`pat-dev`). Escolha **uma** das opções. **Prefira a Opção A.**
 
 Os nomes precisam ser **exatamente** estes (letras maiúsculas e underline):
 
@@ -76,6 +76,8 @@ Os nomes precisam ser **exatamente** estes (letras maiúsculas e underline):
 6. Você deve ver os 3 nomes na lista (o valor fica escondido, isso é normal).
 
 ### Opção B: copiando um comando
+Atenção: o comando com as chaves fica guardado no histórico do terminal (as setas para cima mostram de novo). Por isso a Opção A é melhor; use esta só se a A não funcionar.
+
 1. Abra o terminal na pasta do PAT.
 2. Troque os três trechos `COLE_AQUI_...` pelas suas chaves (mantenha o resto igual) e cole o comando inteiro:
 
@@ -85,20 +87,20 @@ npx supabase secrets set ANTHROPIC_API_KEY=COLE_AQUI_A_ANTHROPIC PEXELS_API_KEY=
 
 3. Aperte Enter. Deve aparecer uma mensagem de que os segredos foram atualizados (algo como "Finished supabase secrets set").
 
-### Opção C: pedir para o Claude Code
-Você também pode me passar as chaves aqui no Claude Code e eu configuro para você. Faça isso **só** aqui no Claude Code, nunca em outro lugar.
-
-> **Atenção:** nunca cole as chaves em chats comuns, e-mails, redes sociais ou dentro do app PAT.
+> **Atenção:** nunca cole as chaves em chats (nem aqui no Claude Code), e-mails, redes sociais ou dentro do app PAT. Para configurar, use só a Opção A ou a B.
 
 ---
 
 ## 5. Como testar
 
-1. Abra o PAT (versão de teste) e **gere um mês** de posts. Se já existe um mês, use **"Refazer"**.
-2. Você deve ver a mensagem **"✨ Melhorando seus posts…"** por alguns instantes.
-3. Quando terminar, os posts escritos pela IA mostram o selo **"✨ Escrito para você"**.
+1. Abra o PAT (versão de teste) e **gere um mês** de posts. Se já existe um mês, **troque a estratégia do mês** ou **gere o próximo mês**.
+2. Você deve ver a faixa **"✨ Melhorando seus posts…"**. Melhorar um mês inteiro leva **vários minutos**; pode deixar a tela aberta e fazer outra coisa.
+3. Se a faixa parar de andar, feche e abra o calendário de novo: ela volta a mostrar o andamento.
+4. Quando terminar, os posts escritos pela IA mostram o selo **"✨ Escrito para você"**.
 
 Se as chaves não estiverem configuradas, **tudo continua funcionando**: os posts saem com os textos-modelo de sempre (os "templates"), só sem o selo.
+
+**Posts que passaram pela IA sem chave, com a chave errada ou sem crédito ficam como templates.** Eles não são melhorados sozinhos depois que você arruma as chaves. Quando as chaves estiverem certas, peça ao Claude Code: *"coloque de novo na fila da IA os posts que ficaram como template"*. Ele faz isso por você.
 
 ---
 
@@ -110,8 +112,8 @@ Se as chaves não estiverem configuradas, **tudo continua funcionando**: os post
 1. Abra o projeto **pat-dev**.
 2. Clique em **Table Editor** e escolha a tabela **`uso_ia`**.
 3. Cada linha é uma chamada à IA. As colunas principais:
-   - **tipo**: que tipo de chamada foi (por exemplo, escrever posts).
-   - **tokens**: o "tamanho" do que foi enviado e recebido. Quanto mais tokens, mais caro.
+   - **tipo**: que tipo de chamada foi: `foto` (descrever uma foto), `post` (escrever um post), `troca` ("Gerar outro" ou reescrever depois de "Trocar imagem") ou `imagem` (escolher a imagem do post).
+   - **tokens_entrada** e **tokens_saida**: o "tamanho" do que foi enviado e do que voltou. Quanto mais tokens, mais caro.
    - **custo_usd**: custo estimado dessa chamada, em dólares.
 
 **Limite de segurança:** cada cliente pode fazer no máximo **400 chamadas de IA por mês**. Passou disso, os posts continuam sendo gerados com os textos-modelo, sem a IA, até o mês seguinte.
@@ -120,8 +122,8 @@ Se as chaves não estiverem configuradas, **tudo continua funcionando**: os post
 
 ## 7. E se algo der errado?
 
-- **Chave errada ou faltando:** os posts saem com os textos-modelo. Nada quebra. Confira os nomes dos segredos e se copiou a chave inteira, sem espaços.
-- **Crédito acabou ou limite mensal atingido:** mesma coisa, os posts continuam com os textos-modelo. Para voltar a usar a IA, adicione crédito (ou aumente o limite) no Claude Console.
+- **Chave errada ou faltando:** os posts saem com os textos-modelo. Nada quebra. Confira os nomes dos segredos e se copiou a chave inteira, sem espaços. Depois, peça ao Claude Code para pôr de novo na fila os posts que ficaram como template (seção 5).
+- **Crédito acabou ou limite mensal atingido:** mesma coisa, os posts continuam com os textos-modelo. Para voltar a usar a IA, adicione crédito (ou aumente o limite) no Claude Console e peça ao Claude Code para pôr de novo na fila os posts que ficaram como template.
 - **Sem foto da IA:** se o Pexels falhar, o app tenta o Pixabay; se os dois falharem, o post fica sem foto sugerida, mas o texto aparece normal.
 
 ## 8. Se uma chave vazar
