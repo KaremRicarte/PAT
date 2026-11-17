@@ -94,3 +94,24 @@ describe('preço por tratamento (fora dos ramos noPromo)', () => {
     expect(validarPost(post({ ...vitrine, legenda: 'Por R$ 150,00.' }), RAMOS.psicologia)).not.toEqual([])
   })
 })
+
+describe('texto do cliente não conta nas regras de R$ e de vitrine', () => {
+  const vitrine = { preco_de: null, preco_por: 1999 }
+  test('R$ vindo do modelo, sem texto do cliente → erro', () => {
+    expect(validarPost(post({ legenda: 'Leve hoje por R$ 10' }), RAMOS.ferramentas)).not.toEqual([])
+  })
+  test('R$ dentro da descrição do cliente → ok; R$ fora dela continua sendo erro', () => {
+    const doCliente = ['Furadeira', 'A partir de R$ 1.500']
+    expect(validarPost(post({ legenda: 'Gancho.\n\na partir de r$ 1.500\n\nConvite.' }), RAMOS.ferramentas, doCliente)).toEqual([])
+    expect(validarPost(post({ legenda: 'A partir de R$ 1.500. Leve por R$ 10' }), RAMOS.ferramentas, doCliente)).not.toEqual([])
+  })
+  test('vitrine com "desconto" ou "off" só no texto do cliente → ok', () => {
+    expect(validarPost(post({ ...vitrine, titulo: 'Por que ter trena off-road?', legenda: 'Desconto especial. Por R$ 1.999,00.' }),
+      RAMOS.ferramentas, ['Trena off-road', 'desconto especial', ''])).toEqual([])
+    expect(validarPost(post({ ...vitrine, legenda: 'Desconto especial. Promoção!' }), RAMOS.ferramentas, ['desconto especial']))
+      .not.toEqual([])
+  })
+  test('noPromo continua olhando o texto do cliente', () => {
+    expect(validarPost(post({ legenda: 'Consulta R$ 200' }), RAMOS.psicologia, ['Consulta R$ 200'])).not.toEqual([])
+  })
+})

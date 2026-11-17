@@ -59,7 +59,8 @@ export async function trocarPostDoCliente(entrada: unknown, deps: DepsTroca): Pr
   const novo = gerarTroca(pacote, alvo, post.trocas + 1)
   // Nenhum texto que o cliente ainda não viu: não grava e não conta a troca.
   if (!novo) return r(422, 'Não encontrei outro texto diferente para este post. Você pode usar "Só descartar".')
-  const problemas = validarPost(novo, RAMOS[cliente.ramo])
+  const doCliente = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
+  const problemas = validarPost(novo, RAMOS[cliente.ramo], doCliente)
   if (problemas.length) {
     console.error('trocar-post: validação recusou o post', cliente.id, post.id, problemas)
     return r(500, 'Não foi possível gerar outro post.')

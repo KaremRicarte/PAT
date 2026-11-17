@@ -122,3 +122,27 @@ test('redes repetidas são removidas e salvar recebe só as escolhidas', async (
   expect(new Set(posts.map((p: { rede: string }) => p.rede))).toEqual(new Set(['whatsapp', 'tiktok']))
   expect(r.corpo).toEqual({ id: 'm1', anoMes: '2026-11', total: posts.length })
 })
+
+test('texto do cliente com R$, "desconto" ou "off" não trava o mês (vender, itens de vitrine)', async () => {
+  const { gerarMes } = await import('../../supabase/functions/_shared/modelos/gerar.ts')
+  const { validarMes, validarPost } = await import('../../supabase/functions/_shared/modelos/validar.ts')
+  const { agendaDoMes, mesAlvo } = await import('../../supabase/functions/_shared/modelos/calendario.ts')
+  const { RAMOS } = await import('../../supabase/functions/_shared/modelos/ramos/index.ts')
+  const produtos = [
+    { id: 'p1', nome: 'Furadeira', descricao: 'a partir de R$ 1.500', preco: 99.9, preco_promo: null },
+    { id: 'p2', nome: 'Serra circular', descricao: 'desconto especial', preco: 450, preco_promo: 450 },
+    { id: 'p3', nome: 'Trena off-road', descricao: null, preco: 80, preco_promo: null },
+  ]
+  const deps = falsos({ produtos: async () => produtos })
+  const r = await gerarMesDoCliente({ estrategia: 'vender' }, deps)
+  expect(r.status).toBe(201)
+  const [anoMes, , posts] = (deps.salvar as ReturnType<typeof vi.fn>).mock.calls[0]
+  const doCliente = ['Ferragens', ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
+  expect(posts.flatMap((p: never) => validarPost(p, RAMOS.ferramentas, doCliente))).toEqual([])
+  expect(posts.filter((p: { preco_por: number | null }) => p.preco_por !== null).length).toBeGreaterThan(0)
+  const alvo = mesAlvo('2026-11-16', [])!
+  expect(anoMes).toBe(alvo.anoMes)
+  expect(validarMes(posts, agendaDoMes(alvo.anoMes, alvo.inicio, 'vender'))).toEqual([])
+  // sem descontar o texto do cliente, as regras novas pegariam esses posts
+  expect(posts.flatMap((p: never) => validarPost(p, RAMOS.ferramentas)).length).toBeGreaterThan(0)
+})

@@ -11,7 +11,15 @@ const PROMOCAO = /(?<!\p{L})(promo(ção|ções|cional|cionais|s)?|descontos?|of
 const SOBRAS = /undefined|\{prod\}|\{loja\}/
 const MAX_HASHTAGS: Record<PostGerado['rede'], number> = { instagram: 5, tiktok: 5, facebook: 3, whatsapp: 0 }
 
-export function validarPost(post: PostGerado, ramo: Ramo): string[] {
+const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+// Tira do texto o que o cliente escreveu (nome do negócio, nome e descrição dos itens), sem diferenciar maiúsculas:
+// as regras de preço por tratamento só valem para o texto dos modelos.
+const semTextoDoCliente = (t: string, doCliente: string[]) =>
+  doCliente.reduce((acc, c) => acc.replace(new RegExp(escapar(c), 'giu'), ' '), t)
+
+// `textosDoCliente`: o que o cliente escreveu; não conta nas regras de R$ e de vitrine
+// (a regra dos ramos noPromo continua valendo para tudo; o gerar-mes já barra antes, com 400).
+export function validarPost(post: PostGerado, ramo: Ramo, textosDoCliente: string[] = []): string[] {
   const erros: string[] = []
   const titulo = post.titulo.trim(), legenda = post.legenda.trim()
   if (!titulo || titulo.length > 90) erros.push('título vazio ou com mais de 90 caracteres')
@@ -19,9 +27,11 @@ export function validarPost(post: PostGerado, ramo: Ramo): string[] {
   if (post.hashtags.length > MAX_HASHTAGS[post.rede]) erros.push(`hashtags demais para ${post.rede}`)
   const textos = [post.titulo, post.legenda, post.roteiro ?? '', ...post.hashtags]
   if (textos.some((t) => SOBRAS.test(t))) erros.push('marcador sobrando no texto')
+  const doCliente = [...new Set(textosDoCliente.map((c) => c.trim()).filter(Boolean))].sort((a, b) => b.length - a.length)
+  const dosModelos = textos.map((t) => semTextoDoCliente(t, doCliente))
   if (ramo.noPromo && textos.some(temPromocao)) erros.push('preço ou promoção num ramo que não permite')
-  else if (post.preco_por == null && textos.some((t) => t.includes('R$'))) erros.push('preço num post sem preço')
-  else if (post.preco_por != null && post.preco_de == null && textos.some((t) => PROMOCAO.test(t))) {
+  else if (post.preco_por == null && dosModelos.some((t) => t.includes('R$'))) erros.push('preço num post sem preço')
+  else if (post.preco_por != null && post.preco_de == null && dosModelos.some((t) => PROMOCAO.test(t))) {
     erros.push('palavra de promoção num post de vitrine')
   }
   return erros

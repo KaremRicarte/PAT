@@ -139,3 +139,16 @@ test('troca de um post de preço grava preco_de/preco_por do item atual', async 
   expect(campos.legenda).toContain('De R$ 450,00 por R$ 399,00.')
   expect(r.corpo.post).toMatchObject({ preco_de: 450, preco_por: 399 })
 })
+
+test('descrição do cliente com R$ não trava a troca (Facebook leva a descrição)', async () => {
+  const deps = falsos({
+    post: async () => ({ ...POST, rede: 'facebook' }),
+    produtos: async () => [
+      { id: 'p1', nome: 'Furadeira', descricao: 'A partir de R$ 1.500, com desconto', preco: 99.9, preco_promo: null },
+      { id: 'p2', nome: 'Trena a laser', descricao: 'Desde R$ 80', preco: null, preco_promo: null },
+    ],
+  })
+  const r = await trocarPostDoCliente({ post_id: ID }, deps)
+  expect(r.status).toBe(200)
+  expect(deps.gravar).toHaveBeenCalled()
+})

@@ -54,10 +54,11 @@ export async function gerarMesDoCliente(entrada: unknown, deps: DepsMes): Promis
   if (!alvo) return r(409, 'O próximo mês fica disponível a partir do dia 21.')
 
   const est = estrategia as Estrategia
+  const doCliente = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
   const posts = gerarMes({ ramo: cliente.ramo, estrategia: est, ...alvo, negocio, produtos, redes })
   const problemas = [
     ...validarMes(posts, agendaDoMes(alvo.anoMes, alvo.inicio, est), redes),
-    ...posts.flatMap((p) => validarPost(p, ramo).map((x) => `${p.data} ${p.rede}/${p.tipo}: ${x}`)),
+    ...posts.flatMap((p) => validarPost(p, ramo, doCliente).map((x) => `${p.data} ${p.rede}/${p.tipo}: ${x}`)),
   ]
   if (problemas.length) {
     console.error('gerar-mes: validação recusou o mês', cliente.id, problemas)
