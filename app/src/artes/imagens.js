@@ -91,7 +91,7 @@ export function limparImagens() {
   cache.clear()
 }
 
-export async function esperarFontes(look) {
+async function esperarFontes(look) {
   try { await Promise.all(fontesDoLook(look).map((f) => document.fonts.load(f))) } catch { /* desenha com a fonte reserva */ }
 }
 

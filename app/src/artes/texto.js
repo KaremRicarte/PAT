@@ -14,7 +14,7 @@ export function corTexto(hex) {
 }
 
 // Luminância relativa (WCAG), o `lum` do v1.
-export function luminancia(hex) {
+function luminancia(hex) {
   const c = rgb(hex)
   if (!c) return 0
   const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }

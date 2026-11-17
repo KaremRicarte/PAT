@@ -44,7 +44,6 @@ const pt = {
 
   // início
   'inicio.ola': 'Olá, {nome}!',
-  'inicio.embreve': 'Em breve: seu mês de posts aparece aqui.',
 
   // cadastro ainda sem ramo (definido pela administração)
   // estratégias (spec §4)
@@ -72,9 +71,6 @@ const pt = {
   // lista do mês
   'mes.titulo': 'Seu mês: {mes}',
   'mes.gerarproximo': 'Gerar o mês de {mes}',
-  'mes.copiar': 'Copiar legenda',
-  'mes.copiado': 'Copiada!',
-  'mes.naocopiou': 'Não deu para copiar',
   'mes.roteiro': 'Roteiro / como montar',
   'rede.instagram': 'Instagram',
   'rede.facebook': 'Facebook',
@@ -132,7 +128,6 @@ const pt = {
 
   // calendário
   'cal.semana': 'D,S,T,Q,Q,S,S',
-  'cal.resumo': 'Resumo do mês',
   'cal.resumo.postado': '📤 {n} postados',
   'cal.resumo.aprovado': '✓ {n} aprovados',
   'cal.resumo.pendente': '⏳ {n} pendentes',
@@ -234,7 +229,6 @@ const pt = {
   'importar.arrastar': 'Solte aqui o arquivo de texto e as fotos',
   'importar.lendo': 'Lendo os arquivos…',
   'importar.erro.leitura': 'Não consegui ler esses arquivos. Tente de novo.',
-  'importar.resumo.titulo': 'Resumo da importação',
   'importar.resumo.nada': 'Nada novo foi importado.',
   'importar.resumo.novo': '1 item novo',
   'importar.resumo.novos': '{n} itens novos',
@@ -291,7 +285,6 @@ const pt = {
   'comum.tentar': 'Tentar de novo',
   'comum.desfazer': 'Desfazer',
   'comum.voltar': 'Voltar',
-  'comum.embreve': 'Em breve',
 
   // tela do post
   'post.aguarde': 'Espere a última ação terminar.',
@@ -303,7 +296,6 @@ const pt = {
   'post.proxima': 'Próxima →',
   'post.desenhando': 'Preparando a imagem…',
   'post.semarte': 'Este post é só texto: copie e mande para a sua lista.',
-  'post.hashtags': 'Hashtags',
   'post.aprovar': '✓ Aprovar',
   'post.aprovado': 'Aprovado ✓',
   'post.aprovado.dica': 'Toque em "Aprovado ✓" para voltar a "Para aprovar".',
@@ -430,7 +422,6 @@ const pt = {
   'admin.reativar': 'Reativar',
   'admin.reativar.confirma': 'Reativar o acesso de {nome}?',
   'admin.vazio': 'Nenhum cliente ainda.',
-  'admin.emailrepetido': 'Já existe um cliente com este e-mail.',
 
   // artes
   'arte.arraste': 'Arraste para o lado →',

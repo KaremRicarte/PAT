@@ -11,7 +11,7 @@ export const LOOKS = Object.freeze({
 const ESTILO_DO_RAMO = { beleza: 'elegante', psicologia: 'sereno', advocacia: 'sobrio' }
 
 // Nome do estilo do ramo (os ramos sem estilo próprio usam o varejo).
-export function estiloDoRamo(ramoId) {
+function estiloDoRamo(ramoId) {
   return ESTILO_DO_RAMO[ramoId] ?? 'varejo'
 }
 

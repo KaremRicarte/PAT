@@ -100,7 +100,7 @@ export function servicosSemFoto(produtos, ramo) {
 }
 
 // 2199 -> 'R$ 2.199'; 1999.9 -> 'R$ 1.999,90' (centavos só quando houver).
-export function dinheiro(v) {
+function dinheiro(v) {
   const n = Number(v)
   const temCentavos = Math.round(n * 100) % 100 !== 0
   return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: temCentavos ? 2 : 0, maximumFractionDigits: temCentavos ? 2 : 0 }).replace(/ /g, ' ')

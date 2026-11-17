@@ -41,7 +41,7 @@ export async function depoisDeSalvar({ supabase, cliente, produtos, meses, atual
   return atualizar()
 }
 
-export function telaRefazer({ supabase, conta, atualizar }) {
+function telaRefazer({ supabase, conta, atualizar }) {
   const erro = el('p', { class: 'erro', role: 'alert', hidden: true })
   const botoes = []
   const refazer = async (modo) => {

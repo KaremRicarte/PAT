@@ -24,7 +24,7 @@ export function opcoes(nome, lista, atual, aoMudar) {
 }
 
 // Campo de arquivo de imagem que já reduz a foto no aparelho e mostra o resultado.
-export function campoFoto(rotulo, { maximo, tipo, jaTem, aoEscolher }) {
+function campoFoto(rotulo, { maximo, tipo, jaTem, aoEscolher }) {
   const id = `foto-${crypto.randomUUID()}`
   const status = el('p', { class: 'muted pequeno', texto: jaTem ? t('quiz.foto.salva') : '' })
   const input = el('input', { id, type: 'file', accept: 'image/jpeg,image/png,image/webp,image/*' })

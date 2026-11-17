@@ -40,7 +40,7 @@ function iconeOlho(riscado) {
 }
 
 // Campo de senha com o botão do olho, que mostra ou esconde o que foi digitado.
-export function campoSenha(rotulo, atributos) {
+function campoSenha(rotulo, atributos) {
   const [label, input] = campo(rotulo, { ...atributos, type: 'password' })
   const botao = el('button', { type: 'button', class: 'olho', 'aria-label': t('senha.mostrar'), 'aria-pressed': 'false', 'aria-controls': input.id })
   botao.append(iconeOlho(false))
@@ -137,7 +137,7 @@ let avisouLinkVencido = false // o aviso do link vencido aparece uma vez só
 
 // "Esqueci minha senha": pede ao Supabase o e-mail com o link, que volta para esta mesma página
 // (app ou painel). A resposta é a mesma para e-mail cadastrado ou não.
-export function telaEsqueci(supabase, emailDigitado = '') {
+function telaEsqueci(supabase, emailDigitado = '') {
   const form = el('form', { novalidate: true },
     el('h1', { texto: t('esqueci.titulo') }),
     el('p', { class: 'muted', texto: t('esqueci.texto') }),

@@ -62,7 +62,7 @@ async function arquivosDoDrop(dt) {
 }
 
 // Selos do item: "Novo" e "+N fotos" (fotos ainda não enviadas). Texto, nunca só cor.
-export function pintarSelos(destino, item) {
+function pintarSelos(destino, item) {
   const novas = item.fotos.filter((f) => f.arquivo).length
   destino.replaceChildren(
     ...(item.novo ? [el('span', { class: 'selo bom', texto: t('quiz.item.novo') })] : []),

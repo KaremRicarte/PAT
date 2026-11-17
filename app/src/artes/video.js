@@ -151,7 +151,7 @@ export function enquadramento(larguraVideo, alturaVideo, W, H) {
 }
 
 // Um quadro do vídeo editado no segundo t: o vídeo com o título até 3 s e a assinatura; depois, a tela final.
-export function desenharQuadroDoVideo(ctx, { pecas, look, cores, logo = null, video, W = W_VIDEO, H = H_VIDEO }, t, plano) {
+function desenharQuadroDoVideo(ctx, { pecas, look, cores, logo = null, video, W = W_VIDEO, H = H_VIDEO }, t, plano) {
   const f = folha(ctx, { look, cores, W, H })
   ctx.save()
   if (t >= plano.fimDe) {

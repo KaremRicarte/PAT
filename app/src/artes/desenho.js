@@ -6,7 +6,7 @@ import { t } from '../textos.js'
 
 // ---------- peças básicas ----------
 
-export function retanguloArredondado(ctx, x, y, w, h, r) {
+function retanguloArredondado(ctx, x, y, w, h, r) {
   ctx.beginPath()
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, r)
   else ctx.rect(x, y, w, h)
@@ -172,7 +172,7 @@ export function caixaDeTexto(f, texto, fundo, tamanho, alturaMax, { cor = 'rgba(
 // ---------- selo de preço ----------
 
 // Medidas do selo: cápsula de no máximo 40% da largura; a fonte encolhe até o valor caber.
-export function medirSelo(f, preco) {
+function medirSelo(f, preco) {
   const { ctx, u, look } = f
   const pad = 2.2 * u, max = 0.4 * f.W - pad * 2
   let grande = 8.5 * u
@@ -191,7 +191,7 @@ export function medirSelo(f, preco) {
 
 // Selo de preço (cápsula na cor principal): o valor antigo menor e riscado em cima, o novo grande embaixo.
 // `y` é o topo do selo; ele segue o alinhamento do estilo.
-export function seloDePreco(f, preco, tinta, y) {
+function seloDePreco(f, preco, tinta, y) {
   const { ctx, x, mw, look } = f
   const m = medirSelo(f, preco)
   const bx = look.center ? x + (mw - m.w) / 2 : x

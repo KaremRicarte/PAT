@@ -63,7 +63,7 @@ export function telaServicos(ctx) {
   })
 }
 
-export function telaTrocarEstrategia(ctx, mes) {
+function telaTrocarEstrategia(ctx, mes) {
   const ramo = ctx.ramo ?? RAMOS[ctx.cliente.ramo]
   let escolhida = mes.estrategia
   const voltar = () => { ctx.atualizar() }

@@ -57,7 +57,7 @@ async function estaInscrito(supabase) {
   return Boolean(data)
 }
 
-export async function lerEstado(supabase) {
+async function lerEstado(supabase) {
   const push = temPush()
   const permissao = permissaoAtual()
   return estadoDosLembretes({
@@ -79,7 +79,7 @@ const semPermissao = (permissao) => (permissao === 'denied' ? 'bloqueado' : 'ina
 // registro: a registration do service worker já pronta (buscada quando a tela montou). Com ela,
 // o subscribe é a PRIMEIRA chamada do toque (o iPhone só pede a permissão dentro do gesto) e ele
 // mesmo pede a permissão. Sem ela, o caminho de reserva: permissão, registro, depois o subscribe.
-export async function ativarLembretes(supabase, registro = null) {
+async function ativarLembretes(supabase, registro = null) {
   const chave = chaveVapid()
   if (!chave) throw new Error('VITE_VAPID_PUBLIC_KEY ausente') // a tela nem mostra o botão (sem-suporte)
   const opcoes = { userVisibleOnly: true, applicationServerKey: chaveParaBytes(chave) }
@@ -110,7 +110,7 @@ export async function ativarLembretes(supabase, registro = null) {
 
 // Cancela a inscrição do aparelho e apaga a linha do banco. Se o apagar falhar, a função lembrete
 // apaga a linha sozinha quando o envio responder 404/410.
-export async function desligarLembretes(supabase) {
+async function desligarLembretes(supabase) {
   const inscricao = await inscricaoDoAparelho()
   if (!inscricao) return 'inativo'
   const { endpoint } = inscricao
