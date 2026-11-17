@@ -10,11 +10,23 @@ const base = (extra: Partial<Pacote> = {}): Pacote => ({
   ramo: 'ferramentas', estrategia: 'vender', anoMes: '2026-12', inicio: '2026-12-01',
   negocio: { nome: 'Ferragens Martins', insta: null, tom: 'proximo', horario: '19:00' },
   produtos: [
-    { id: 'p1', nome: 'Furadeira de impacto', descricao: 'Com maleta e brocas.', preco: 299.9 },
-    { id: 'p2', nome: 'Trena a laser', descricao: null, preco: null },
+    { id: 'p1', nome: 'Furadeira de impacto', descricao: 'Com maleta e brocas.', preco: 299.9, preco_promo: null },
+    { id: 'p2', nome: 'Trena a laser', descricao: null, preco: null, preco_promo: null },
   ],
   ...extra,
 })
+
+// Os 4 exemplos do arquivo (spec §3): 2 promoções, 1 vitrine e 1 sem preço.
+const LISTA_SPEC: Pacote['produtos'] = [
+  { id: 'g', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799 },
+  { id: 'l', nome: 'Leste Europeu', descricao: null, preco: 10299, preco_promo: 9999 },
+  { id: 's', nome: 'Porto Seguro', descricao: null, preco: 1999, preco_promo: 1999 },
+  { id: 'p', nome: 'Portugal', descricao: null, preco: null, preco_promo: null },
+]
+const turismo = (extra: Partial<Pacote> = {}) => base({ ramo: 'turismo', produtos: LISTA_SPEC, ...extra })
+const feedDePreco = (posts: PostGerado[], rede = 'instagram') =>
+  posts.filter((p) => p.rede === rede && p.tipo === 'feed' && p.preco_por !== null)
+const PALAVRAS_PROMO = /(?<!\p{L})(promo(ção|ções|cional|cionais|s)?|descontos?|off)(?!\p{L})|black friday/iu
 
 const contar = (posts: PostGerado[]) => {
   const c: Record<string, number> = {}
@@ -42,7 +54,8 @@ test('posts em ordem de data, com ordem sequencial a partir de 0', () => {
 
 describe.each(Object.keys(RAMOS))('ramo %s', (ramo) => {
   test.each(ESTRATEGIAS)('todo post passa em validarPost (%s)', (estrategia) => {
-    const posts = gerarMes(base({ ramo, estrategia }))
+    // promoção, vitrine e sem preço juntos
+    const posts = gerarMes(base({ ramo, estrategia, produtos: [...base().produtos, ...LISTA_SPEC] }))
     const problemas = posts.flatMap((p) => validarPost(p, RAMOS[ramo]).map((e) => `${p.data} ${p.rede}/${p.tipo}: ${e}`))
     expect(problemas).toEqual([])
     expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', estrategia))).toEqual([])
@@ -59,23 +72,94 @@ test.each(['psicologia', 'advocacia'])('%s com preço informado nunca mostra pre
   }
 })
 
-test('vender põe "Oferta da semana" e o preço informado na sexta', () => {
-  const sextas = gerarMes(base()).filter((p) => ['2026-12-04', '2026-12-11', '2026-12-18', '2026-12-25'].includes(p.data) &&
-    p.rede === 'instagram' && p.tipo === 'feed')
-  expect(sextas).toHaveLength(4)
-  expect(sextas.every((p) => p.titulo.startsWith('Oferta da semana'))).toBe(true)
-  // a furadeira tem preço informado; a trena não
-  const furadeira = sextas.filter((p) => p.produto_id === 'p1')
-  expect(furadeira.length).toBeGreaterThan(0)
-  expect(furadeira.every((p) => p.legenda.includes('R$ 299,90'))).toBe(true)
-  expect(sextas.filter((p) => p.produto_id === 'p2' && p.legenda.includes('R$'))).toEqual([])
+test('vender: 1 post de preço por item com preço, promoções primeiro, em sextas e sábados', () => {
+  const todos = gerarMes(turismo())
+  const ig = feedDePreco(todos)
+  expect(ig.map((p) => [p.data, p.produto_id, p.preco_de, p.preco_por])).toEqual([
+    ['2026-12-04', 'g', 2199, 1799],
+    ['2026-12-11', 'l', 10299, 9999],
+    ['2026-12-18', 's', null, 1999],
+  ])
+  for (const p of ig) {
+    const fb = todos.find((x) => x.rede === 'facebook' && x.tipo === 'feed' && x.data === p.data)!
+    expect(fb).toMatchObject({ produto_id: p.produto_id, preco_de: p.preco_de, preco_por: p.preco_por, pilar: 'demo' })
+    expect(fb.legenda).toContain(p.preco_de ? 'Aproveite enquanto durar!' : 'Por R$')
+    expect(p.pilar).toBe('demo')
+  }
+  const [gramado, leste, porto] = ig
+  expect(gramado.titulo.startsWith('Oferta: ')).toBe(true)
+  expect(gramado.legenda).toContain('De R$ 2.199,00 por R$ 1.799,00. Aproveite enquanto durar!')
+  expect(leste.legenda).toContain('De R$ 10.299,00 por R$ 9.999,00. Aproveite enquanto durar!')
+  expect(porto.titulo.startsWith('Oferta')).toBe(false)
+  expect(porto.legenda).toContain('Por R$ 1.999,00.')
+  expect(PALAVRAS_PROMO.test(tudo(porto))).toBe(false)
+  // sem preço: nenhum post fala de valor
+  expect(todos.filter((p) => p.preco_por === null && tudo(p).includes('R$'))).toEqual([])
+  expect(todos.filter((p) => /Portugal/i.test(tudo(p)) && tudo(p).includes('R$'))).toEqual([])
+  // nada do texto antigo
+  expect(todos.filter((p) => /Condição especial esta semana:|Oferta da semana/.test(tudo(p)))).toEqual([])
 })
 
-test('oferta de item sem preço não cita valor', () => {
-  const posts = gerarMes(base({ produtos: [{ id: 'p2', nome: 'Trena a laser', descricao: null, preco: null }] }))
-  const ofertas = posts.filter((p) => /^Oferta da semana/.test(p.titulo))
-  expect(ofertas.length).toBeGreaterThan(0)
-  expect(ofertas.filter((p) => p.legenda.includes('R$'))).toEqual([])
+test('vender: a lista do WhatsApp mostra o preço do item, do mesmo jeito', () => {
+  const lista = gerarMes(turismo()).filter((p) => p.tipo === 'lista')
+  expect(lista.map((p) => [p.produto_id, p.preco_de, p.preco_por])).toEqual([['g', 2199, 1799], ['l', 10299, 9999]])
+  expect(lista[0].legenda).toContain('De R$ 2.199,00 por R$ 1.799,00. Aproveite enquanto durar!')
+  const vitrine = gerarMes(turismo({ produtos: [LISTA_SPEC[2], LISTA_SPEC[3]] })).filter((p) => p.tipo === 'lista')
+  expect(vitrine.map((p) => [p.produto_id, p.preco_de, p.preco_por])).toEqual([['s', null, 1999], ['p', null, null]])
+  expect(vitrine[0].legenda).toContain('Por R$ 1.999,00.')
+  expect(vitrine[1].legenda).not.toContain('R$')
+})
+
+test.each(['crescer', 'tempo', 'credibilidade'] as const)('%s: no máximo 2 posts de preço, promoções primeiro, lista sem preço', (estrategia) => {
+  const posts = gerarMes(turismo({ estrategia }))
+  expect(feedDePreco(posts).map((p) => [p.data, p.produto_id])).toEqual([['2026-12-04', 'g'], ['2026-12-11', 'l']])
+  expect(feedDePreco(posts, 'facebook')).toHaveLength(2)
+  const lista = posts.filter((p) => p.tipo === 'lista')
+  expect(lista.filter((p) => p.preco_por !== null || p.legenda.includes('R$'))).toEqual([])
+})
+
+test('noPromo: nenhum preço', () => {
+  for (const estrategia of ESTRATEGIAS) {
+    const posts = gerarMes(base({
+      ramo: 'psicologia', estrategia,
+      produtos: [{ id: 'p1', nome: 'Atendimento online', descricao: null, preco: 150, preco_promo: 120 },
+        { id: 'p2', nome: 'Terapia de casal', descricao: null, preco: 200, preco_promo: null }],
+    }))
+    expect(posts.filter((p) => tudo(p).includes('R$'))).toEqual([])
+    expect(posts.filter((p) => p.preco_de !== null || p.preco_por !== null)).toEqual([])
+  }
+})
+
+test('mais itens com preço que vagas: corta pelo teto de demo', () => {
+  const produtos = Array.from({ length: 20 }, (_, i) =>
+    ({ id: `p${i}`, nome: `Item ${i}`, descricao: null, preco: 100 + i, preco_promo: i % 2 ? 90 : null }))
+  const posts = gerarMes(base({ produtos }))
+  const ig = feedDePreco(posts)
+  // vender: metade dos 12 dias de feed é demo
+  expect(ig).toHaveLength(6)
+  // promoções (ímpares) primeiro, na ordem da lista; sextas antes
+  expect(ig.map((p) => p.produto_id).sort()).toEqual(['p1', 'p11', 'p3', 'p5', 'p7', 'p9'])
+  expect(ig.filter((p) => ['2026-12-04', '2026-12-11', '2026-12-18', '2026-12-25'].includes(p.data))
+    .map((p) => p.produto_id)).toEqual(['p1', 'p3', 'p5', 'p7'])
+  expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', 'vender'))).toEqual([])
+})
+
+test.each(ESTRATEGIAS)('contagem por rede não muda com posts de preço (%s)', (estrategia) => {
+  const posts = gerarMes(turismo({ estrategia }))
+  expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', estrategia))).toEqual([])
+  expect(posts).toHaveLength(gerarMes(turismo({ estrategia, produtos: [LISTA_SPEC[3]] })).length)
+})
+
+test('todo post leva preco_de e preco_por (null quando não é de preço)', () => {
+  const posts = gerarMes(turismo())
+  expect(posts.filter((p) => !('preco_de' in p) || !('preco_por' in p))).toEqual([])
+  expect(posts.filter((p) => ['stories', 'video', 'status'].includes(p.tipo) && (p.preco_de !== null || p.preco_por !== null)))
+    .toEqual([])
+})
+
+test('produto antigo (preco_promo ausente) com preço vira vitrine', () => {
+  const posts = gerarMes(base({ produtos: [{ id: 'p1', nome: 'Furadeira', descricao: null, preco: 99.9 } as Pacote['produtos'][0]] }))
+  expect(feedDePreco(posts).map((p) => [p.preco_de, p.preco_por])).toEqual([[null, 99.9]])
 })
 
 test('crescer usa o convite de engajamento e cita o @', () => {

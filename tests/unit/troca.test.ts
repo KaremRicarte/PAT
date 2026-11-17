@@ -111,9 +111,10 @@ test('advocacia: troca nunca tem preço nem promoção', () => {
   }
 })
 
-// Impressão digital da saída de gerarMes antes do `deslocamento` (Etapa 2): o mês gerado não pode mudar.
+// Impressão digital da saída de gerarMes: o mês gerado não pode mudar sem querer.
+// Refeita de propósito nos posts de preço (promoção/vitrine, preco_de/preco_por em todo post).
 const ETAPA2: Record<string, string> = {
-  vender: '6048fa1b41244189', crescer: '0bf76159969e07f8', credibilidade: '467ed2f5775dd89e', tempo: '9762d13bcc9960b8',
+  vender: '200a6a6557e45201', crescer: 'c4bef6e2d08454a9', credibilidade: '94b22a9be73367cf', tempo: '41f13634be44d6bc',
 }
 const digital = (posts: PostGerado[]) => createHash('sha256').update(JSON.stringify(posts)).digest('hex').slice(0, 16)
 

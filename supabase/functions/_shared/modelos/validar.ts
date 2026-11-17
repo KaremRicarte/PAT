@@ -6,6 +6,8 @@ import type { PostGerado } from './gerar.ts'
 // Preço ou promoção, como palavra inteira: "promoção" e "50% off" contam; "promover" e "100% online" não.
 const PROIBIDAS = /R\$|(?<!\p{L})(promo(ção|ções|cional|cionais|s)?|descontos?|ofertas?|off)(?!\p{L})|black friday/iu
 export const temPromocao = (s: string) => PROIBIDAS.test(s)
+// Na vitrine de preço (só "por"), o R$ pode; promoção, desconto, off e black friday não. "Oferta" segue livre.
+const PROMOCAO = /(?<!\p{L})(promo(ção|ções|cional|cionais|s)?|descontos?|off)(?!\p{L})|black friday/iu
 const SOBRAS = /undefined|\{prod\}|\{loja\}/
 const MAX_HASHTAGS: Record<PostGerado['rede'], number> = { instagram: 5, tiktok: 5, facebook: 3, whatsapp: 0 }
 
@@ -18,6 +20,10 @@ export function validarPost(post: PostGerado, ramo: Ramo): string[] {
   const textos = [post.titulo, post.legenda, post.roteiro ?? '', ...post.hashtags]
   if (textos.some((t) => SOBRAS.test(t))) erros.push('marcador sobrando no texto')
   if (ramo.noPromo && textos.some(temPromocao)) erros.push('preço ou promoção num ramo que não permite')
+  else if (post.preco_por == null && textos.some((t) => t.includes('R$'))) erros.push('preço num post sem preço')
+  else if (post.preco_por != null && post.preco_de == null && textos.some((t) => PROMOCAO.test(t))) {
+    erros.push('palavra de promoção num post de vitrine')
+  }
   return erros
 }
 

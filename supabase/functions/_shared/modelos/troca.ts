@@ -60,5 +60,7 @@ export function gerarTroca(p: Pacote, alvo: Alvo, n: number): PostGerado | null 
     formato: alvo.formato ?? novo.formato, horario: alvo.horario ?? novo.horario,
     titulo: novo.titulo, legenda: novo.legenda, hashtags: novo.hashtags, roteiro: novo.roteiro,
     pilar: novo.pilar, produto_id: novo.produto_id,
+    // preços atuais do item, se o lugar regerado for de preço; senão, null
+    preco_de: novo.preco_de, preco_por: novo.preco_por,
   }
 }

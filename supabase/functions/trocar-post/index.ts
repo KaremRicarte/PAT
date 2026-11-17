@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     trocasDoMes: async (mesId) => ((await ler(db.from('posts').select('trocas').eq('mes_id', mesId))) ?? [])
       .reduce((soma: number, p: { trocas: number }) => soma + p.trocas, 0),
     negocio: () => ler(db.from('negocios').select('nome, insta, tom, horario').eq('cliente_id', quem.id).maybeSingle()),
-    produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, preco')
+    produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo')
       .eq('cliente_id', quem.id).order('ordem'))) ?? [],
     async gravar(id, campos) {
       const { error } = await db.from('posts').update(campos).eq('id', id)

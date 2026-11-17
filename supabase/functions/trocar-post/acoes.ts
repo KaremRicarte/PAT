@@ -10,7 +10,7 @@ export type PostDoMes = {
   id: string, mes_id: string, data: string, rede: string, tipo: string, formato: string, horario: string,
   ordem: number, trocas: number, legenda: string, cliente_id: string, ano_mes: string, estrategia: string,
 }
-export type CamposTroca = Pick<PostGerado, 'titulo' | 'legenda' | 'hashtags' | 'roteiro' | 'pilar' | 'produto_id'> &
+export type CamposTroca = Pick<PostGerado, 'titulo' | 'legenda' | 'hashtags' | 'roteiro' | 'pilar' | 'produto_id' | 'preco_de' | 'preco_por'> &
   { estado: 'gerado', foto_path: null, sem_foto: false, trocas: number }
 
 export type DepsTroca = {
@@ -67,7 +67,7 @@ export async function trocarPostDoCliente(entrada: unknown, deps: DepsTroca): Pr
 
   const campos: CamposTroca = {
     titulo: novo.titulo, legenda: novo.legenda, hashtags: novo.hashtags, roteiro: novo.roteiro,
-    pilar: novo.pilar, produto_id: novo.produto_id,
+    pilar: novo.pilar, produto_id: novo.produto_id, preco_de: novo.preco_de, preco_por: novo.preco_por,
     estado: 'gerado', foto_path: null, sem_foto: false, trocas: post.trocas + 1,
   }
   await deps.gravar(post.id, campos)

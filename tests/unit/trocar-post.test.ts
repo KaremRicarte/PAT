@@ -1,4 +1,5 @@
 import { trocarPostDoCliente, type DepsTroca } from '../../supabase/functions/trocar-post/acoes.ts'
+import { gerarMes } from '../../supabase/functions/_shared/modelos/gerar.ts'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const POST = {
@@ -12,8 +13,8 @@ const falsos = (extra: Partial<DepsTroca> = {}): DepsTroca => ({
   trocasDoMes: async () => 3,
   negocio: async () => ({ nome: 'Ferragens', insta: null, tom: 'proximo', horario: '19:00' }),
   produtos: async () => [
-    { id: 'p1', nome: 'Furadeira', descricao: null, preco: 99.9 },
-    { id: 'p2', nome: 'Trena a laser', descricao: null, preco: null },
+    { id: 'p1', nome: 'Furadeira', descricao: null, preco: 99.9, preco_promo: null },
+    { id: 'p2', nome: 'Trena a laser', descricao: null, preco: null, preco_promo: null },
   ],
   gravar: vi.fn(async () => {}),
   ...extra,
@@ -74,8 +75,9 @@ test('troca grava o texto novo, volta a situação e soma 1', async () => {
   const [id, campos] = (deps.gravar as ReturnType<typeof vi.fn>).mock.calls[0]
   expect(id).toBe(ID)
   expect(Object.keys(campos).sort()).toEqual(
-    ['estado', 'foto_path', 'hashtags', 'legenda', 'pilar', 'produto_id', 'roteiro', 'sem_foto', 'titulo', 'trocas'])
-  expect(campos).toMatchObject({ estado: 'gerado', foto_path: null, sem_foto: false, trocas: 3 })
+    ['estado', 'foto_path', 'hashtags', 'legenda', 'pilar', 'preco_de', 'preco_por', 'produto_id', 'roteiro', 'sem_foto',
+      'titulo', 'trocas'])
+  expect(campos).toMatchObject({ estado: 'gerado', foto_path: null, sem_foto: false, trocas: 3, preco_de: null, preco_por: null })
   expect(campos.legenda).not.toBe('texto antigo')
   expect(r.corpo.post).toMatchObject({
     ...campos, id: ID, mes_id: 'm1', data: POST.data, rede: 'instagram', tipo: 'feed', formato: 'arte', horario: '18:30', ordem: 0,
@@ -114,4 +116,26 @@ test('sem texto novo para oferecer → 422 e nada é gravado (nem a troca conta)
   expect(await trocarPostDoCliente({ post_id: ID }, deps)).toEqual({ status: 422, corpo: {
     erro: 'Não encontrei outro texto diferente para este post. Você pode usar "Só descartar".' } })
   expect(deps.gravar).not.toHaveBeenCalled()
+})
+
+test('troca de um post de preço grava preco_de/preco_por do item atual', async () => {
+  const produtos = [
+    { id: 'p1', nome: 'Furadeira', descricao: null, preco: 99.9, preco_promo: 79.9 },
+    { id: 'p2', nome: 'Serra circular', descricao: null, preco: 450, preco_promo: 399 },
+  ]
+  const original = gerarMes({
+    ramo: 'ferramentas', estrategia: 'vender', anoMes: '2026-12', inicio: '2026-12-01',
+    negocio: { nome: 'Ferragens', insta: null, tom: 'proximo', horario: '19:00' }, produtos,
+  }).find((p) => p.rede === 'instagram' && p.tipo === 'feed' && p.data === '2026-12-04')!
+  expect(original).toMatchObject({ produto_id: 'p1', preco_de: 99.9, preco_por: 79.9 })
+  const deps = falsos({
+    post: async () => ({ ...POST, data: '2026-12-04', trocas: 0, legenda: original.legenda }),
+    produtos: async () => produtos,
+  })
+  const r = await trocarPostDoCliente({ post_id: ID }, deps)
+  expect(r.status).toBe(200)
+  const [, campos] = (deps.gravar as ReturnType<typeof vi.fn>).mock.calls[0]
+  expect(campos).toMatchObject({ produto_id: 'p2', preco_de: 450, preco_por: 399 })
+  expect(campos.legenda).toContain('De R$ 450,00 por R$ 399,00.')
+  expect(r.corpo.post).toMatchObject({ preco_de: 450, preco_por: 399 })
 })

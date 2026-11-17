@@ -5,6 +5,7 @@ import { RAMOS } from '../../supabase/functions/_shared/modelos/ramos/index.ts'
 const post = (extra: Partial<PostGerado> = {}): PostGerado => ({
   data: '2026-12-02', rede: 'instagram', tipo: 'feed', formato: 'arte', pilar: 'demo',
   titulo: 'Título', legenda: 'Legenda', hashtags: ['#a'], horario: '19:00', roteiro: null, produto_id: null, ordem: 0,
+  preco_de: null, preco_por: null,
   ...extra,
 })
 
@@ -64,4 +65,32 @@ test('validarMes com redes: espera zero posts das redes não escolhidas', () => 
   expect(validarMes([...insta, post({ rede: 'facebook' })], agenda, ['instagram']))
     .toEqual(['facebook/feed: esperado 0, veio 1'])
   expect(validarMes([post()], agenda, ['instagram'])).toEqual(['instagram/stories: esperado 1, veio 0'])
+})
+
+describe('preço por tratamento (fora dos ramos noPromo)', () => {
+  const promo = { preco_de: 2199, preco_por: 1799 }, vitrine = { preco_de: null, preco_por: 1999 }
+  test('promoção pode tudo', () => {
+    expect(validarPost(post({ ...promo, titulo: 'Oferta: Gramado', legenda: 'De R$ 2.199,00 por R$ 1.799,00. Promoção!' }), RAMOS.turismo)).toEqual([])
+  })
+  test('vitrine com R$ passa; com "promoção", "desconto", "off" ou "black friday" não', () => {
+    expect(validarPost(post({ ...vitrine, legenda: 'Por R$ 1.999,00.' }), RAMOS.turismo)).toEqual([])
+    for (const legenda of ['Por R$ 1.999,00. Promoção!', 'Com desconto', '10% off', 'Black Friday']) {
+      expect(validarPost(post({ ...vitrine, legenda }), RAMOS.turismo)).not.toEqual([])
+    }
+    expect(validarPost(post({ ...vitrine, titulo: 'Promoções de verão' }), RAMOS.turismo)).not.toEqual([])
+  })
+  test('vitrine pode dizer "oferta" e "promover"', () => {
+    expect(validarPost(post({ ...vitrine, legenda: 'Uma oferta da casa para promover o destino. Por R$ 1.999,00.' }), RAMOS.turismo))
+      .toEqual([])
+  })
+  test('post sem preço com R$ → erro', () => {
+    expect(validarPost(post({ legenda: 'A partir de R$ 99' }), RAMOS.ferramentas)).not.toEqual([])
+    expect(validarPost(post({ roteiro: 'Mostrar R$ 99' }), RAMOS.ferramentas)).not.toEqual([])
+  })
+  test('post sem preço com "ofertas" → ok', () => {
+    expect(validarPost(post({ legenda: 'As respostas viram as próximas ofertas.' }), RAMOS.turismo)).toEqual([])
+  })
+  test('noPromo recusa até post de preço', () => {
+    expect(validarPost(post({ ...vitrine, legenda: 'Por R$ 150,00.' }), RAMOS.psicologia)).not.toEqual([])
+  })
 })
