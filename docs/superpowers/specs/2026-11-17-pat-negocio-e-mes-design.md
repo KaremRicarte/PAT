@@ -12,7 +12,7 @@ e não dá para encontrá-la depois. O cliente precisa pensar onde está cada co
 - **Meu negócio** (fixo, raro de mudar): botão no topo, ao lado da logo PAT.
 - **Este mês** (muda todo mês): um cartão no calendário, logo abaixo do nome do mês.
 
-**Não objetivos (agora):** cobrança por rede e controle das redes pelo painel da administradora (vem depois; os dados ficam prontos
+**Não objetivos (agora):** a cobrança por rede (vem depois; o controle das redes pelo painel já entra agora, §2 e §6
 para isso, §6). Mudar como os posts são gerados. Mudar o calendário abaixo do cartão.
 
 **Anti-objetivos:** o cliente perder posts postados; uma troca mudar algo sem ele confirmar; mais telas e passos do que hoje
@@ -24,9 +24,10 @@ para a mesma tarefa.
 |---|---|
 | Nome · Marca (logo, @, assinatura) · Tom de voz · Horário · Cores · **Redes** | **Estratégia** · **Serviços/produtos** (preços, fotos, importação) |
 
-- **Redes ficam em Meu negócio** e uma mudança **só vale a partir do próximo mês gerado**. O mês em andamento segue com as
-  redes com que foi gerado. (Karem: "só seja permitido adicionar ou excluir no início do mês"; no futuro a quantidade de redes
-  será cobrada e controlada pelo painel da administradora.)
+- **Redes são definidas pela administradora no painel** (decisão da Karem, 17/11: "as redes sociais que serão geradas vão ser
+  controladas pelo painel admin e mostrará no meu negócio as disponíveis para o usuário"). Em Meu negócio o cliente só **vê**
+  as redes disponíveis, sem botão de alterar. Uma mudança feita pela administradora vale a partir do próximo mês gerado; o mês em
+  andamento segue com as redes com que foi gerado. No futuro a quantidade de redes será cobrada.
 
 ## 3. Telas
 
@@ -42,7 +43,7 @@ Novembro
 │ Estratégia: Vender mais      [Trocar] │
 │ Serviços: 4 itens · 1 sem foto        │
 │                    [Editar/Importar]  │
-│ Redes: Instagram, WhatsApp            │  ← só informação; muda em Meu negócio
+│ Redes: Instagram, WhatsApp            │  ← só informação; quem muda é a administradora
 └───────────────────────────────────────┘
 [Gerar o mês de dezembro]   (só a partir do dia 21, como hoje)
 resumo · avisos · calendário · posts (como hoje)
@@ -58,8 +59,8 @@ Marca         logo · @viagensana    [Alterar]
 Tom de voz    Próximo               [Alterar]
 Horário       19h                   [Alterar]
 Cores         ■ ■                   [Alterar]
-Redes         Instagram, WhatsApp   [Alterar]
-              Vale a partir do próximo mês.
+Redes         Instagram, WhatsApp   (sem botão)
+              Para mudar as redes, fale com a administração.
 ```
 - Cada "Alterar" abre **só aquela pergunta** (a mesma tela do quiz de hoje) com **Salvar** e **Voltar**; salvar grava e volta
   para a página-resumo.
@@ -78,17 +79,18 @@ Redes         Instagram, WhatsApp   [Alterar]
   mais vídeos), então os dias e os tipos de post mudam; não dá para manter só parte deles sem misturar as duas agendas.
 
 ### 3.6 Primeiro acesso
-1. **Meu negócio** (passo a passo, como hoje, mas só o fixo): nome → marca → tom → horário → cores → redes.
+1. **Meu negócio** (passo a passo, como hoje, mas só o fixo): nome → marca → tom → horário → cores (as redes já vêm do painel).
 2. **Seu mês**: serviços (com importação) → estratégia → **Gerar meu mês**.
 
 ### 3.7 Gerar o mês seguinte (a partir do dia 21)
 "Gerar o mês de dezembro" abre **Seu mês**: serviços (já preenchidos, para conferir ou importar) → estratégia → Gerar.
-As redes vêm de Meu negócio (o quiz do mês deixa de perguntar as redes).
+As redes vêm do cadastro feito pela administradora (o quiz do mês deixa de perguntar as redes).
 
 ## 4. Regras
 
-- **Redes:** guardadas no negócio (`negocios.redes`, padrão: as 4). A geração do mês usa as redes do negócio, lidas no
-  servidor (não mais enviadas pelo app). Clientes atuais: as redes do negócio começam iguais às do mês mais recente.
+- **Redes:** guardadas no cadastro do cliente (`clientes.redes`, padrão: as 4), que só a administradora altera (painel: uma
+  coluna "Redes" na lista de clientes, com as 4 opções para marcar; mínimo uma). A geração do mês usa essas redes, lidas no
+  servidor (não mais enviadas pelo app). Clientes atuais: começam com as redes do mês mais recente (ou as 4).
   Mínimo uma rede (como hoje no quiz do mês).
 - **Troca de estratégia no meio do mês:** só no mês em andamento (o que contém hoje) ou num mês futuro já gerado.
   Grava a nova estratégia no mês; apaga os posts **não postados** de hoje em diante e gera os novos de hoje até o fim do mês
@@ -106,12 +108,12 @@ As redes vêm de Meu negócio (o quiz do mês deixa de perguntar as redes).
 
 ## 6. Pronto para o futuro (sem construir agora)
 
-- A cobrança por rede vai precisar de "redes contratadas" por cliente, definidas no painel. Com as redes já no negócio,
-  isso será: a administradora define as permitidas; o cliente escolhe dentre elas em Meu negócio. Nada disso entra agora.
+- A cobrança por rede usará as redes de `clientes.redes`, que a administradora já controla. Com isso pronto,
+  a cobrança só precisará contar as redes de cada cliente. Nada de cobrança entra agora.
 
 ## 7. Chamadas minhas (Claude) — conferir
 
-1. As redes ficam em `negocios.redes` (e não em `clientes`), porque é escolha do cliente; as "contratadas" do futuro irão em `clientes`.
+1. As redes ficam em `clientes.redes` (cadastro feito pela administradora), não no negócio.
 2. Trocar a estratégia refaz **todos** os posts que faltam, inclusive aprovados (motivo em 3.5), com confirmação mostrando o número.
 3. Trocar a estratégia só de hoje em diante; dias passados ficam como estão.
 4. Um cliente atual que tenha negócio salvo mas nenhum serviço cai em **Seu mês** (antes caía no quiz do negócio).
@@ -125,9 +127,9 @@ As redes vêm de Meu negócio (o quiz do mês deixa de perguntar as redes).
    tipo). Um post postado bloqueia só o novo post do mesmo dia, rede e tipo. Precisa de uma função nova no banco (apagar e
    inserir numa transação só).
 9. **Refazer nos serviços** vale para qualquer caminho que abra a tela de serviços (cartão ou aviso de fotos).
-10. **Redes:** o cartão mostra as redes do mês (as com que ele foi gerado); Meu negócio mostra as do negócio, com o aviso
-    "Vale a partir do próximo mês que você gerar". Se o próximo mês já foi gerado, a mudança vale para o seguinte.
-11. **Compatibilidade:** a função gerar-mes passa a ignorar as redes enviadas pelo app e usa as do negócio.
+10. **Redes:** o cartão mostra as redes do mês (as com que ele foi gerado); Meu negócio mostra as do cadastro, com o aviso
+    "Para mudar as redes, fale com a administração." Se o próximo mês já foi gerado, a mudança vale para o seguinte.
+11. **Compatibilidade:** a função gerar-mes passa a ignorar as redes enviadas pelo app e usa as do cadastro do cliente.
 
 ## 8. Fica com quem constrói
 
