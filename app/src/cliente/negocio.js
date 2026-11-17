@@ -79,6 +79,18 @@ export async function carregarNegocio(supabase, uid) {
   return { negocio: n.data, produtos }
 }
 
+// Análise das fotos feita pela IA: Map path -> { serve, motivo }. Sem análise (ou erro), mapa vazio: todas servem.
+export async function carregarFotosInfo(supabase, uid) {
+  try {
+    const { data, error } = await supabase.from('fotos_ia').select('path, serve, motivo').eq('cliente_id', uid)
+    if (error) throw error
+    return new Map((data ?? []).map((x) => [x.path, { serve: x.serve, motivo: x.motivo }]))
+  } catch (e) {
+    console.error(e)
+    return new Map()
+  }
+}
+
 // Funções de Storage compartilhadas pelas duas gravações.
 function enviadorDeArquivos(supabase) {
   const marcas = supabase.storage.from('marcas')
@@ -128,7 +140,10 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
   const limpar = async (paths) => {
     if (e4) return
     const lista = paths.filter((p) => !emUso.has(p))
-    if (lista.length) await marcas.remove(lista) // melhor esforço
+    if (lista.length) {
+      await marcas.remove(lista) // melhor esforço
+      try { await supabase.from('fotos_ia').delete().in('path', lista) } catch { /* melhor esforço */ }
+    }
   }
   const ficam = new Set(itens.map((i) => i.id))
   const sair = antigos.filter((a) => !ficam.has(a.id))
@@ -168,6 +183,13 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
   // fotos que o item tinha e não tem mais
   const novos = new Map(linhas.map((l) => [l.id, new Set(l.fotos)]))
   await limpar(antigos.filter((a) => novos.has(a.id)).flatMap((a) => pathsDe(a).filter((p) => !novos.get(a.id).has(p))))
+
+  // A IA descreve as fotos novas em segundo plano: salvar nunca espera por isso.
+  const todas = [...new Set(linhas.flatMap((l) => l.fotos))].slice(0, 30)
+  if (todas.length && supabase.functions?.invoke) {
+    Promise.resolve(supabase.functions.invoke('descrever-fotos', { body: { paths: todas } }))
+      .catch((e) => console.error(e))
+  }
 }
 
 export async function salvarNegocio(supabase, uid, dados, itens, aoProgredir, opcoes = {}) {

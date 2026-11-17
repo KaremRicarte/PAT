@@ -56,47 +56,60 @@ export function gradeDoMes(anoMes) {
 }
 
 // Fotos de um item: as do banco, ou a foto única de antes (foto_path) quando não houver lista.
-export const fotosDoProduto = (p) => (p.fotos?.length ? p.fotos : p.foto_path ? [p.foto_path] : [])
+export const fotosDoProduto = (p, fotosInfo) => fotosQueServem(p.fotos?.length ? p.fotos : p.foto_path ? [p.foto_path] : [], fotosInfo)
+
+// Tira as fotos que a análise reprovou (serve === false). fotosInfo: Map path -> { serve, motivo }; foto sem análise serve.
+export const fotosQueServem = (paths, fotosInfo) => paths.filter((p) => fotosInfo?.get(p)?.serve !== false)
+
+// Andamento dos posts escritos pela IA, de hoje em diante: feitos de total, e se ainda há fila.
+export function progressoIA(posts, hoje) {
+  const nossos = posts.filter((p) => p.data >= hoje && ['fila', 'trabalhando', 'pronto', 'desistiu'].includes(p.ia_estado))
+  return {
+    feitos: nossos.filter((p) => p.ia_estado === 'pronto' || p.ia_estado === 'desistiu').length,
+    total: nossos.length,
+    ativo: nossos.some((p) => p.ia_estado === 'fila' || p.ia_estado === 'trabalhando'),
+  }
+}
 
 // Todas as fotos de todos os itens, na ordem dos itens e sem repetir.
-export const todasAsFotos = (produtos) => [...new Set(produtos.flatMap(fotosDoProduto))]
+export const todasAsFotos = (produtos, fotosInfo) => [...new Set(produtos.flatMap((p) => fotosDoProduto(p, fotosInfo)))]
 
 // Foto do post (null = arte só com texto):
 // 1. sem_foto em ramo só de texto -> nenhuma; 2. a foto escolhida para o post;
 // 3. post de um item -> só as fotos DELE, revezando pela ordem do post (nunca a de outro item);
 // 4. post geral (fora dos ramos só de texto) -> reveza todas as fotos pela ordem do post;
 //    com uma foto só, alterna foto e só texto, para não repetir a mesma foto o mês todo.
-export function fotoDoPost(post, produtos, ramo) {
+export function fotoDoPost(post, produtos, ramo, fotosInfo) {
   const soTexto = Boolean(ramo?.textOnly)
   if (post.sem_foto && soTexto) return null
-  if (post.foto_path) return post.foto_path
+  if (post.foto_path && fotosQueServem([post.foto_path], fotosInfo).length) return post.foto_path
   const produto = post.produto_id ? produtos.find((p) => p.id === post.produto_id) : null
   if (produto) {
-    const f = fotosDoProduto(produto)
+    const f = fotosDoProduto(produto, fotosInfo)
     return f.length ? f[(post.ordem ?? 0) % f.length] : null
   }
   if (soTexto) return null
-  const fotos = todasAsFotos(produtos)
+  const fotos = todasAsFotos(produtos, fotosInfo)
   if (!fotos.length) return null
   const ciclo = fotos.length === 1 ? [fotos[0], null] : fotos
   return ciclo[(post.ordem ?? 0) % ciclo.length]
 }
 
 // Fotos para a montagem de vídeo: as do item a partir da foto da vez, até `max`; post geral -> só a foto da vez.
-export function fotosDoPost(post, produtos, ramo, max = 4) {
-  const primeira = fotoDoPost(post, produtos, ramo)
+export function fotosDoPost(post, produtos, ramo, max = 4, fotosInfo) {
+  const primeira = fotoDoPost(post, produtos, ramo, fotosInfo)
   if (!primeira) return []
   const produto = post.produto_id ? produtos.find((p) => p.id === post.produto_id) : null
-  const f = produto ? fotosDoProduto(produto) : []
+  const f = produto ? fotosDoProduto(produto, fotosInfo) : []
   const i = f.indexOf(primeira)
   if (i < 0) return [primeira]
   return [...f.slice(i), ...f.slice(0, i)].slice(0, max)
 }
 
 // Quantos itens estão sem foto (para o aviso do calendário). Nos ramos só de texto a foto é opcional.
-export function servicosSemFoto(produtos, ramo) {
+export function servicosSemFoto(produtos, ramo, fotosInfo) {
   if (ramo?.textOnly) return 0
-  return produtos.filter((p) => !fotosDoProduto(p).length).length
+  return produtos.filter((p) => !fotosDoProduto(p, fotosInfo).length).length
 }
 
 // 2199 -> 'R$ 2.199'; 1999.9 -> 'R$ 1.999,90' (centavos só quando houver).

@@ -21,9 +21,9 @@ export function postsQueMudam(posts, mes, hoje) {
 }
 
 // '4 itens · 1 sem foto' / '1 item'.
-export function resumoServicos(produtos, ramo) {
+export function resumoServicos(produtos, ramo, fotosInfo) {
   const n = produtos.length
-  const sem = servicosSemFoto(produtos, ramo)
+  const sem = servicosSemFoto(produtos, ramo, fotosInfo)
   const total = t(n === 1 ? 'este.itens.um' : 'este.itens.n', { n })
   return sem ? `${total} · ${t('este.semfoto', { n: sem })}` : total
 }
@@ -42,7 +42,7 @@ export function cartaoEsteMes(ctx, mes) {
   return el('section', { class: 'este-mes', 'aria-label': t('este.titulo') },
     el('h2', { texto: t('este.titulo') }),
     linha(t('este.estrategia'), rotuloEstrategia(mes.estrategia, ramo), trocar),
-    linha(ramo.itens, resumoServicos(ctx.produtos ?? [], ramo), editar),
+    linha(ramo.itens, resumoServicos(ctx.produtos ?? [], ramo, ctx.fotosInfo), editar),
     el('p', { class: 'muted', texto: t('este.redes', { redes: nomesDasRedes(mes.redes) }) }))
 }
 
@@ -54,7 +54,7 @@ export function telaServicos(ctx) {
   const recarregar = () => { ctx.mesDosPosts = null; return atualizar() } // os posts podem ter sido refeitos
   telaPassos({
     perguntas: ['itens'], rotuloFinal: t('quiz.salvar.so'),
-    ctx: { ramo, estado: estadoDoNegocio(ctx.negocio, ctx.produtos, ramo), supabase },
+    ctx: { ramo, estado: estadoDoNegocio(ctx.negocio, ctx.produtos, ramo), supabase, fotosInfo: ctx.fotosInfo },
     aoCancelar: atualizar,
     aoSalvar: async (e, aoProgredir) => {
       await salvarItens(supabase, cliente.id, itensParaSalvar(e.itens, ramo), aoProgredir)

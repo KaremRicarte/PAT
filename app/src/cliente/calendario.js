@@ -4,7 +4,7 @@ import { telaMeuNegocio } from './meuNegocio.js'
 import { el, logo, mostrar, botaoSair, carregando, aviso, filhosValidos } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
-import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto } from './situacao.js'
+import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto, progressoIA } from './situacao.js'
 import { miniatura } from '../artes/imagens.js'
 import { telaQuizMes, mesMostrado, preferirMes } from './mes.js'
 import { aplicarAcao } from './acoesPost.js'
@@ -20,7 +20,7 @@ const ICONE = { postado: '↑', aprovado: '✓', pendente: '…', reprovado: '�
 const CHAVE_DICAS = 'pat.dicas.vistas'
 const CHAVE_FOTOS_ADIADO = 'pat.fotos.adiado' // quando o cliente tocou "Agora não" no aviso das fotos
 const DIAS_FOTOS_ADIADO = 7
-const COLUNAS = 'id, data, rede, tipo, formato, titulo, legenda, hashtags, roteiro, horario, ordem, estado, foto_path, sem_foto, postado_em, produto_id, trocas, preco_de, preco_por'
+const COLUNAS = 'id, data, rede, tipo, formato, titulo, legenda, hashtags, roteiro, horario, ordem, estado, foto_path, sem_foto, postado_em, produto_id, trocas, preco_de, preco_por, origem, ia_estado'
 
 const tituloDoDia = (data) => `${SEMANA[new Date(`${data}T00:00:00Z`).getUTCDay()]}, ${diaPorExtenso(data)}`
 
@@ -60,6 +60,9 @@ function adiarAvisoFotos() {
   try { localStorage.setItem(CHAVE_FOTOS_ADIADO, new Date().toISOString()) } catch { /* sem armazenamento: volta na próxima visita */ }
 }
 
+let relogioIA = null // um só: recarrega os posts enquanto a IA trabalha
+function pararRelogioIA() { if (relogioIA) { clearInterval(relogioIA); relogioIA = null } }
+
 let vezDoDesenho = 0 // só a última chamada desenha (troca rápida de mês)
 
 // ctx: { supabase, cliente, negocio, produtos, meses, atualizar }; aqui ganha ramo e os posts do mês mostrado.
@@ -79,6 +82,7 @@ export async function guardarMiniatura(cache, chave, gerar) {
 export async function telaCalendario(ctx, diaEscolhido) {
   const { supabase, meses } = ctx
   const vez = ++vezDoDesenho
+  pararRelogioIA()
   ctx.ramo = RAMOS[ctx.cliente.ramo]
   const hoje = hojeEmSaoPaulo()
   if (diaEscolhido && meses.some((m) => m.ano_mes === diaEscolhido.slice(0, 7))) preferirMes(diaEscolhido.slice(0, 7))
@@ -230,7 +234,7 @@ export async function telaCalendario(ctx, diaEscolhido) {
   }
 
   // ---------- aviso das fotos: serviços sem foto deixam as artes só com texto ----------
-  const semFoto = servicosSemFoto(ctx.produtos ?? [], ctx.ramo)
+  const semFoto = servicosSemFoto(ctx.produtos ?? [], ctx.ramo, ctx.fotosInfo)
   let avisoFotos = null
   if (semFoto && !avisoFotosAdiado()) {
     avisoFotos = el('section', { class: 'lembrete-aviso', 'aria-label': t('fotos.aviso.rotulo') },
@@ -239,6 +243,28 @@ export async function telaCalendario(ctx, diaEscolhido) {
         el('button', { type: 'button', class: 'secundario', texto: t('lembrete.agoranao'),
           onclick: () => { adiarAvisoFotos(); avisoFotos.remove(); botoesDia.get(escolhido)?.focus(); aviso(t('fotos.adiado')) } }),
         el('button', { type: 'button', texto: t('fotos.aviso.botao'), onclick: () => telaServicos(ctx) })))
+  }
+
+  // ---------- faixa "Melhorando…": enquanto a fila da IA anda, recarrega os posts a cada 15 s ----------
+  const faixaIA = el('p', { class: 'faixa-ia', role: 'status' })
+  const desenharFaixaIA = () => {
+    const prog = progressoIA(posts, hoje)
+    faixaIA.hidden = !prog.ativo
+    if (prog.ativo) faixaIA.textContent = t('cal.ia.faixa', { feitos: prog.feitos, total: prog.total })
+    return prog.ativo
+  }
+  const iaAtiva = desenharFaixaIA()
+  if (iaAtiva) {
+    relogioIA = setInterval(async () => {
+      if (vez !== vezDoDesenho || !faixaIA.isConnected) return pararRelogioIA() // saiu da tela
+      const { data, error } = await supabase.from('posts').select(COLUNAS)
+        .eq('mes_id', mes.id).order('data').order('ordem')
+      if (vez !== vezDoDesenho || !faixaIA.isConnected) return pararRelogioIA()
+      if (error) return console.error(error)
+      ctx.posts = data
+      ctx.miniaturas = new Map() // o texto mudou: as miniaturas são refeitas
+      telaCalendario(ctx, escolhido) // redesenha com os posts novos (e para o relógio se a fila acabou)
+    }, 15000)
   }
 
   // ---------- lembretes: o sino no topo e o aviso entre o resumo e a grade (chegam depois) ----------
@@ -258,6 +284,7 @@ export async function telaCalendario(ctx, diaEscolhido) {
     el('h1', { texto: t('mes.titulo', { mes: nomeDoMes(mes.ano_mes) }) }),
     cartaoEsteMes(ctx, mes),
     el('div', { class: 'acoes' }, proximo),
+    faixaIA,
     dicas,
     resumo,
     avisoFotos,

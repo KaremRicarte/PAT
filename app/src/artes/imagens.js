@@ -96,12 +96,12 @@ async function esperarFontes(look) {
 }
 
 // Tudo o que desenharArte precisa para um post (menos o ctx e a página).
-async function prepararArte(supabase, post, { negocio, produtos, ramo }) {
+async function prepararArte(supabase, post, { negocio, produtos, ramo, fotosInfo }) {
   const medida = medidaDaArte(post)
   if (!medida) return null
   const look = lookDoRamo(ramo?.id)
   const pecas = pecasDaArte(post, negocio, ramo)
-  const fotoPath = fotoDoPost(post, produtos ?? [], ramo)
+  const fotoPath = fotoDoPost(post, produtos ?? [], ramo, fotosInfo)
   const logoPath = pecas.assinatura.logo ? negocio.logo_path : null
   const soltar = prenderImagens([fotoPath, logoPath]) // quem chama solta depois de desenhar
   const [foto, logo] = await Promise.all([
@@ -179,10 +179,10 @@ export async function miniatura(supabase, post, ctxDados, largura = 240) {
 
 // O que os vídeos do post precisam: textos, estilo, cores, logo e as fotos (paths).
 // Fotos e logo ficam presos até soltar(): os bitmaps são desenhados durante toda a gravação.
-async function prepararVideo(supabase, post, { negocio, produtos, ramo }, fotoPaths) {
+async function prepararVideo(supabase, post, { negocio, produtos, ramo, fotosInfo }, fotoPaths) {
   const look = lookDoRamo(ramo?.id)
   const pecas = pecasDaArte(post, negocio, ramo)
-  const paths = (fotoPaths ?? fotosDoPost(post, produtos ?? [], ramo)).filter(Boolean)
+  const paths = (fotoPaths ?? fotosDoPost(post, produtos ?? [], ramo, 4, fotosInfo)).filter(Boolean)
   const logoPath = pecas.assinatura.logo ? negocio.logo_path : null
   const soltar = prenderImagens([...paths, logoPath])
   const [logo, , ...fotos] = await Promise.all([

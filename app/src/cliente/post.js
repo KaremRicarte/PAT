@@ -69,6 +69,7 @@ export function telaPost(ctx, post, aoVoltar) {
     const sit = situacaoDoPost(post)
     cabecalho.replaceChildren(
       el('p', { class: 'rede', texto: `${t(`rede.${post.rede}`)} · ${t(`formato.${chaveFormato(post)}`)}` }),
+      post.origem === 'ia' ? el('span', { class: 'selo bom', texto: t('post.ia.selo') }) : null,
       el('h1', { tabindex: '-1', texto: post.titulo }),
       el('p', { class: 'quando' },
         el('span', { texto: t('post.quando', { dia: diaPorExtenso(post.data), hora: post.horario }) }),
@@ -318,7 +319,7 @@ export function telaPost(ctx, post, aoVoltar) {
     const ok = await gravarEscolhaDeFoto({ supabase, uid: ctx.cliente.id, post, escolha, aoMudar: aoMudarFoto })
     if (ok) aviso(t(escolha.sem_foto ? 'foto.tirada' : 'foto.trocada'))
   }
-  const trocarImagem = () => abrirTrocaDeFoto({ supabase, post, produtos: ctx.produtos, ramo: ctx.ramo, aoEscolher: escolherFoto })
+  const trocarImagem = () => abrirTrocaDeFoto({ supabase, post, produtos: ctx.produtos, ramo: ctx.ramo, fotosInfo: ctx.fotosInfo, aoEscolher: escolherFoto })
   const enviarVideo = () => envioDeVideo?.abrir() // direto no toque: o som e a galeria pedem o gesto
 
   function desenharAcoes() {

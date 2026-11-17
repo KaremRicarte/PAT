@@ -261,6 +261,9 @@ table.clientes td { padding: 12px; border-bottom: 1px solid var(--line); vertica
 button.botao-sino { display: inline-flex; align-items: center; gap: 6px; min-height: 48px; }
 .lembrete-area:empty { display: none; }
 .lembrete-aviso { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; margin: 0 0 20px; }
+.faixa-ia { background: var(--ok-soft); color: var(--ok); border-radius: 16px; padding: 12px 20px; margin: 0 0 20px; font-weight: 700; }
+.aviso-foto { margin: 4px 0 0; font-size: 13px; color: var(--bad); max-width: 96px; }
+.miniatura.com-aviso { height: auto; }
 .lembrete-aviso p { margin: 0 0 12px; font-weight: 700; }
 .lembrete-aviso button { min-height: 48px; }
 .passos-iphone { list-style: none; counter-reset: passo; margin: 0 0 20px; padding: 0; }

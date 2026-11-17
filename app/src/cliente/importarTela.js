@@ -70,7 +70,7 @@ function pintarSelos(destino, item) {
 }
 
 // Faixa de miniaturas do item. `urls` guarda os endereços temporários, para o quiz liberar ao redesenhar.
-export function faixaDeFotos({ item, supabase, urls, selos }) {
+export function faixaDeFotos({ item, supabase, urls, selos, fotosInfo }) {
   const faixa = el('div', { class: 'faixa-fotos' })
   const erro = el('p', { class: 'erro pequeno', role: 'alert', hidden: true, texto: t('quiz.item.fotos.erro') })
   const entrada = el('input', { type: 'file', multiple: true, accept: 'image/*', hidden: true })
@@ -101,7 +101,11 @@ export function faixaDeFotos({ item, supabase, urls, selos }) {
       }
       const x = el('button', { type: 'button', class: 'remover-foto', 'aria-label': t('quiz.item.fotos.remover', { n: i + 1 }), texto: '✕' })
       x.addEventListener('click', () => { item.fotos.splice(i, 1); pintar(true) })
-      return el('div', { class: 'miniatura' }, img, x)
+      const info = foto.path ? fotosInfo?.get(foto.path) : null
+      const ruim = info?.serve === false
+        ? el('p', { class: 'aviso-foto', texto: t('quiz.item.fotos.ruim', { motivo: info.motivo || t('quiz.item.fotos.motivo') }) })
+        : null
+      return el('div', { class: ruim ? 'miniatura com-aviso' : 'miniatura' }, img, x, ruim)
     })
     adicionar.hidden = item.fotos.length >= MAX_FOTOS
     faixa.replaceChildren(...miniaturas, adicionar, entrada)

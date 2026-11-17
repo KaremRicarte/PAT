@@ -4,7 +4,7 @@ import { t } from '../textos.js'
 import { el, logo, mostrar, carregando, botaoSair, prepararAviso } from '../comum.js'
 import { telaInicial } from './tela.js'
 import { desenhar } from './telas.js'
-import { carregarNegocio } from './negocio.js'
+import { carregarNegocio, carregarFotosInfo } from './negocio.js'
 import { limparImagens } from '../artes/imagens.js'
 
 prepararAviso() // a região dos avisos existe desde o início
@@ -25,7 +25,7 @@ async function atualizar() {
   usuarioMostrado = sessao?.user.id ?? null
 
   // A situação é sempre relida do banco: um bloqueio vale na próxima abertura.
-  let cliente = null, negocio = null, produtos = [], meses = []
+  let cliente = null, negocio = null, produtos = [], meses = [], fotosInfo = new Map()
   if (sessao) {
     const { data, error } = await supabase.from('clientes')
       .select('id, nome, ramo, redes, situacao, senha_provisoria').eq('id', sessao.user.id).maybeSingle()
@@ -35,6 +35,7 @@ async function atualizar() {
   if (cliente && cliente.situacao === 'ativo' && !cliente.senha_provisoria && !recuperando) {
     try {
       ({ negocio, produtos } = await carregarNegocio(supabase, cliente.id))
+      fotosInfo = await carregarFotosInfo(supabase, cliente.id)
       const r = await supabase.from('meses').select('id, ano_mes, estrategia, redes, gerado_em')
         .eq('cliente_id', cliente.id).order('ano_mes', { ascending: false })
       if (r.error) throw r.error
@@ -51,7 +52,7 @@ async function atualizar() {
     const { error } = await supabase.from('eventos').insert({ cliente_id: cliente.id, tipo: 'acesso' })
     if (error) { acessoRegistrado = false; console.error(error) }
   }
-  desenhar(tela, { supabase, cliente, negocio, produtos, meses, atualizar, fimDaRecuperacao: () => { recuperando = false } })
+  desenhar(tela, { supabase, cliente, negocio, produtos, fotosInfo, meses, atualizar, fimDaRecuperacao: () => { recuperando = false } })
 }
 
 // O supabase-js avisa: não chamar o próprio supabase dentro do callback; por isso o setTimeout.

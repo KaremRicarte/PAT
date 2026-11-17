@@ -68,7 +68,7 @@ export function desenhar(tela, ctx) {
     const ramo = RAMOS[cliente.ramo]
     return telaPassos({
       perguntas: PERGUNTAS_FIXAS, rotuloFinal: t('quiz.salvar'),
-      ctx: { ramo, estado: estadoDoNegocio(ctx.negocio, ctx.produtos, ramo), supabase },
+      ctx: { ramo, estado: estadoDoNegocio(ctx.negocio, ctx.produtos, ramo), supabase, fotosInfo: ctx.fotosInfo },
       aoSalvar: async (estado) => {
         await salvarDadosNegocio(supabase, cliente.id, { ...estado, insta: normalizarInsta(estado.insta) })
         await atualizar()

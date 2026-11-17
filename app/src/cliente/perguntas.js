@@ -95,7 +95,7 @@ const BLOCOS = {
       },
     }
   },
-  itens: ({ ramo, estado, supabase }) => {
+  itens: ({ ramo, estado, supabase, fotosInfo }) => {
     const lista = el('div', { class: 'itens' })
     let urls = [] // miniaturas temporárias; liberadas a cada redesenho
     const sugestoes = el('div', { class: 'chips' })
@@ -125,7 +125,7 @@ const BLOCOS = {
         el('legend', { texto: `${ramo.itemOne} ${i + 1}` }), selos,
         rNome, iNome, el('label', { for: idDesc, texto: t('quiz.item.descricao') }), desc, preco,
         el('p', { class: 'rotulo', texto: t('quiz.item.fotos') }),
-        faixaDeFotos({ item, supabase, urls, selos }),
+        faixaDeFotos({ item, supabase, urls, selos, fotosInfo }),
         el('div', { class: 'acoes' }, remover))
     }
 

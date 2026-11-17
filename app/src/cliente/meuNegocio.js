@@ -39,7 +39,7 @@ export function telaMeuNegocio(ctx) {
     const e = estadoDoNegocio(ctx.negocio, ctx.produtos, ramo)
     telaPassos({
       titulo: t('meu.titulo'), perguntas: [chave], rotuloFinal: t('quiz.salvar.so'),
-      ctx: { ramo, estado: e, supabase },
+      ctx: { ramo, estado: e, supabase, fotosInfo: ctx.fotosInfo },
       aoCancelar: () => telaMeuNegocio(ctx),
       aoSalvar: async (novo) => {
         await salvarDadosNegocio(supabase, cliente.id, { ...novo, insta: normalizarInsta(novo.insta) })

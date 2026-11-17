@@ -48,7 +48,7 @@ export function telaQuizMes(ctx, antes = ctx.produtos) { // antes: serviços de 
   const estado = estadoDoNegocio(ctx.negocio, ctx.produtos, ramo)
   telaPassos({
     titulo: t('mesq.seumes'), perguntas: ['itens'], rotuloFinal: t('quiz.continuar'),
-    ctx: { ramo, estado, supabase }, aoCancelar: meses.length ? atualizar : undefined,
+    ctx: { ramo, estado, supabase, fotosInfo: ctx.fotosInfo }, aoCancelar: meses.length ? atualizar : undefined,
     aoSalvar: async (e, aoProgredir) => {
       await salvarItens(supabase, cliente.id, itensParaSalvar(e.itens, ramo), aoProgredir)
       // recarrega: o Voltar refaz o passo 1 a partir do que foi gravado (não da lista antiga)

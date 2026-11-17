@@ -174,3 +174,21 @@ describe('fotos do item', () => {
     expect(servicosSemFoto([...prods, semFotos], RAMOS.beleza)).toBe(1)
   })
 })
+
+describe('fotos reprovadas pela análise', () => {
+  const info = new Map([['x.jpg', { serve: false, motivo: 'escura' }]])
+  const ramo = { textOnly: false }
+  test('servicosSemFoto: item só com foto reprovada conta como sem foto', async () => {
+    const { servicosSemFoto } = await import('../../app/src/cliente/situacao.js')
+    const produtos = [{ id: 1, fotos: ['x.jpg'] }, { id: 2, fotos: ['y.jpg'] }]
+    expect(servicosSemFoto(produtos, ramo)).toBe(0)
+    expect(servicosSemFoto(produtos, ramo, info)).toBe(1)
+  })
+  test('fotoDoPost ignora foto reprovada', () => {
+    const produtos = [{ id: 1, fotos: ['x.jpg', 'y.jpg'] }]
+    const post = { produto_id: 1, ordem: 0 }
+    expect(fotoDoPost(post, produtos, { textOnly: false })).toBe('x.jpg')
+    expect(fotoDoPost(post, produtos, { textOnly: false }, info)).toBe('y.jpg')
+    expect(fotoDoPost({ foto_path: 'x.jpg' }, produtos, { textOnly: false }, info)).not.toBe('x.jpg')
+  })
+})

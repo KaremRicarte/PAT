@@ -14,9 +14,9 @@ export const caminhoDaFotoDoPost = (uid, postId) => `${uid}/posts/${postId}.jpg`
 
 // As fotos que o cliente pode escolher: a que ele enviou para o post (se houver) e as dos produtos.
 // `atual` marca a que a arte usa agora (a mesma regra de fotoDoPost). semFoto: só nos ramos textOnly.
-export function opcoesDeFoto(produtos, ramo, post) {
-  const atual = fotoDoPost(post, produtos, ramo)
-  const paths = [...new Set([post.foto_path, ...todasAsFotos(produtos)].filter(Boolean))]
+export function opcoesDeFoto(produtos, ramo, post, fotosInfo) {
+  const atual = fotoDoPost(post, produtos, ramo, fotosInfo)
+  const paths = [...new Set([post.foto_path, ...todasAsFotos(produtos, fotosInfo)].filter(Boolean))]
   return {
     fotos: paths.map((path) => ({ path, atual: path === atual })),
     semFoto: Boolean(ramo?.textOnly),
@@ -41,9 +41,9 @@ async function desenharMini(supabase, path, caixa) {
 // Abre a janela por cima da tela do post. aoEscolher recebe:
 // { foto_path } (uma das fotos), { arquivo } (foto nova da galeria/câmera) ou { sem_foto: true }.
 // Tocar na foto atual só fecha a janela.
-export function abrirTrocaDeFoto({ supabase, post, produtos, ramo, aoEscolher }) {
-  const { fotos, semFoto } = opcoesDeFoto(produtos ?? [], ramo, post)
-  const nomePorPath = new Map((produtos ?? []).flatMap((p) => fotosDoProduto(p).map((f) => [f, p.nome])))
+export function abrirTrocaDeFoto({ supabase, post, produtos, ramo, fotosInfo, aoEscolher }) {
+  const { fotos, semFoto } = opcoesDeFoto(produtos ?? [], ramo, post, fotosInfo)
+  const nomePorPath = new Map((produtos ?? []).flatMap((p) => fotosDoProduto(p, fotosInfo).map((f) => [f, p.nome])))
   const ids = { titulo: 'trocar-foto-titulo', dica: 'trocar-foto-dica', semfoto: 'trocar-foto-sem' }
   const semFotoAtual = semFoto && post.sem_foto
 
