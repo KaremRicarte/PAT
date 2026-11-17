@@ -104,8 +104,17 @@ test('pecasDaArte: legenda de 5 parágrafos', () => {
   const n = { nome: 'Loja da Ana', insta: '@ana', assinatura: 'ambos' }
   expect(pecasDaArte(p, n, RAMOS.beleza)).toEqual({
     rotulo: 'LOJA DA ANA', titulo: 'T', gancho: 'g', meio: 'm', convite: 'conv',
-    assinatura: { texto: '@ana', logo: true },
+    preco: null, assinatura: { texto: '@ana', logo: true },
   })
+})
+
+test('pecasDaArte: preço do selo', () => {
+  const n = { nome: 'Ana', insta: '@ana', assinatura: 'insta' }
+  expect(pecasDaArte({ titulo: 'T', preco_de: 2199, preco_por: 1799 }, n, RAMOS.beleza).preco).toEqual({ de: 'R$ 2.199', por: 'R$ 1.799' })
+  expect(pecasDaArte({ titulo: 'T', preco_de: null, preco_por: 1999.9 }, n, RAMOS.beleza).preco).toEqual({ de: null, por: 'R$ 1.999,90' })
+  expect(pecasDaArte({ titulo: 'T', preco_por: null }, n, RAMOS.beleza).preco).toBeNull()
+  expect(pecasDaArte({ titulo: 'T', preco_de: 2199, preco_por: 1799 }, n, RAMOS.psicologia).preco).toBeNull()
+  expect(pecasDaArte({ titulo: 'T', preco_por: 1799 }, n, RAMOS.advocacia).preco).toBeNull()
 })
 
 test('pecasDaArte: 3 parágrafos usam o último como convite; 2 parágrafos não têm meio', () => {

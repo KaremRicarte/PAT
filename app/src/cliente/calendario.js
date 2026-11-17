@@ -18,7 +18,7 @@ const ICONE = { postado: '↑', aprovado: '✓', pendente: '…', reprovado: '�
 const CHAVE_DICAS = 'pat.dicas.vistas'
 const CHAVE_FOTOS_ADIADO = 'pat.fotos.adiado' // quando o cliente tocou "Agora não" no aviso das fotos
 const DIAS_FOTOS_ADIADO = 7
-const COLUNAS = 'id, data, rede, tipo, formato, titulo, legenda, hashtags, roteiro, horario, ordem, estado, foto_path, sem_foto, postado_em, produto_id, trocas'
+const COLUNAS = 'id, data, rede, tipo, formato, titulo, legenda, hashtags, roteiro, horario, ordem, estado, foto_path, sem_foto, postado_em, produto_id, trocas, preco_de, preco_por'
 
 const tituloDoDia = (data) => `${SEMANA[new Date(`${data}T00:00:00Z`).getUTCDay()]}, ${diaPorExtenso(data)}`
 

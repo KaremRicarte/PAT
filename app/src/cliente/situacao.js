@@ -99,6 +99,19 @@ export function servicosSemFoto(produtos, ramo) {
   return produtos.filter((p) => !fotosDoProduto(p).length).length
 }
 
+// 2199 -> 'R$ 2.199'; 1999.9 -> 'R$ 1.999,90' (centavos só quando houver).
+export function dinheiro(v) {
+  const n = Number(v)
+  const temCentavos = Math.round(n * 100) % 100 !== 0
+  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: temCentavos ? 2 : 0, maximumFractionDigits: temCentavos ? 2 : 0 }).replace(/ /g, ' ')
+}
+
+// Preço do selo da arte: null sem preço ou nos ramos que não fazem promoção.
+function precoDaArte(post, ramo) {
+  if (ramo?.noPromo || post.preco_por == null) return null
+  return { de: post.preco_de != null ? dinheiro(post.preco_de) : null, por: dinheiro(post.preco_por) }
+}
+
 // Textos da arte. Legenda: gancho (1º), meio (2º) e convite (penúltimo; o último se houver até 3).
 export function pecasDaArte(post, negocio, ramo) {
   const par = (post.legenda ?? '').split(/\n\n+/).map((x) => x.trim()).filter(Boolean)
@@ -111,6 +124,7 @@ export function pecasDaArte(post, negocio, ramo) {
     gancho: par[0] ?? '',
     meio: par.length >= 3 ? par[1] : '',
     convite,
+    preco: precoDaArte(post, ramo),
     assinatura: {
       texto: modo !== 'logo' && insta ? insta : null,
       logo: modo === 'logo' || modo === 'ambos',

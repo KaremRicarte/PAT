@@ -120,6 +120,40 @@ test('desenharArte: nenhum texto sai da arte, em todos os estilos e formas, com 
   }
 })
 
+test('desenharArte: selo de preço aparece, risca o valor antigo e não sai da arte nem passa de 40% da largura', async () => {
+  const { desenharArte } = await import('../../app/src/artes/desenho.js')
+  const base = { rotulo: 'LOJA', titulo: 'Oferta da semana', gancho: 'Aproveite agora', meio: '', convite: '', assinatura: { texto: '@loja', logo: false } }
+  const formas = [{ W: 1080, H: 1350, paginas: 1 }, { W: 1080, H: 1350, paginas: 5 }, { W: 1080, H: 1920, paginas: 1 }, { W: 720, H: 1280, paginas: 1, capaDeVideo: true }]
+  for (const look of Object.values(LOOKS)) {
+    for (const forma of formas) {
+      for (const preco of [{ de: 'R$ 2.199', por: 'R$ 1.799' }, { de: null, por: 'R$ 1.999,90' }]) {
+        const riscos = []
+        const { ctx, textos, caixas } = canvasFalso()
+        const fr = ctx.fillRect
+        ctx.fillRect = (x, y, w, h) => { riscos.push({ x, y, w, h }); fr(x, y, w, h) }
+        desenharArte(ctx, { pecas: { ...base, preco }, look, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, foto: null, logo: null, ...forma, pagina: 1 })
+        const valor = textos.find((x) => x.s === preco.por)
+        expect(valor).toBeTruthy()
+        expect(valor.dir - valor.esq).toBeLessThanOrEqual(forma.W * 0.4)
+        if (preco.de) {
+          const antigo = textos.find((x) => x.s === preco.de)
+          expect(antigo).toBeTruthy()
+          expect(riscos.some((r) => r.h < forma.W * 0.01 && r.y >= antigo.topo && r.y <= antigo.base && r.w > 0)).toBe(true)
+        } else expect(textos.some((x) => x.s === 'R$ 2.199')).toBe(false)
+        for (const tx of [...textos, ...caixas]) {
+          expect(tx.esq).toBeGreaterThanOrEqual(0); expect(tx.dir).toBeLessThanOrEqual(forma.W)
+          expect(tx.topo).toBeGreaterThanOrEqual(0); expect(tx.base).toBeLessThanOrEqual(forma.H)
+        }
+        const assin = textos.find((x) => x.s === '@loja')
+        expect(valor.base).toBeLessThanOrEqual(assin.topo)
+      }
+    }
+  }
+  const { ctx, textos } = canvasFalso()
+  desenharArte(ctx, { pecas: { ...base, preco: null }, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, W: 1080, H: 1350 })
+  expect(textos.some((x) => x.s.startsWith('R$'))).toBe(false)
+})
+
 test('encaixarTexto: linha mais larga que o máximo também conta como "não coube"', () => {
   const quebra = (t, tam) => quebrarLinhas(t, 20, (s) => s.length * tam / 10)
   const r = encaixarTexto('oi Anticonstitucionalissimam', {

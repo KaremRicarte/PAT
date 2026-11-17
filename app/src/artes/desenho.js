@@ -169,6 +169,55 @@ export function caixaDeTexto(f, texto, fundo, tamanho, alturaMax, { cor = 'rgba(
   return h
 }
 
+// ---------- selo de preço ----------
+
+// Medidas do selo: cápsula de no máximo 40% da largura; a fonte encolhe até o valor caber.
+export function medirSelo(f, preco) {
+  const { ctx, u, look } = f
+  const pad = 2.2 * u, max = 0.4 * f.W - pad * 2
+  let grande = 8.5 * u
+  const larg = (txt, tam) => { ctx.font = `800 ${tam}px ${look.fd}`; return ctx.measureText(txt).width }
+  const pequeno = () => grande * 0.5
+  for (let i = 0; i < 30; i++) {
+    const w = Math.max(larg(preco.por, grande), preco.de ? larg(preco.de, pequeno()) : 0)
+    if (w <= max) break
+    grande *= 0.93
+  }
+  const peq = pequeno()
+  const w = Math.max(larg(preco.por, grande), preco.de ? larg(preco.de, peq) : 0) + pad * 2
+  const h = pad * 2 + grande * 1.1 + (preco.de ? peq * 1.25 : 0)
+  return { w, h, pad, grande, peq }
+}
+
+// Selo de preço (cápsula na cor principal): o valor antigo menor e riscado em cima, o novo grande embaixo.
+// `y` é o topo do selo; ele segue o alinhamento do estilo.
+export function seloDePreco(f, preco, tinta, y) {
+  const { ctx, x, mw, look } = f
+  const m = medirSelo(f, preco)
+  const bx = look.center ? x + (mw - m.w) / 2 : x
+  ctx.save()
+  ctx.fillStyle = f.b1
+  retanguloArredondado(ctx, bx, y, m.w, m.h, m.h * 0.28)
+  ctx.fill()
+  ctx.fillStyle = f.b1i
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  let ty = y + m.pad
+  if (preco.de) {
+    ctx.font = `800 ${m.peq}px ${look.fd}`
+    ctx.globalAlpha = 0.8
+    ctx.fillText(preco.de, bx + m.pad, ty, m.w - m.pad * 2)
+    const lw = Math.min(ctx.measureText(preco.de).width, m.w - m.pad * 2)
+    ctx.fillRect(bx + m.pad, ty + m.peq * 0.55, lw, Math.max(1, m.peq * 0.08))
+    ctx.globalAlpha = 1
+    ty += m.peq * 1.25
+  }
+  ctx.font = `800 ${m.grande}px ${look.fd}`
+  ctx.fillText(preco.por, bx + m.pad, ty, m.w - m.pad * 2)
+  ctx.restore()
+  return m.h
+}
+
 // ---------- acabamento ----------
 
 // Acabamento do estilo (band): faixa embaixo (varejo), filete lateral (sóbrio) ou moldura fina (elegante).
@@ -262,14 +311,19 @@ function arteUnica(f, { pecas, foto, logo, capaDeVideo }) {
   rotulo(f, pecas.rotulo, 9 * u, tinta)
   if (H > W) {
     const frase = capaDeVideo ? pecas.titulo : (pecas.gancho || pecas.titulo)
-    const tit = montarTitulo(f, frase, 9.5 * u, fundo - topo)
+    // Com selo: o título fica no alto e o selo logo abaixo dele (acima da assinatura).
+    const reserva = pecas.preco ? medirSelo(f, pecas.preco).h + 4 * u : 0
+    const tit = montarTitulo(f, frase, 9.5 * u, fundo - topo - reserva)
     pintarTitulo(f, tit, topo, tinta)
+    if (pecas.preco) seloDePreco(f, pecas.preco, tinta, topo + tit.h + 4 * u)
   } else {
     const apoio = pecas.gancho ? montarTexto(f, pecas.gancho, 5 * u, 22 * u) : null
     const espacoApoio = apoio ? apoio.h + 4 * u : 0
-    const tit = montarTitulo(f, pecas.titulo, 9.5 * u, fundo - topo - espacoApoio)
+    const reserva = pecas.preco ? medirSelo(f, pecas.preco).h + 3 * u : 0
+    const tit = montarTitulo(f, pecas.titulo, 9.5 * u, fundo - topo - espacoApoio - reserva)
     const y = fundo - espacoApoio - tit.h
     pintarTitulo(f, tit, y, tinta)
+    if (pecas.preco) seloDePreco(f, pecas.preco, tinta, y - 3 * u - medirSelo(f, pecas.preco).h)
     if (apoio) pintarTexto(f, apoio, y + tit.h + 4 * u, tinta)
   }
   faixa(f)
@@ -291,9 +345,11 @@ function paginaDoCarrossel(f, { pecas, foto, logo, pagina }) {
     const tinta = fundoComFoto(f, foto)
     rotulo(f, `1/5 · ${pecas.rotulo}`, 9 * u, tinta)
     const apoio = montarTexto(f, t('arte.arraste'), 5 * u, 10 * u)
-    const tit = montarTitulo(f, pecas.titulo, 9.5 * u, fundo - topo - apoio.h - 4 * u)
+    const reserva = pecas.preco ? medirSelo(f, pecas.preco).h + 3 * u : 0
+    const tit = montarTitulo(f, pecas.titulo, 9.5 * u, fundo - topo - apoio.h - 4 * u - reserva)
     const y = fundo - apoio.h - 4 * u - tit.h
     pintarTitulo(f, tit, y, tinta)
+    if (pecas.preco) seloDePreco(f, pecas.preco, tinta, y - 3 * u - medirSelo(f, pecas.preco).h)
     pintarTexto(f, apoio, y + tit.h + 4 * u, tinta)
     faixa(f)
     assinar(f, pecas.assinatura, logo, tinta)
