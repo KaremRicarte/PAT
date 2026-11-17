@@ -3,7 +3,7 @@
 import { t } from '../textos.js'
 import { el, logo, mostrar } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
-import { precoDoTexto, normalizarInsta, salvarNegocio } from './negocio.js'
+import { itensParaSalvar, normalizarInsta, salvarNegocio } from './negocio.js'
 import { pergunta, estadoDoNegocio } from './perguntas.js'
 
 export { opcoes } from './perguntas.js'
@@ -67,11 +67,7 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
     aoSalvar: async (e, aoProgredir) => {
       await salvarNegocio(supabase, cliente.id,
         { ...e, insta: normalizarInsta(e.insta) },
-        e.itens.map((i) => {
-          const preco = ramo.noPromo ? null : precoDoTexto(i.precoTexto)
-          return { id: i.id, nome: i.nome, descricao: i.descricao, preco,
-            preco_promo: ramo.noPromo ? null : (preco ? precoDoTexto(i.promoTexto) : null), fotos: i.fotos }
-        }), aoProgredir)
+        itensParaSalvar(e.itens, ramo), aoProgredir)
       await aoSalvar()
     },
   })

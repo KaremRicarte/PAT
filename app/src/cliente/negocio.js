@@ -103,6 +103,15 @@ export async function salvarDadosNegocio(supabase, uid, dados) {
 
 // itens: [{ id, nome, descricao, preco, preco_promo, fotos: [{ path } | { arquivo, nome }] }] — id já gerado no aparelho.
 // opcoes.reduzir: redutor de fotos (troca-se nos testes, onde não há canvas).
+// Itens do quiz (textos de preço) no formato gravado; ramos noPromo não têm preço.
+export function itensParaSalvar(itens, ramo) {
+  return itens.map((i) => {
+    const preco = ramo.noPromo ? null : precoDoTexto(i.precoTexto)
+    return { id: i.id, nome: i.nome, descricao: i.descricao, preco,
+      preco_promo: ramo.noPromo ? null : (preco ? precoDoTexto(i.promoTexto) : null), fotos: i.fotos }
+  })
+}
+
 export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}) {
   const reduzir = opcoes.reduzir ?? ((arquivo) => reduzirFoto(arquivo, FOTO_MAX, 'image/jpeg'))
   const { marcas, enviar } = enviadorDeArquivos(supabase)

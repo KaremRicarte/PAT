@@ -159,3 +159,16 @@ test('salvarItens não toca em negocios', async () => {
   expect(chamadas.filter(([t]) => t === 'negocios')).toEqual([])
   expect(chamadas.find(([t, v]) => t === 'produtos' && v)[1][0]).toMatchObject({ id: 'i1', nome: 'Item', ordem: 0 })
 })
+
+import { itensParaSalvar } from '../../app/src/cliente/negocio.js'
+test('itensParaSalvar: converte preços do texto; promo só com preço; ramos noPromo sem preço', () => {
+  const itens = [{ id: 'a', nome: 'Corte', descricao: 'd', precoTexto: '50', promoTexto: '40', fotos: [] },
+    { id: 'b', nome: 'X', descricao: '', precoTexto: '', promoTexto: '30', fotos: [] }]
+  const [a, b] = itensParaSalvar(itens, { noPromo: false })
+  expect(a).toEqual({ id: 'a', nome: 'Corte', descricao: 'd', preco: 50, preco_promo: 40, fotos: [] })
+  expect(b.preco).toBeNull()
+  expect(b.preco_promo).toBeNull()
+  const [c] = itensParaSalvar(itens, { noPromo: true })
+  expect(c.preco).toBeNull()
+  expect(c.preco_promo).toBeNull()
+})
