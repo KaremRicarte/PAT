@@ -73,11 +73,13 @@ export function juntarImportacao(itens, { linhas = [], erros = [], arquivosDeFot
   const porChave = new Map(lista.map((i) => [normalizarNome(i.nome), i]))
   const foraDaLista = new Set()
   const atualizados = new Set()
+  const doArquivo = new Set() // itens citados no arquivo, na ordem do arquivo
 
   for (const l of linhas) {
     const chave = normalizarNome(l.nome)
     if (noPromo && (l.preco !== undefined || l.promo !== undefined)) resumo.precosIgnorados = true
     let item = porChave.get(chave)
+    if (item) doArquivo.add(item)
     if (item) {
       if (!atualizados.has(item)) { atualizados.add(item); resumo.atualizados++ }
     } else {
@@ -85,6 +87,7 @@ export function juntarImportacao(itens, { linhas = [], erros = [], arquivosDeFot
       item = { id: novoId(), nome: l.nome, descricao: '', precoTexto: '', promoTexto: '', fotos: [], novo: true, fotosNovas: 0 }
       lista.push(item)
       porChave.set(chave, item)
+      doArquivo.add(item)
       resumo.novos++
     }
     if (!noPromo) {
@@ -112,5 +115,6 @@ export function juntarImportacao(itens, { linhas = [], erros = [], arquivosDeFot
   }
 
   for (const i of lista) if (!i.fotosNovas) delete i.fotosNovas
-  return { itens: lista, resumo }
+  // Os itens do arquivo vêm primeiro (e viram posts primeiro); os cadastrados à mão ficam depois.
+  return { itens: [...doArquivo, ...lista.filter((i) => !doArquivo.has(i))], resumo }
 }

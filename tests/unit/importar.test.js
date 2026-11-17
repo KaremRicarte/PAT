@@ -59,9 +59,19 @@ describe('juntarImportacao', () => {
     const r = juntarImportacao(atual, ent('Gramado;2199;1799\nLeste Europeu;10299;9999\nportoseguro;1999;1999\nportugal;0;0'), opc())
     expect(r.itens).toHaveLength(5)
     expect(r.itens[0]).toMatchObject({ nome: 'Gramado', precoTexto: '2199', promoTexto: '1799', fotos: [{ path: 'u/p/a.jpg' }] })
-    expect(r.itens[1].nome).toBe('Bonito')
-    expect(r.itens[2]).toMatchObject({ id: 'n1', nome: 'Leste Europeu', precoTexto: '10299', novo: true, descricao: '', fotos: [] })
+    expect(r.itens[1]).toMatchObject({ id: 'n1', nome: 'Leste Europeu', precoTexto: '10299', novo: true, descricao: '', fotos: [] })
+    expect(r.itens[4].nome).toBe('Bonito')
     expect(r.resumo).toMatchObject({ novos: 3, atualizados: 1 })
+  })
+  test('itens do arquivo vão para o topo, na ordem do arquivo; os cadastrados à mão ficam depois', () => {
+    const atual = [{ id: 'a', nome: 'Bonito' }, { id: 'b', nome: 'Gramado' }, { id: 'c', nome: 'Natal' }]
+    const r = juntarImportacao(atual, ent('Portugal;0;0\nGramado;2199;1799'), opc())
+    expect(r.itens.map((i) => i.nome)).toEqual(['Portugal', 'Gramado', 'Bonito', 'Natal'])
+  })
+  test('só fotos, sem lista: a ordem não muda', () => {
+    const atual = [{ id: 'a', nome: 'Bonito' }, { id: 'b', nome: 'Gramado' }]
+    const r = juntarImportacao(atual, ent('', [arq('gramado_1.jpg')]), opc())
+    expect(r.itens.map((i) => i.nome)).toEqual(['Bonito', 'Gramado'])
   })
   test('linha só com nome não mexe no preço', () => {
     const r = juntarImportacao([{ id: 'a', nome: 'Gramado', precoTexto: '2000', promoTexto: '1500' }], ent('gramado'), opc())
