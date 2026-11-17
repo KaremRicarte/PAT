@@ -15,7 +15,7 @@ async function trocar(db, corpo) {
   return { status: r.status, corpo: await r.json() }
 }
 
-const pronto = () => novoCliente({ senha_provisoria: false })
+const pronto = (extra = {}) => novoCliente({ senha_provisoria: false, ...extra })
 const todosOsPosts = async (mesId) =>
   (await servico().from('posts').select('*').eq('mes_id', mesId).order('ordem')).data
 
@@ -28,10 +28,12 @@ test('troca para crescer: mês atualizado, postado intacto, sem (data, rede, tip
   const postado = antes[antes.length - 1]
   await s.from('posts').update({ estado: 'aprovado', postado_em: new Date().toISOString() }).eq('id', postado.id)
   // um post de dia passado, criado à mão, deve ficar como está
-  const { data: [passado] } = await s.from('posts').insert({
+  const { data: criado, error: erroPassado } = await s.from('posts').insert({
     mes_id: mesId, data: `${hoje.slice(0, 7)}-01`, rede: 'instagram', tipo: 'feed', formato: 'arte',
-    titulo: 'Passado', legenda: 'x', horario: '08:00', ordem: 9999, estado: 'aprovado', postado_em: new Date().toISOString(),
+    pilar: 'demo', titulo: 'Passado', legenda: 'x', horario: '08:00', ordem: 9999, estado: 'aprovado', postado_em: new Date().toISOString(),
   }).select('*')
+  expect(erroPassado).toBeNull()
+  const [passado] = criado
   const antesPostado = (await todosOsPosts(mesId)).find((p) => p.id === postado.id)
 
   const r = await trocar(a.db, { mes_id: mesId, estrategia: 'crescer' })
@@ -48,7 +50,7 @@ test('troca para crescer: mês atualizado, postado intacto, sem (data, rede, tip
 })
 
 test('outro cliente recebe 404', async () => {
-  const a = await pronto(), b = await pronto()
+  const a = await pronto(), b = await pronto({ ramo: 'ferramentas' })
   const { mesId } = await novoMes(a)
   const r = await trocar(b.db, { mes_id: mesId, estrategia: 'crescer' })
   expect(r.status).toBe(404)
