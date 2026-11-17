@@ -1,185 +1,25 @@
-// Quiz do negócio: uma pergunta por tela. O ramo vem do cadastro feito pela administradora.
+// Executor de passos: uma pergunta por tela. As perguntas vêm de perguntas.js; quem chama decide
+// quais perguntas rodar e o que fazer ao final (aoSalvar).
 import { t } from '../textos.js'
-import { el, logo, campo, mostrar } from '../comum.js'
+import { el, logo, mostrar } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
-import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
-import {
-  MAX_ITENS, LOGO_MAX, validarItens, precoDoTexto, normalizarInsta, reduzirFoto, salvarNegocio,
-} from './negocio.js'
-import { montarImportacao, faixaDeFotos } from './importarTela.js'
+import { precoDoTexto, normalizarInsta, salvarNegocio } from './negocio.js'
+import { pergunta, estadoDoNegocio } from './perguntas.js'
 
-const HORARIOS = [['07:00', 'manha'], ['12:00', 'almoco'], ['19:00', 'noite']]
-const ASSINATURAS = ['ambos', 'logo', 'insta']
+export { opcoes } from './perguntas.js'
 
-// Lista de opções em cartões (rádio). `lista`: [valor, rótulo, descrição?, selo?]
-export function opcoes(nome, lista, atual, aoMudar) {
-  return el('div', { class: 'opcoes', role: 'radiogroup' }, lista.map(([valor, rotulo, desc, selo]) => {
-    const radio = el('input', { type: 'radio', name: nome, value: valor, checked: valor === atual })
-    radio.addEventListener('change', () => aoMudar(valor))
-    return el('label', { class: 'cartao' }, radio,
-      el('span', {}, el('strong', { texto: rotulo }), selo ? el('span', { class: 'selo bom', texto: selo }) : null,
-        desc ? el('small', { texto: desc }) : null))
-  }))
-}
-
-// Campo de arquivo de imagem que já reduz a foto no aparelho e mostra o resultado.
-function campoFoto(rotulo, { maximo, tipo, jaTem, aoEscolher }) {
-  const id = `foto-${crypto.randomUUID()}`
-  const status = el('p', { class: 'muted pequeno', texto: jaTem ? t('quiz.foto.salva') : '' })
-  const input = el('input', { id, type: 'file', accept: 'image/jpeg,image/png,image/webp,image/*' })
-  input.addEventListener('change', async () => {
-    const arquivo = input.files?.[0]
-    if (!arquivo) return
-    status.className = 'muted pequeno'
-    status.textContent = t('comum.carregando')
-    try {
-      aoEscolher(await reduzirFoto(arquivo, maximo, tipo))
-      status.textContent = t('quiz.foto.ok')
-    } catch (e) {
-      console.error(e)
-      input.value = ''
-      status.className = 'erro pequeno'
-      status.textContent = t('quiz.foto.erro')
-    }
-  })
-  return [el('label', { for: id, texto: rotulo }), input, status]
-}
-
-export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
-  const ramo = RAMOS[cliente.ramo]
-  const n = inicial?.negocio
-  const estado = {
-    nome: n?.nome ?? '', insta: n?.insta ?? '', assinatura: n?.assinatura ?? 'ambos',
-    tom: n?.tom ?? 'proximo', horario: n?.horario ?? '19:00',
-    cor1: n?.cor1 ?? ramo.cores.cor1, cor2: n?.cor2 ?? ramo.cores.cor2,
-    logo_path: n?.logo_path ?? null, logoBlob: null,
-    itens: (inicial?.produtos ?? []).map((p) => ({
-      id: p.id, nome: p.nome, descricao: p.descricao ?? '',
-      precoTexto: p.preco ? String(p.preco).replace('.', ',') : '',
-      promoTexto: p.preco_promo ? String(p.preco_promo).replace('.', ',') : '',
-      fotos: p.fotos?.length ? p.fotos.map((path) => ({ path })) : p.foto_path ? [{ path: p.foto_path }] : [],
-    })),
-  }
-
-  const passos = [
-    // 1. nome
-    () => {
-      const [rotulo, input] = campo(ramo.nomeQ, { name: 'nome', value: estado.nome, maxlength: 80, autocomplete: 'organization' })
-      input.addEventListener('input', () => { estado.nome = input.value })
-      return {
-        titulo: t('quiz.nome.titulo'), corpo: [rotulo, input],
-        validar: () => {
-          if (estado.nome.trim().length < 2) return t('quiz.nome.erro')
-          return ramo.noPromo && temPromocao(estado.nome) ? t('quiz.nome.promo') : null
-        },
-      }
-    },
-    // 2. itens (produtos, serviços ou temas)
-    () => {
-      const lista = el('div', { class: 'itens' })
-      let urls = [] // miniaturas temporárias; liberadas a cada redesenho
-      const sugestoes = el('div', { class: 'chips' })
-      const adicionar = el('button', { type: 'button', class: 'secundario', texto: t('quiz.item.adicionar') })
-      const novo = (nome = '') => ({ id: crypto.randomUUID(), nome, descricao: '', precoTexto: '', promoTexto: '', fotos: [] })
-      adicionar.addEventListener('click', () => { estado.itens.push(novo()); redesenhar(); lista.querySelector('fieldset:last-child input')?.focus() })
-
-      const editor = (item, i) => {
-        const [rNome, iNome] = campo(t('quiz.item.nome'), { value: item.nome, maxlength: 80 })
-        iNome.addEventListener('input', () => { item.nome = iNome.value })
-        const idDesc = `desc-${item.id}`
-        const desc = el('textarea', { id: idDesc, rows: 2, maxlength: 300 })
-        desc.value = item.descricao
-        desc.addEventListener('input', () => { item.descricao = desc.value })
-        let preco = null
-        if (!ramo.noPromo) {
-          const [rPreco, iPreco] = campo(t('quiz.item.preco'), { value: item.precoTexto, inputmode: 'decimal', placeholder: 'Ex.: 49,90' })
-          iPreco.addEventListener('input', () => { item.precoTexto = iPreco.value })
-          const [rPromo, iPromo] = campo(t('quiz.item.promo'), { value: item.promoTexto, inputmode: 'decimal', placeholder: 'Ex.: 39,90' })
-          iPromo.addEventListener('input', () => { item.promoTexto = iPromo.value })
-          preco = el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo))
-        }
-        const selos = el('span', { class: 'selos-item' })
-        const remover = el('button', { type: 'button', class: 'secundario pequeno', texto: t('quiz.item.remover') })
-        remover.addEventListener('click', () => { estado.itens.splice(estado.itens.indexOf(item), 1); redesenhar() })
-        return el('fieldset', {},
-          el('legend', { texto: `${ramo.itemOne} ${i + 1}` }), selos,
-          rNome, iNome, el('label', { for: idDesc, texto: t('quiz.item.descricao') }), desc, preco,
-          el('p', { class: 'rotulo', texto: t('quiz.item.fotos') }),
-          faixaDeFotos({ item, supabase, urls, selos }),
-          el('div', { class: 'acoes' }, remover))
-      }
-
-      function redesenhar() {
-        for (const u of urls) URL.revokeObjectURL(u)
-        urls = []
-        lista.replaceChildren(...estado.itens.map(editor))
-        const usados = new Set(estado.itens.map((i) => i.nome.trim().toLowerCase()))
-        const cheio = estado.itens.length >= MAX_ITENS
-        sugestoes.replaceChildren(...(cheio ? [] : ramo.lib.filter((l) => !usados.has(l.nome.toLowerCase())).map((l) => {
-          const chip = el('button', { type: 'button', class: 'chip', texto: `+ ${l.nome}` })
-          chip.addEventListener('click', () => { estado.itens.push(novo(l.nome)); redesenhar() })
-          return chip
-        })))
-        adicionar.hidden = cheio
-      }
-      redesenhar()
-      return {
-        titulo: ramo.itensQ,
-        corpo: [...montarImportacao({ ramo, estado, aoMudar: redesenhar }), el('p', { class: 'muted', texto: t('quiz.itens.dica', { max: MAX_ITENS }) }), sugestoes, lista, adicionar],
-        validar: () => { const k = validarItens(estado.itens, ramo); return k ? t(k, { max: MAX_ITENS }) : null },
-      }
-    },
-    // 3. tom de voz
-    () => ({
-      titulo: t('quiz.tom', { quem: ramo.quem }),
-      corpo: opcoes('tom', ramo.tons, estado.tom, (v) => { estado.tom = v }),
-    }),
-    // 4. horário
-    () => ({
-      titulo: t('quiz.horario'),
-      corpo: opcoes('horario', HORARIOS.map(([v, k]) => [v, t(`quiz.horario.${k}`), t(`quiz.horario.${k}.desc`)]),
-        estado.horario, (v) => { estado.horario = v }),
-    }),
-    // 5. logo, @ e assinatura
-    () => {
-      const [rInsta, iInsta] = campo(t('quiz.insta'), { value: estado.insta ?? '', placeholder: '@seunegocio', autocomplete: 'off', maxlength: 31 })
-      iInsta.addEventListener('input', () => { estado.insta = iInsta.value })
-      return {
-        titulo: t('quiz.marca'),
-        corpo: [
-          campoFoto(t('quiz.logo'), {
-            maximo: LOGO_MAX, tipo: 'image/png', jaTem: !!estado.logo_path, aoEscolher: (b) => { estado.logoBlob = b },
-          }),
-          rInsta, iInsta,
-          el('p', { class: 'rotulo', texto: t('quiz.assinatura') }),
-          opcoes('assinatura', ASSINATURAS.map((v) => [v, t(`quiz.assinatura.${v}`)]), estado.assinatura,
-            (v) => { estado.assinatura = v }),
-        ],
-        validar: () => (normalizarInsta(estado.insta) === undefined ? t('quiz.insta.erro') : null),
-      }
-    },
-    // 6. cores
-    () => {
-      const previa = el('div', { class: 'previa-cores', texto: estado.nome || ramo.nome })
-      const pintar = () => { previa.style.background = estado.cor2; previa.style.color = estado.cor1 }
-      const cor = (chave) => {
-        const [r, i] = campo(t(`quiz.${chave}`), { type: 'color', value: estado[chave] })
-        i.addEventListener('input', () => { estado[chave] = i.value; pintar() })
-        return [r, i]
-      }
-      pintar()
-      return { titulo: t('quiz.cores'), corpo: [cor('cor1'), cor('cor2'), previa] }
-    },
-  ]
-
+// perguntas: chaves de perguntas.js. ctx: { ramo, estado, supabase }.
+// aoSalvar(estado, aoProgredir?) roda no último passo; se falhar, mostra erro.geral e reabilita o botão.
+// Voltar no primeiro passo chama aoCancelar (sem ele, o botão some).
+export function telaPassos({ titulo, perguntas, ctx, rotuloFinal, aoSalvar, aoCancelar }) {
   let atual = 0
   desenhar()
 
   function desenhar() {
-    const { titulo, corpo, validar } = passos[atual]()
-    const ultimo = atual === passos.length - 1
+    const { titulo: tituloPasso, corpo, validar } = pergunta(perguntas[atual], ctx)
+    const ultimo = atual === perguntas.length - 1
     const erro = el('p', { class: 'erro', role: 'alert', hidden: true })
-    const continuar = el('button', { type: 'submit', texto: t(ultimo ? 'quiz.salvar' : 'quiz.continuar') })
+    const continuar = el('button', { type: 'submit', texto: ultimo ? rotuloFinal : t('quiz.continuar') })
     const voltar = el('button', { type: 'button', class: 'secundario', texto: t('quiz.voltar') })
     voltar.hidden = atual === 0 && !aoCancelar
     voltar.addEventListener('click', () => {
@@ -189,9 +29,9 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
     })
 
     const form = el('form', { novalidate: true, class: 'quiz' },
-      el('p', { class: 'muted passo', texto: t('quiz.passo', { n: atual + 1, total: passos.length }) }),
-      el('span', { class: 'selo neutro', texto: t('quiz.ramo', { ramo: ramo.nome }) }),
-      el('h1', { texto: titulo }), corpo, erro,
+      perguntas.length > 1 ? el('p', { class: 'muted passo', texto: t('quiz.passo', { n: atual + 1, total: perguntas.length }) }) : null,
+      el('span', { class: 'selo neutro', texto: titulo ?? t('quiz.ramo', { ramo: ctx.ramo.nome }) }),
+      el('h1', { texto: tituloPasso }), corpo, erro,
       el('div', { class: 'acoes' }, continuar, voltar))
 
     form.addEventListener('submit', async (ev) => {
@@ -203,15 +43,7 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
       erro.hidden = true
       const textoBotao = continuar.textContent
       try {
-        await salvarNegocio(supabase, cliente.id,
-          { ...estado, insta: normalizarInsta(estado.insta) },
-          estado.itens.map((i) => {
-            const preco = ramo.noPromo ? null : precoDoTexto(i.precoTexto)
-            return { id: i.id, nome: i.nome, descricao: i.descricao, preco,
-              preco_promo: ramo.noPromo ? null : (preco ? precoDoTexto(i.promoTexto) : null), fotos: i.fotos }
-          }),
-          (feitas, total) => { continuar.textContent = t('quiz.salvando.fotos', { feitas, total }) })
-        await aoSalvar()
+        await aoSalvar(ctx.estado, (feitas, total) => { continuar.textContent = t('quiz.salvando.fotos', { feitas, total }) })
       } catch (e) {
         console.error(e)
         erro.textContent = t('erro.geral')
@@ -222,4 +54,25 @@ export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
     })
     mostrar(logo(), form)
   }
+}
+
+export const ORDEM_QUIZ = ['nome', 'itens', 'tom', 'horario', 'marca', 'cores']
+
+// Atalho do quiz completo atual (cadastro inicial e "Editar negócio"), até as Tarefas 4/6 o substituírem.
+export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
+  const ramo = RAMOS[cliente.ramo]
+  const estado = estadoDoNegocio(inicial?.negocio, inicial?.produtos, ramo)
+  telaPassos({
+    perguntas: ORDEM_QUIZ, ctx: { ramo, estado, supabase }, rotuloFinal: t('quiz.salvar'), aoCancelar,
+    aoSalvar: async (e, aoProgredir) => {
+      await salvarNegocio(supabase, cliente.id,
+        { ...e, insta: normalizarInsta(e.insta) },
+        e.itens.map((i) => {
+          const preco = ramo.noPromo ? null : precoDoTexto(i.precoTexto)
+          return { id: i.id, nome: i.nome, descricao: i.descricao, preco,
+            preco_promo: ramo.noPromo ? null : (preco ? precoDoTexto(i.promoTexto) : null), fotos: i.fotos }
+        }), aoProgredir)
+      await aoSalvar()
+    },
+  })
 }

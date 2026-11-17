@@ -171,6 +171,8 @@ const pt = {
   'quiz.voltar': 'Voltar',
   'quiz.continuar': 'Continuar',
   'quiz.salvar': 'Salvar e continuar',
+  'resumo.logo': 'logo',
+  'resumo.semlogo': 'sem logo',
   'quiz.nome.titulo': 'Como se chama o seu negócio?',
   'quiz.nome.erro': 'Escreva o nome, com pelo menos 2 letras.',
   'quiz.itens.dica': 'Toque numa sugestão ou adicione os seus. Até {max}.',

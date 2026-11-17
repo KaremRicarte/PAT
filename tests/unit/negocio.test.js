@@ -119,3 +119,43 @@ test('salvarNegocio: se a leitura dos posts falha, não limpa o Storage e salva 
   expect(log).toHaveBeenCalled()
   log.mockRestore()
 })
+
+function fakeSimples(tabelas) {
+  const q = (tabela) => {
+    const o = { select: () => o, eq: () => o, not: () => o, delete: () => o, in: () => o,
+      upsert: async (v) => { tabelas.push([tabela, v]); return { error: null } },
+      then: (ok) => ok({ data: [], error: null }) }
+    return o
+  }
+  return { from: (tabela) => { tabelas.push([tabela]); return q(tabela) },
+    storage: { from: () => ({ upload: async () => ({ error: null }), remove: async () => ({ error: null }) }) } }
+}
+
+test('salvarDadosNegocio grava só negocios, sem redes e sem tocar em produtos', async () => {
+  const { salvarDadosNegocio } = await import('../../app/src/cliente/negocio.js')
+  const chamadas = []
+  const dados = { nome: ' X ', insta: null, assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000000', cor2: '#ffffff', logo_path: null }
+  await salvarDadosNegocio(fakeSimples(chamadas), 'u1', dados)
+  expect(chamadas.filter(([t]) => t === 'produtos')).toEqual([])
+  const gravado = chamadas.find(([t, v]) => t === 'negocios' && v)[1]
+  expect(gravado.nome).toBe('X')
+  expect(gravado).not.toHaveProperty('redes')
+})
+
+test('salvarDadosNegocio envia o logo quando há logoBlob', async () => {
+  const { salvarDadosNegocio } = await import('../../app/src/cliente/negocio.js')
+  const enviados = []
+  const sb = fakeSimples([])
+  sb.storage.from = () => ({ upload: async (c) => { enviados.push(c); return { error: null } } })
+  const dados = { nome: 'X', insta: null, assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000', cor2: '#fff', logo_path: null, logoBlob: 'b' }
+  await salvarDadosNegocio(sb, 'u1', dados)
+  expect(enviados).toEqual(['u1/logo.png'])
+})
+
+test('salvarItens não toca em negocios', async () => {
+  const { salvarItens } = await import('../../app/src/cliente/negocio.js')
+  const chamadas = []
+  await salvarItens(fakeSimples(chamadas), 'u1', [{ id: 'i1', nome: 'Item', descricao: '', preco: 10, preco_promo: null, fotos: [] }])
+  expect(chamadas.filter(([t]) => t === 'negocios')).toEqual([])
+  expect(chamadas.find(([t, v]) => t === 'produtos' && v)[1][0]).toMatchObject({ id: 'i1', nome: 'Item', ordem: 0 })
+})

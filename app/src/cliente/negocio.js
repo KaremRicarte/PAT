@@ -78,24 +78,34 @@ export async function carregarNegocio(supabase, uid) {
   return { negocio: n.data, produtos }
 }
 
-// dados: { nome, insta, assinatura, tom, horario, cor1, cor2, logo_path, logoBlob? }
-// itens: [{ id, nome, descricao, preco, preco_promo, fotos: [{ path } | { arquivo, nome }] }] — id já gerado no aparelho.
-// opcoes.reduzir: redutor de fotos (troca-se nos testes, onde não há canvas).
-export async function salvarNegocio(supabase, uid, dados, itens, aoProgredir, opcoes = {}) {
-  const reduzir = opcoes.reduzir ?? ((arquivo) => reduzirFoto(arquivo, FOTO_MAX, 'image/jpeg'))
+// Funções de Storage compartilhadas pelas duas gravações.
+function enviadorDeArquivos(supabase) {
   const marcas = supabase.storage.from('marcas')
   const enviar = async (caminho, blob, tipo) => {
     const { error } = await marcas.upload(caminho, blob, { upsert: true, contentType: tipo })
     if (error) throw error
     return caminho
   }
+  return { marcas, enviar }
+}
 
+// dados: { nome, insta, assinatura, tom, horario, cor1, cor2, logo_path, logoBlob? }
+// Grava só a linha de `negocios`; produtos não são tocados.
+export async function salvarDadosNegocio(supabase, uid, dados) {
+  const { enviar } = enviadorDeArquivos(supabase)
   const logo_path = dados.logoBlob ? await enviar(`${uid}/logo.png`, dados.logoBlob, 'image/png') : dados.logo_path ?? null
   const r1 = await supabase.from('negocios').upsert({
     cliente_id: uid, nome: dados.nome.trim(), insta: dados.insta, assinatura: dados.assinatura, tom: dados.tom,
     horario: dados.horario, cor1: dados.cor1, cor2: dados.cor2, logo_path, atualizado_em: new Date().toISOString(),
   })
   if (r1.error) throw r1.error
+}
+
+// itens: [{ id, nome, descricao, preco, preco_promo, fotos: [{ path } | { arquivo, nome }] }] — id já gerado no aparelho.
+// opcoes.reduzir: redutor de fotos (troca-se nos testes, onde não há canvas).
+export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}) {
+  const reduzir = opcoes.reduzir ?? ((arquivo) => reduzirFoto(arquivo, FOTO_MAX, 'image/jpeg'))
+  const { marcas, enviar } = enviadorDeArquivos(supabase)
 
   const { data: antigos, error: e2 } = await supabase.from('produtos').select('id, foto_path, fotos').eq('cliente_id', uid)
   if (e2) throw e2
@@ -147,4 +157,9 @@ export async function salvarNegocio(supabase, uid, dados, itens, aoProgredir, op
   // fotos que o item tinha e não tem mais
   const novos = new Map(linhas.map((l) => [l.id, new Set(l.fotos)]))
   await limpar(antigos.filter((a) => novos.has(a.id)).flatMap((a) => pathsDe(a).filter((p) => !novos.get(a.id).has(p))))
+}
+
+export async function salvarNegocio(supabase, uid, dados, itens, aoProgredir, opcoes = {}) {
+  await salvarDadosNegocio(supabase, uid, dados)
+  await salvarItens(supabase, uid, itens, aoProgredir, opcoes)
 }
