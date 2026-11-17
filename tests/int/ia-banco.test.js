@@ -19,7 +19,7 @@ async function mesComPosts(cliente, posts) {
   if (error) throw error
   const linhas = posts.map((p, i) => ({
     mes_id: mes.id, data: maisDias(2), rede: 'instagram', tipo: 'feed', formato: 'arte', pilar: 'demo',
-    titulo: `T${i}`, legenda: 'x', horario: '08:00', ordem: i, ...p,
+    titulo: `T${i}`, legenda: 'x', horario: '08:00', ordem: i, estado: 'gerado', ...p,
   }))
   const { data, error: e2 } = await s.from('posts').insert(linhas).select('*')
   if (e2) throw e2
