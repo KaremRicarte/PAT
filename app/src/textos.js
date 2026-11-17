@@ -96,6 +96,16 @@ const pt = {
   'formato.lista': 'Mensagem para a lista',
   'mes.editar': 'Editar meu negócio',
 
+  // refazer os posts depois de mudar os itens
+  'refazer.titulo': 'Seus itens mudaram',
+  'refazer.texto': 'Quer refazer os posts que faltam com os itens novos?',
+  'refazer.nunca': 'Posts já postados e dias que já passaram não mudam. As datas e as redes continuam as mesmas.',
+  'refazer.naoaprovados': 'Refazer os não aprovados ({n})',
+  'refazer.todos': 'Refazer todos que faltam postar ({n})',
+  'refazer.manter': 'Manter como está',
+  'refazer.ok': '{n} posts refeitos com os itens novos.',
+  'refazer.ok.um': '1 post refeito com os itens novos.',
+
   // calendário
   'cal.semana': 'D,S,T,Q,Q,S,S',
   'cal.resumo': 'Resumo do mês',

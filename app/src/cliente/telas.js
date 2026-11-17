@@ -4,6 +4,7 @@ import { CONTATO_ADMIN, linkWhatsApp } from '../contato.js'
 import { telaQuiz } from './quiz.js'
 import { telaQuizMes } from './mes.js'
 import { telaCalendario } from './calendario.js'
+import { depoisDeSalvar } from './refazer.js'
 
 // ctx: { supabase, cliente, negocio, produtos, meses, atualizar, fimDaRecuperacao }
 export function desenhar(tela, ctx) {
@@ -84,7 +85,9 @@ function diaDaUrl() {
   return /^\d{4}-\d{2}-\d{2}$/.test(dia) ? dia : undefined
 }
 
-// Reabre o quiz preenchido; salvar ou voltar recarrega o app.
-export function editarNegocio({ supabase, cliente, negocio, produtos, atualizar }) {
-  telaQuiz({ supabase, cliente, inicial: { negocio, produtos }, aoSalvar: atualizar, aoCancelar: atualizar })
+// Reabre o quiz preenchido; voltar recarrega o app. Salvar pergunta se quer refazer os posts que faltam
+// (só quando os itens mudaram e há posts para refazer).
+export function editarNegocio({ supabase, cliente, negocio, produtos, meses, atualizar }) {
+  telaQuiz({ supabase, cliente, inicial: { negocio, produtos },
+    aoSalvar: () => depoisDeSalvar({ supabase, cliente, produtos, meses, atualizar }), aoCancelar: atualizar })
 }
