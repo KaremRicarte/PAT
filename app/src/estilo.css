@@ -306,3 +306,7 @@ a.botao:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
 .resumo-importacao { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 8px 16px; margin: 12px 0; }
 .resumo-importacao p { margin: 6px 0; }
 .resumo-titulo { font-weight: 700; }
+
+.redes-admin { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.rede-caixa { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 14px; cursor: pointer; }
+.rede-caixa input { width: 20px; height: 20px; margin: 0; }
