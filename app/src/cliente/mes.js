@@ -5,6 +5,7 @@ import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.t
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { opcoes, telaPassos } from './quiz.js'
 import { estadoDoNegocio } from './perguntas.js'
+import { depoisDeSalvar } from './refazer.js'
 import { salvarItens, itensParaSalvar, carregarNegocio } from './negocio.js'
 
 const ESTRATEGIAS = ['vender', 'crescer', 'credibilidade', 'tempo']
@@ -39,14 +40,14 @@ export function textoParaCopiar(post) {
 
 // ---------- Quiz do mês ----------
 // Passo 1: serviços/produtos (salvos ao continuar). Passo 2: estratégia e gerar. As redes vêm do cadastro (admin).
-export function telaQuizMes(ctx) {
+export function telaQuizMes(ctx, antes = ctx.produtos) { // antes: serviços de antes do quiz (sobrevive ao Voltar)
   const { supabase, cliente, meses, atualizar } = ctx
   const ramo = RAMOS[cliente.ramo]
   const alvo = mesAlvo(hojeEmSaoPaulo(), meses.map((m) => m.ano_mes))
   if (!alvo) return atualizar()
   const estado = estadoDoNegocio(ctx.negocio, ctx.produtos, ramo)
   telaPassos({
-    perguntas: ['itens'], rotuloFinal: t('quiz.continuar'),
+    titulo: t('mesq.seumes'), perguntas: ['itens'], rotuloFinal: t('quiz.continuar'),
     ctx: { ramo, estado, supabase }, aoCancelar: meses.length ? atualizar : undefined,
     aoSalvar: async (e, aoProgredir) => {
       await salvarItens(supabase, cliente.id, itensParaSalvar(e.itens, ramo), aoProgredir)
@@ -54,13 +55,13 @@ export function telaQuizMes(ctx) {
       const { negocio, produtos } = await carregarNegocio(supabase, cliente.id)
       ctx.negocio = negocio
       ctx.produtos = produtos
-      telaEstrategia({ ctx, ramo, alvo, voltar: () => telaQuizMes(ctx) })
+      telaEstrategia({ ctx, ramo, alvo, antes, voltar: () => telaQuizMes(ctx, antes) })
     },
   })
 }
 
-function telaEstrategia({ ctx, ramo, alvo, voltar: aoVoltar }) {
-  const { supabase, meses, atualizar } = ctx
+function telaEstrategia({ ctx, ramo, alvo, antes, voltar: aoVoltar }) {
+  const { supabase, cliente, meses, atualizar } = ctx
   let escolhida = sugestaoEstrategia(meses[0] ?? null) // meses vem do mais recente para o mais antigo
   const sugerida = escolhida
   const gerar = el('button', { type: 'submit', texto: t('mesq.gerar', { mes: nomeDoMes(alvo.anoMes) }) })
@@ -72,13 +73,15 @@ function telaEstrategia({ ctx, ramo, alvo, voltar: aoVoltar }) {
     el('div', { class: 'acoes' }, gerar, voltar, botaoSair(supabase)))
   form.addEventListener('submit', (ev) => {
     ev.preventDefault()
-    telaGerando({ supabase, atualizar, estrategia: escolhida, voltar: () => telaEstrategia({ ctx, ramo, alvo, voltar: aoVoltar }) })
+    // Com meses anteriores, mudou serviço? Oferece refazer os posts que faltam (só dos meses de antes).
+    const aposGerar = meses.length ? () => depoisDeSalvar({ supabase, cliente, produtos: antes, meses, atualizar }) : atualizar
+    telaGerando({ supabase, atualizar, aposGerar, estrategia: escolhida, voltar: () => telaEstrategia({ ctx, ramo, alvo, antes, voltar: aoVoltar }) })
   })
   mostrar(logo(), form)
 }
 
 // ---------- Gerando ----------
-async function telaGerando({ supabase, atualizar, estrategia, voltar }) {
+async function telaGerando({ supabase, atualizar, aposGerar = atualizar, estrategia, voltar }) {
   const passos = ['gerando.1', 'gerando.2', 'gerando.3'].map((k) => el('li', { texto: t(k) }))
   mostrar(logo(), el('h1', { texto: t('gerando.titulo') }), el('ol', { class: 'passos' }, passos))
   let i = 0
@@ -88,7 +91,7 @@ async function telaGerando({ supabase, atualizar, estrategia, voltar }) {
   clearInterval(tique)
   if (!error) {
     mesPreferido = data?.anoMes ?? null // mostra o mês que acabou de ser gerado
-    return atualizar()
+    return aposGerar()
   }
 
   let msg = t('erro.geral'), status = 0

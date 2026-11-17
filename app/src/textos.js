@@ -59,6 +59,7 @@ const pt = {
   'estrategia.tempo.desc': 'Mistura equilibrada, com menos vídeos para gravar.',
 
   // quiz do mês e geração
+  'mesq.seumes': 'Seu mês',
   'mesq.titulo': 'O que você quer este mês?',
   'mesq.dica': 'Escolha a estratégia de {mes}. Dá para mudar no mês seguinte.',
   'mesq.sugerido': 'Sugerido',

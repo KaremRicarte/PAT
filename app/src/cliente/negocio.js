@@ -1,5 +1,6 @@
 // Dados do negócio do cliente: leitura, gravação e preparo das fotos.
 // O cliente do Supabase vem por parâmetro, para as funções puras poderem ser testadas sem rede.
+import { esquecerImagem } from '../artes/imagens.js'
 import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
 
 export const MAX_ITENS = 20
@@ -94,6 +95,7 @@ function enviadorDeArquivos(supabase) {
 export async function salvarDadosNegocio(supabase, uid, dados) {
   const { enviar } = enviadorDeArquivos(supabase)
   const logo_path = dados.logoBlob ? await enviar(`${uid}/logo.png`, dados.logoBlob, 'image/png') : dados.logo_path ?? null
+  if (dados.logoBlob) esquecerImagem(`${uid}/logo.png`) // mesmo caminho, logo novo: o cache não pode devolver o antigo
   const r1 = await supabase.from('negocios').upsert({
     cliente_id: uid, nome: dados.nome.trim(), insta: dados.insta, assinatura: dados.assinatura, tom: dados.tom,
     horario: dados.horario, cor1: dados.cor1, cor2: dados.cor2, logo_path, atualizado_em: new Date().toISOString(),

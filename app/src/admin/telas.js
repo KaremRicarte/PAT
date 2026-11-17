@@ -143,15 +143,17 @@ function linha(c, aviso, recarregar) {
   })
 
   const atuais = new Set(c.redes ?? REDES)
+  const todasCaixas = []
   const caixas = REDES.map((rede) => {
     const caixa = el('input', { type: 'checkbox', checked: atuais.has(rede) })
+    todasCaixas.push(caixa)
     caixa.addEventListener('change', async () => {
       const novas = REDES.filter((x) => (x === rede ? caixa.checked : atuais.has(x)))
       const erro = (msg) => aviso.replaceChildren(el('p', { class: 'erro', role: 'alert', texto: msg }))
       if (!novas.length) { caixa.checked = true; return erro(t('admin.redes.minimo')) }
-      caixa.disabled = true
+      todasCaixas.forEach((x) => { x.disabled = true }) // sem cliques em paralelo na mesma linha
       const r = await definirRedes(c.id, novas)
-      caixa.disabled = false
+      todasCaixas.forEach((x) => { x.disabled = false })
       if (r.erro) { caixa.checked = !caixa.checked; return erro(r.erro) }
       atuais.clear(); novas.forEach((x) => atuais.add(x))
       aviso.replaceChildren()

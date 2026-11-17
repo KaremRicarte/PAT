@@ -444,3 +444,11 @@ verify_jwt = false
 # A função confere o login por conta própria (auth.getUser).
 [functions.trocar-post]
 verify_jwt = false
+
+# A função confere o login por conta própria (auth.getUser).
+[functions.trocar-estrategia]
+verify_jwt = false
+
+# A função confere o login por conta própria (auth.getUser).
+[functions.refazer-posts]
+verify_jwt = false

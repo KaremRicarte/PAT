@@ -1,3 +1,6 @@
+import { vi } from 'vitest'
+vi.mock('../../app/src/artes/imagens.js', () => ({ esquecerImagem: vi.fn() }))
+import { esquecerImagem } from '../../app/src/artes/imagens.js'
 import { medidaReduzida, validarItens, precoDoTexto, normalizarInsta } from '../../app/src/cliente/negocio.js'
 
 test.each([
@@ -150,6 +153,7 @@ test('salvarDadosNegocio envia o logo quando há logoBlob', async () => {
   const dados = { nome: 'X', insta: null, assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000', cor2: '#fff', logo_path: null, logoBlob: 'b' }
   await salvarDadosNegocio(sb, 'u1', dados)
   expect(enviados).toEqual(['u1/logo.png'])
+  expect(esquecerImagem).toHaveBeenCalledWith('u1/logo.png')
 })
 
 test('salvarItens não toca em negocios', async () => {

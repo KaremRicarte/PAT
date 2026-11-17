@@ -63,9 +63,9 @@ export function telaServicos(ctx) {
   })
 }
 
-function telaTrocarEstrategia(ctx, mes) {
+function telaTrocarEstrategia(ctx, mes, inicial = mes.estrategia) {
   const ramo = ctx.ramo ?? RAMOS[ctx.cliente.ramo]
-  let escolhida = mes.estrategia
+  let escolhida = inicial
   const voltar = () => { ctx.atualizar() }
   const form = el('form', { novalidate: true, class: 'quiz' },
     el('span', { class: 'selo neutro', texto: t('este.titulo') }),
@@ -77,7 +77,7 @@ function telaTrocarEstrategia(ctx, mes) {
   form.addEventListener('submit', (ev) => {
     ev.preventDefault()
     if (escolhida === mes.estrategia) return voltar()
-    confirmar(ctx, mes, escolhida, ramo, () => telaTrocarEstrategia(ctx, mes))
+    confirmar(ctx, mes, escolhida, ramo, () => telaTrocarEstrategia(ctx, mes, escolhida))
   })
   mostrar(logo(), form)
 }
