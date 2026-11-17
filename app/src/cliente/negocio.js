@@ -188,6 +188,9 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
   const todas = [...new Set(linhas.flatMap((l) => l.fotos))].slice(0, 30)
   if (todas.length && supabase.functions?.invoke) {
     Promise.resolve(supabase.functions.invoke('descrever-fotos', { body: { paths: todas } }))
+      .then(() => new Promise((ok) => setTimeout(ok, 4000))) // dá tempo de as análises chegarem ao banco
+      .then(() => carregarFotosInfo(supabase, uid))
+      .then((info) => opcoes.aoFotosInfo?.(info))
       .catch((e) => console.error(e))
   }
 }

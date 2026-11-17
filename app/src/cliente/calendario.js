@@ -4,6 +4,7 @@ import { telaMeuNegocio } from './meuNegocio.js'
 import { el, logo, mostrar, botaoSair, carregando, aviso, filhosValidos } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
+import { carregarFotosInfo } from './negocio.js'
 import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto, progressoIA } from './situacao.js'
 import { miniatura } from '../artes/imagens.js'
 import { telaQuizMes, mesMostrado, preferirMes } from './mes.js'
@@ -103,8 +104,8 @@ export async function telaCalendario(ctx, diaEscolhido) {
     ctx.miniaturas = new Map() // canvas de cada post, para não redesenhar ao voltar a um dia
   }
 
-  const posts = ctx.posts
-  const porDia = agruparPorDia(posts)
+  let posts = ctx.posts
+  let porDia = agruparPorDia(posts)
   const dias = gradeDoMes(mes.ano_mes)
   let escolhido = dias.includes(diaEscolhido) ? diaEscolhido : diaInicial(mes.ano_mes, hoje, posts) // ex.: 2026-11-45 não existe
 
@@ -255,15 +256,33 @@ export async function telaCalendario(ctx, diaEscolhido) {
   }
   const iaAtiva = desenharFaixaIA()
   if (iaAtiva) {
+    const LIMITE = Date.now() + 10 * 60 * 1000 // não consulta para sempre
+    const mudou = (a, b) => !b || a.titulo !== b.titulo || a.legenda !== b.legenda || a.foto_path !== b.foto_path
+    let consultando = false
     relogioIA = setInterval(async () => {
-      if (vez !== vezDoDesenho || !faixaIA.isConnected) return pararRelogioIA() // saiu da tela
-      const { data, error } = await supabase.from('posts').select(COLUNAS)
-        .eq('mes_id', mes.id).order('data').order('ordem')
-      if (vez !== vezDoDesenho || !faixaIA.isConnected) return pararRelogioIA()
-      if (error) return console.error(error)
-      ctx.posts = data
-      ctx.miniaturas = new Map() // o texto mudou: as miniaturas são refeitas
-      telaCalendario(ctx, escolhido) // redesenha com os posts novos (e para o relógio se a fila acabou)
+      if (consultando) return
+      if (vez !== vezDoDesenho || !faixaIA.isConnected || Date.now() > LIMITE) return pararRelogioIA() // saiu da tela
+      consultando = true
+      try {
+        const { data, error } = await supabase.from('posts').select(COLUNAS)
+          .eq('mes_id', mes.id).order('data').order('ordem')
+        if (vez !== vezDoDesenho || !faixaIA.isConnected) return pararRelogioIA()
+        if (error) return console.error(error)
+        ctx.fotosInfo = await carregarFotosInfo(supabase, ctx.cliente.id)
+        const antes = new Map(posts.map((p) => [p.id, p]))
+        for (const p of data) if (mudou(p, antes.get(p.id))) for (const k of [...ctx.miniaturas.keys()]) if (k.startsWith(`${p.id}|`)) ctx.miniaturas.delete(k)
+        ctx.posts = posts = data
+        porDia = agruparPorDia(posts)
+        const ativo = desenharFaixaIA()
+        if (!ativo) { pararRelogioIA(); ctx.fotosInfo = await carregarFotosInfo(supabase, ctx.cliente.id) } // a última rodada de análises
+        if (vez !== vezDoDesenho || !faixaIA.isConnected) return
+        desenharResumo()
+        pintarGrade()
+        const emFoco = lista.contains(document.activeElement)
+        const idFoco = document.activeElement?.dataset?.post
+        desenharLista() // só a lista do dia escolhido; sem mostrar(), sem mexer no foco da página
+        if (emFoco && idFoco) lista.querySelector(`[data-post="${idFoco}"]`)?.focus({ preventScroll: true })
+      } finally { consultando = false }
     }, 15000)
   }
 

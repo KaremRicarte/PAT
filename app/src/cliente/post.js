@@ -67,13 +67,13 @@ export function telaPost(ctx, post, aoVoltar) {
   // ---------- cabeçalho: rede, formato, título, quando e situação ----------
   function desenharCabecalho() {
     const sit = situacaoDoPost(post)
-    cabecalho.replaceChildren(
+    cabecalho.replaceChildren(...filhosValidos([
       el('p', { class: 'rede', texto: `${t(`rede.${post.rede}`)} · ${t(`formato.${chaveFormato(post)}`)}` }),
       post.origem === 'ia' ? el('span', { class: 'selo bom', texto: t('post.ia.selo') }) : null,
       el('h1', { tabindex: '-1', texto: post.titulo }),
       el('p', { class: 'quando' },
         el('span', { texto: t('post.quando', { dia: diaPorExtenso(post.data), hora: post.horario }) }),
-        el('span', { class: `situacao ${sit}`, texto: t(`cal.situacao.${sit}`) })))
+        el('span', { class: `situacao ${sit}`, texto: t(`cal.situacao.${sit}`) }))]))
   }
 
   // ---------- arte grande ----------

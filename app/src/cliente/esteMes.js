@@ -57,7 +57,7 @@ export function telaServicos(ctx) {
     ctx: { ramo, estado: estadoDoNegocio(ctx.negocio, ctx.produtos, ramo), supabase, fotosInfo: ctx.fotosInfo },
     aoCancelar: atualizar,
     aoSalvar: async (e, aoProgredir) => {
-      await salvarItens(supabase, cliente.id, itensParaSalvar(e.itens, ramo), aoProgredir)
+      await salvarItens(supabase, cliente.id, itensParaSalvar(e.itens, ramo), aoProgredir, { aoFotosInfo: (m) => { ctx.fotosInfo = m } })
       await depoisDeSalvar({ supabase, cliente, produtos: antes, meses, atualizar: recarregar })
     },
   })
