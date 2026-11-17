@@ -3,7 +3,7 @@
 // escreve a partir dela e grava SÓ se o post continuar igual ao que foi lido (a ação do cliente sempre vence).
 import type { Estrategia, Pilar, Rede, Tom } from '../_shared/modelos/tipos.ts'
 import type { PostGerado } from '../_shared/modelos/gerar.ts'
-import { ramoValido } from '../_shared/modelos/ramos/index.ts'
+import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import { escreverPost, type CamposDaIA, type ChamarIA, type ConteudoIA, type EntradaPost } from '../_shared/ia/escrever.ts'
 import { descreverFoto } from '../_shared/ia/descrever.ts'
 import {
@@ -18,6 +18,8 @@ export type PostDaFila = {
   id: string, mes_id: string, data: string, rede: Rede, tipo: PostGerado['tipo'], formato: PostGerado['formato'],
   pilar: Pilar, titulo: string, legenda: string, hashtags: string[] | null, roteiro: string | null,
   produto_id: string | null, ordem: number | null, foto_path: string | null,
+  // o cliente marcou "sem foto" (ramos só de texto): o post fica sem foto
+  sem_foto: boolean,
   // numeric do Postgres pode chegar como texto
   preco_de: number | string | null, preco_por: number | string | null,
   estado: string, postado_em: string | null, ia_em: string | null,
@@ -35,11 +37,15 @@ export type LinhaFotoIA = {
   externo_id?: string, autor?: string, descricao: string, serve: boolean, motivo: string | null,
 }
 export type CamposGravados = CamposDaIA & { foto_path: string | null, origem: 'ia', ia_estado: 'pronto' }
-export type Resultado = 'pronto' | 'desistiu' | 'cliente-mexeu'
+// adiado = sem tempo nesta execução: volta para a fila, intacto, para a próxima
+export type Resultado = 'pronto' | 'desistiu' | 'cliente-mexeu' | 'adiado'
 
 export type DepsMelhorar = Omit<DepsImagens, 'escolher'> & {
-  // null = sem ANTHROPIC_API_KEY: nada de IA, o post desiste (fica o modelo e a faixa "Melhorando…" termina)
-  chamar: ChamarIA | null,
+  // null = sem ANTHROPIC_API_KEY: nada de IA, o post desiste (fica o modelo e a faixa "Melhorando…" termina).
+  // Recebe o tempo máximo da chamada (cortado pelo prazo da execução).
+  chamar: ((timeoutMs: number) => ChamarIA) | null,
+  // relógio (ms), para o prazo da execução
+  agora: () => number,
   contarNoMes: (clienteId: string) => Promise<number>,
   registrarUso: (r: RegistroUso) => Promise<void>,
   // mês do post -> cliente, ramo, estratégia, negócio e produtos
@@ -53,10 +59,11 @@ export type DepsMelhorar = Omit<DepsImagens, 'escolher'> & {
   copiarDoBanco: (clienteId: string, pathNoBanco: string) => Promise<string | null>,
   // fotos_usadas (janela de 90 dias do banco próprio)
   registrarUsada: (clienteId: string, pathNoBanco: string) => Promise<void>,
-  // gravação condicional: true se pegou a linha (post igual ao lido e ainda 'trabalhando' com o mesmo ia_em)
+  // gravação condicional: true se pegou a linha (legenda, foto, sem_foto, estado e postado iguais ao lido,
+  // e ainda 'trabalhando' com o mesmo ia_em)
   gravar: (post: PostDaFila, campos: CamposGravados) => Promise<boolean>,
-  // muda só ia_estado, e só se o post ainda estiver 'trabalhando' com o mesmo ia_em
-  marcar: (post: PostDaFila, estado: 'desistiu' | 'pulado') => Promise<void>,
+  // muda só ia_estado, e só se o post ainda estiver 'trabalhando' com o mesmo ia_em ('fila' = adiado)
+  marcar: (post: PostDaFila, estado: 'desistiu' | 'pulado' | 'fila') => Promise<void>,
   hoje: () => string,
 }
 
@@ -110,12 +117,41 @@ export function criarEscolher(chamar: ChamarIA): DepsImagens['escolher'] {
   }
 }
 
+// ---------- Tempo ----------
+
+// Tempo máximo de uma chamada à IA (= TEMPO_FILA_MS dos adaptadores); cada chamada é cortada pelo prazo da execução.
+export const TEMPO_MAX_CHAMADA_MS = 60_000
+// folga antes do prazo, para gravar o resultado
+export const MARGEM_MS = 5_000
+// menos que isto não vale começar uma chamada
+export const MIN_CHAMADA_MS = 15_000
+// tempo guardado para escrever o post: os passos antes (descrever foto, escolher imagem) não podem comê-lo
+export const RESERVA_ESCRITA_MS = 45_000
+
+class SemTempo extends Error {}
+
 // ---------- Um post ----------
 
-export async function melhorarUmPost(deps: DepsMelhorar, post: PostDaFila): Promise<Resultado> {
+// `prazo` = Date/agora() em ms até quando a execução pode trabalhar. Sem tempo para fazer direito: o post volta
+// para a fila intacto ('adiado') e a próxima execução o pega.
+export async function melhorarUmPost(deps: DepsMelhorar, post: PostDaFila, prazo = Number.POSITIVE_INFINITY): Promise<Resultado> {
   const desistir = async (): Promise<Resultado> => { await deps.marcar(post, 'desistiu'); return 'desistiu' }
+  const adiar = async (): Promise<Resultado> => { await deps.marcar(post, 'fila'); return 'adiado' }
 
   if (!deps.chamar) return desistir()
+  const restante = () => prazo - deps.agora()
+  if (restante() < RESERVA_ESCRITA_MS) return adiar()
+  try {
+    return await melhorarComPrazo(deps, post, restante, desistir)
+  } catch (e) {
+    if (e instanceof SemTempo) return adiar()
+    throw e
+  }
+}
+
+async function melhorarComPrazo(
+  deps: DepsMelhorar, post: PostDaFila, restante: () => number, desistir: () => Promise<Resultado>,
+): Promise<Resultado> {
   const ctx = await deps.contexto(post.mes_id)
   if (!ctx || ctx.situacao !== 'ativo' || !ramoValido(ctx.ramo) || !ctx.negocio || !ESTRATEGIAS.includes(ctx.estrategia)) {
     return desistir()
@@ -125,25 +161,36 @@ export async function melhorarUmPost(deps: DepsMelhorar, post: PostDaFila): Prom
   const pasta = `${clienteId}/`
   // só fotos da pasta do cliente vão para a IA ou para o post
   const doCliente = (p: string) => p.startsWith(pasta) && caminhoSeguro(p)
-  if (post.foto_path && !doCliente(post.foto_path)) return desistir()
+  const semFoto = post.sem_foto === true
+  if (!semFoto && post.foto_path && !doCliente(post.foto_path)) return desistir()
+  // ramos só de texto (advocacia, psicologia): post geral fica só texto, como fotoDoPost em situacao.js
+  const soTexto = RAMOS[ramo].textOnly
 
   // limite do mês já estourado: nem procura imagem
   if ((await deps.contarNoMes(clienteId)) >= LIMITE_MENSAL) return desistir()
 
-  const comUso = (tipo: TipoUso) => comLimiteEUso(deps.chamar!, {
-    clienteId, tipo, registrar: deps.registrarUso, contarNoMes: deps.contarNoMes,
-  })
-  const chamarFoto = comUso('foto')
-  const chamarImagem = comUso('imagem')
-  const chamarPost = comUso('post')
+  // Cada chamada: tempo cortado pelo prazo, guardando `reserva` para o que vem depois. Sem tempo -> SemTempo
+  // (o post é adiado sem gastar a chamada). Tempo esgotado numa chamada que cortamos também é falta de tempo.
+  const chamada = (tipo: TipoUso, reserva: number): ChamarIA => async (pedido) => {
+    const ms = Math.min(TEMPO_MAX_CHAMADA_MS, restante() - reserva - MARGEM_MS)
+    if (ms < MIN_CHAMADA_MS) throw new SemTempo()
+    const r = await comLimiteEUso(deps.chamar!(ms), {
+      clienteId, tipo, registrar: deps.registrarUso, contarNoMes: deps.contarNoMes,
+    })(pedido)
+    if (!r.ok && r.motivo === 'tempo' && ms < TEMPO_MAX_CHAMADA_MS) throw new SemTempo()
+    return r
+  }
+  const chamarFoto = chamada('foto', RESERVA_ESCRITA_MS)
+  const chamarImagem = chamada('imagem', RESERVA_ESCRITA_MS)
+  const chamarPost = chamada('post', 0)
 
   const produtos = ctx.produtos.map((p) => ({ ...p, fotos: fotosDoProduto(p).filter(doCliente), foto_path: null }))
   const produto = post.produto_id ? produtos.find((p) => p.id === post.produto_id) ?? null : null
   const minhasFotos = (negocio.fotos ?? []).filter(doCliente)
 
-  const candidatas = [...new Set([
+  const candidatas = semFoto ? [] : [...new Set([
     ...(post.foto_path ? [post.foto_path] : []),
-    ...(produto ? produto.fotos : [...minhasFotos, ...produtos.flatMap((p) => p.fotos)]),
+    ...(produto ? produto.fotos : soTexto ? [] : [...minhasFotos, ...produtos.flatMap((p) => p.fotos)]),
   ])]
   const info: Record<string, InfoFoto> = candidatas.length ? { ...(await deps.fotosInfo(candidatas)) } : {}
 
@@ -163,7 +210,9 @@ export async function melhorarUmPost(deps: DepsMelhorar, post: PostDaFila): Prom
   }
 
   let foto: { path: string, descricao: string } | null = null
-  if (post.foto_path) {
+  if (semFoto) {
+    // sem foto: só texto
+  } else if (post.foto_path) {
     // o cliente escolheu a foto do post ("Trocar imagem"): a IA escreve a partir dela
     const d = await descrita(post.foto_path)
     foto = { path: post.foto_path, descricao: d?.descricao ?? SEM_DESCRICAO }
@@ -179,7 +228,7 @@ export async function melhorarUmPost(deps: DepsMelhorar, post: PostDaFila): Prom
       foto = { path, descricao: d?.descricao ?? SEM_DESCRICAO }
       break
     }
-  } else {
+  } else if (!soTexto) {
     // post de tema geral: fotos do cliente -> banco próprio -> Pexels -> Pixabay -> só texto
     let descrever = DESCREVER_POR_POST
     for (const p of candidatas) {
@@ -196,7 +245,7 @@ export async function melhorarUmPost(deps: DepsMelhorar, post: PostDaFila): Prom
   }
 
   const url = foto ? await deps.urlAssinada(foto.path) : null
-  const fotoPath = post.foto_path ?? (url ? foto!.path : null)
+  const fotoPath = semFoto ? null : post.foto_path ?? (url ? foto!.path : null)
 
   const entrada: EntradaPost = {
     ramo,
@@ -260,19 +309,20 @@ export type Contagem = Record<Resultado | 'erro', number>
 
 export async function processarFila(d: {
   pegar: (limite: number) => Promise<PostDaFila[]>,
-  melhorar: (post: PostDaFila) => Promise<Resultado>,
+  melhorar: (post: PostDaFila, prazo: number) => Promise<Resultado>,
   // erro inesperado num post: ele desiste (fica o modelo) em vez de voltar à fila para sempre
   desistir: (post: PostDaFila) => Promise<void>,
   agora: () => number,
 }): Promise<Contagem> {
-  const contagem: Contagem = { pronto: 0, desistiu: 0, 'cliente-mexeu': 0, erro: 0 }
+  const contagem: Contagem = { pronto: 0, desistiu: 0, 'cliente-mexeu': 0, adiado: 0, erro: 0 }
   const inicio = d.agora()
+  const prazo = inicio + TEMPO_TOTAL_MS
   while (d.agora() - inicio < TEMPO_TOTAL_MS - MARGEM_LOTE_MS) {
     const posts = await d.pegar(LOTE)
     if (!posts.length) break
     await Promise.all(posts.map(async (post) => {
       try {
-        contagem[await d.melhorar(post)]++
+        contagem[await d.melhorar(post, prazo)]++
       } catch (e) {
         contagem.erro++
         console.error('melhorar-posts: erro no post', post.id, e)

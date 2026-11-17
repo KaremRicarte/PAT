@@ -22,7 +22,7 @@ const ok = (dados: unknown): RespostaIA => ({ ok: true, dados, tokensEntrada: 10
 const post = (extra: Partial<PostDaFila> = {}): PostDaFila => ({
   id: 'p1', mes_id: 'm1', data: '2026-11-20', rede: 'instagram', tipo: 'feed', formato: 'arte', pilar: 'demo',
   titulo: 'Por que fazer escova?', legenda: 'Texto de modelo.', hashtags: ['#cabelo'], roteiro: null,
-  produto_id: 's1', ordem: 0, foto_path: null, preco_de: null, preco_por: null,
+  produto_id: 's1', ordem: 0, foto_path: null, sem_foto: false, preco_de: null, preco_por: null,
   estado: 'gerado', postado_em: null, ia_em: '2026-11-17T12:00:00.000+00:00',
   ...extra,
 })
@@ -46,6 +46,9 @@ type Opcoes = {
   gravarPega?: boolean,
   banco?: { path: string, descricao: string, serve?: boolean }[],
   pexels?: { id: string, url: string, autor: string, descricao?: string }[],
+  // relógio falso (ms); cada chamada à IA pode avançá-lo
+  relogio?: { t: number },
+  duracaoChamada?: number,
 }
 
 function montar(o: Opcoes = {}) {
@@ -57,24 +60,29 @@ function montar(o: Opcoes = {}) {
   const urls: string[] = []
   const copias: string[] = []
   const usadas: [string, string][] = []
+  const tempos: number[] = []
+  const buscas: string[] = []
+  const relogio = o.relogio ?? { t: 0 }
   const chamar: ChamarIA = async (p) => {
     pedidos.push(p)
+    relogio.t += o.duracaoChamada ?? 0
     if (p.esquema === ESQUEMA_POST) return (o.escrever ?? (() => ok(TEXTO_IA)))(p)
     if (p.esquema === ESQUEMA_FOTO) return (o.descrever ?? (() => ok({ descricao: 'Cabelo liso e brilhante.', serve: true, motivo: null })))(p)
     if (p.esquema === ESQUEMA_ESCOLHA) return (o.escolher ?? (() => ok({ id: null })))(p)
     throw new Error('pedido inesperado')
   }
   const deps: DepsMelhorar = {
-    chamar: o.semChave ? null : chamar,
+    chamar: o.semChave ? null : (ms) => { tempos.push(ms); return chamar },
+    agora: () => relogio.t,
     contarNoMes: async () => (o.usoNoMes ?? 0) + usos.length,
     registrarUso: async (r) => { usos.push(r) },
     contexto: async () => (o.ctx !== undefined ? o.ctx : contexto()),
     fotosInfo: async (paths) => Object.fromEntries(paths.filter((p) => o.info?.[p]).map((p) => [p, o.info![p]])),
     urlAssinada: async (path) => { urls.push(path); return `https://assinada/${path}` },
     gravarFoto: async (l) => { fotosGravadas.push(l) },
-    bancoDoRamo: async () => o.banco ?? [],
+    bancoDoRamo: async () => { buscas.push('banco'); return o.banco ?? [] },
     usadasPeloCliente: async () => [],
-    buscarPexels: async () => o.pexels ?? [],
+    buscarPexels: async () => { buscas.push('pexels'); return o.pexels ?? [] },
     buscarPixabay: async () => [],
     idsUsados: async () => [],
     copiarExterna: async (cliente, origem, e) => { copias.push(e.url); return `${cliente}/banco/${origem}-${e.id}.jpg` },
@@ -84,7 +92,7 @@ function montar(o: Opcoes = {}) {
     marcar: async (p, estado) => { marcados.push({ id: p.id, estado }) },
     hoje: () => '2026-11-17',
   }
-  return { deps, pedidos, usos, gravados, marcados, fotosGravadas, urls, copias, usadas }
+  return { deps, pedidos, usos, gravados, marcados, fotosGravadas, urls, copias, usadas, tempos, buscas }
 }
 
 const imagensDo = (p: PedidoIA) => p.conteudo.filter((c) => c.tipo === 'imagem').map((c) => (c as { url: string }).url)
@@ -256,6 +264,101 @@ describe('melhorarUmPost', () => {
   })
 })
 
+describe('prazo da execução (relógio falso)', () => {
+  const descrita = { [`${UID}/produtos/a.jpg`]: { descricao: 'Cabelo liso.', serve: true } }
+
+  test('pouco tempo para escrever: volta para a fila intacto, sem chamar a IA', async () => {
+    const m = montar({ info: descrita, relogio: { t: 100_000 } })
+    expect(await melhorarUmPost(m.deps, post(), 110_000)).toBe('adiado')
+    expect(m.pedidos).toEqual([])
+    expect(m.usos).toEqual([])
+    expect(m.gravados).toEqual([])
+    expect(m.marcados).toEqual([{ id: 'p1', estado: 'fila' }])
+  })
+
+  test('cada chamada tem o tempo cortado pelo prazo', async () => {
+    const m = montar({ info: descrita, relogio: { t: 0 } })
+    expect(await melhorarUmPost(m.deps, post(), 50_000)).toBe('pronto')
+    expect(m.tempos).toEqual([45_000])
+    const m2 = montar({ info: descrita })
+    expect(await melhorarUmPost(m2.deps, post())).toBe('pronto')
+    expect(m2.tempos).toEqual([60_000])
+  })
+
+  test('sem tempo para descrever a foto na hora (guardando a reserva da escrita): adiado, nada gasto', async () => {
+    const m = montar({ relogio: { t: 0 } })
+    expect(await melhorarUmPost(m.deps, post(), 60_000)).toBe('adiado')
+    expect(m.pedidos).toEqual([])
+    expect(m.fotosGravadas).toEqual([])
+    expect(m.marcados).toEqual([{ id: 'p1', estado: 'fila' }])
+  })
+
+  test('sem tempo para a IA escolher a imagem do post geral: adiado', async () => {
+    const m = montar({ ctx: contexto({ produtos: [] }), pexels: [{ id: '1', url: 'https://images.pexels.com/1.jpg', autor: 'A' }],
+      relogio: { t: 0 } })
+    expect(await melhorarUmPost(m.deps, post({ produto_id: null }), 60_000)).toBe('adiado')
+    expect(m.pedidos).toEqual([])
+    expect(m.gravados).toEqual([])
+  })
+
+  test('a nova tentativa da escrita sem tempo: adiado (não desiste)', async () => {
+    const ruim = ok({ ...TEXTO_IA, titulo: '', gancho: '' })
+    const m = montar({ info: descrita, relogio: { t: 0 }, duracaoChamada: 45_000, escrever: () => ruim })
+    expect(await melhorarUmPost(m.deps, post(), 60_000)).toBe('adiado')
+    expect(m.pedidos).toHaveLength(1)
+    expect(m.marcados).toEqual([{ id: 'p1', estado: 'fila' }])
+  })
+
+  test('chamada cortada pelo prazo que estoura o tempo: adiado', async () => {
+    const m = montar({ info: descrita, relogio: { t: 0 }, escrever: () => ({ ok: false, motivo: 'tempo' }) })
+    expect(await melhorarUmPost(m.deps, post(), 50_000)).toBe('adiado')
+    // com o tempo inteiro (não cortado), estourar o tempo é falha da IA: desiste
+    const m2 = montar({ info: descrita, escrever: () => ({ ok: false, motivo: 'tempo' }) })
+    expect(await melhorarUmPost(m2.deps, post())).toBe('desistiu')
+  })
+})
+
+describe('sem foto e ramos só de texto', () => {
+  test('sem_foto: escreve sem foto e grava foto_path null', async () => {
+    const minha = `${UID}/negocio/minha.jpg`
+    const m = montar({ info: { [minha]: { descricao: 'x', serve: true }, [`${UID}/produtos/a.jpg`]: { descricao: 'y', serve: true } } })
+    expect(await melhorarUmPost(m.deps, post({ sem_foto: true, foto_path: minha }))).toBe('pronto')
+    expect(m.urls).toEqual([])
+    expect(imagensDo(m.pedidos.find((p) => p.esquema === ESQUEMA_POST)!)).toEqual([])
+    expect(m.gravados[0].campos.foto_path).toBeNull()
+    expect(m.gravados[0].post.sem_foto).toBe(true)
+  })
+
+  const psico = (extra: Partial<Contexto> = {}) => contexto({
+    ramo: 'psicologia',
+    negocio: { nome: 'Consultório Ana', insta: null, tom: 'proximo', fotos: [`${UID}/negocio/f.jpg`] },
+    produtos: [{ id: 's1', nome: 'Terapia individual', descricao: null, fotos: [`${UID}/produtos/a.jpg`], foto_path: null }],
+    ...extra,
+  })
+  const TEXTO_PSICO = {
+    titulo: 'Um espaço para falar com calma', gancho: 'Nem tudo precisa ser resolvido sozinho.',
+    meio: 'A terapia é um espaço de escuta, no seu ritmo.', convite: 'Quer conversar? Chama no WhatsApp.',
+    hashtags: ['#terapia'], roteiro: null,
+  }
+
+  test('ramo só de texto: post geral fica só texto, sem procurar imagem', async () => {
+    const m = montar({ ctx: psico(), info: { [`${UID}/negocio/f.jpg`]: { descricao: 'Sala.', serve: true } },
+      escrever: () => ok(TEXTO_PSICO), escolher: () => ok({ id: `${UID}/negocio/f.jpg` }) })
+    const r = await melhorarUmPost(m.deps, post({ produto_id: null }))
+    expect(m.buscas).toEqual([])
+    expect(m.pedidos.filter((p) => p.esquema !== ESQUEMA_POST)).toEqual([])
+    expect(m.urls).toEqual([])
+    expect(r).toBe('pronto')
+    expect(m.gravados[0].campos.foto_path).toBeNull()
+  })
+
+  test('ramo só de texto: post de serviço continua com a foto do serviço', async () => {
+    const m = montar({ ctx: psico(), info: { [`${UID}/produtos/a.jpg`]: { descricao: 'Sala.', serve: true } }, escrever: () => ok(TEXTO_PSICO) })
+    expect(await melhorarUmPost(m.deps, post())).toBe('pronto')
+    expect(m.gravados[0].campos.foto_path).toBe(`${UID}/produtos/a.jpg`)
+  })
+})
+
 describe('processarFila', () => {
   test('erro inesperado num post não derruba os outros e o post com erro desiste', async () => {
     const lotes = [[post({ id: 'a' }), post({ id: 'b' })], []]
@@ -269,7 +372,19 @@ describe('processarFila', () => {
     })
     expect(feitos).toEqual(['b'])
     expect(marcados).toEqual(['a'])
-    expect(r).toEqual({ pronto: 1, desistiu: 0, 'cliente-mexeu': 0, erro: 1 })
+    expect(r).toEqual({ pronto: 1, desistiu: 0, 'cliente-mexeu': 0, adiado: 0, erro: 1 })
+  })
+
+  test('passa o prazo da execução (início + 110 s) para cada post', async () => {
+    const prazos: number[] = []
+    const lotes = [[post()], []]
+    await processarFila({
+      pegar: async () => lotes.shift() ?? [],
+      melhorar: async (_p, prazo) => { prazos.push(prazo); return 'pronto' },
+      desistir: async () => {},
+      agora: () => 1_000,
+    })
+    expect(prazos).toEqual([111_000])
   })
 
   test('para de pegar lotes quando o tempo acaba', async () => {

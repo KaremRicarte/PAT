@@ -35,8 +35,10 @@ function criarDeps(): { deps: DepsMelhorar, pegar: (n: number) => Promise<PostDa
   }
 
   const deps: DepsMelhorar = {
-    // sem chave: null (nunca o invólucro sem chave), e nada de IA nem de uso registrado
-    chamar: CHAVE_IA ? criarChamarIA(CHAVE_IA, { timeoutMs: TEMPO_FILA_MS }) : null,
+    // sem chave: null (nunca o invólucro sem chave), e nada de IA nem de uso registrado.
+    // Cada chamada recebe o tempo cortado pelo prazo da execução (nunca mais que TEMPO_FILA_MS).
+    chamar: CHAVE_IA ? (ms) => criarChamarIA(CHAVE_IA, { timeoutMs: Math.min(ms, TEMPO_FILA_MS) }) : null,
+    agora: () => Date.now(),
     contarNoMes: contarUsoNoMes(db),
     registrarUso: registrarUso(db),
 
@@ -106,6 +108,7 @@ function criarDeps(): { deps: DepsMelhorar, pegar: (n: number) => Promise<PostDa
     async gravar(post, campos) {
       const { data, error } = await db.rpc('gravar_post_ia', {
         p_id: post.id, p_ia_em: post.ia_em, p_legenda_lida: post.legenda, p_foto_lida: post.foto_path,
+        p_estado_lido: post.estado, p_sem_foto_lido: post.sem_foto,
         p_titulo: campos.titulo, p_legenda: campos.legenda, p_hashtags: campos.hashtags, p_roteiro: campos.roteiro,
         p_foto_path: campos.foto_path,
       })
@@ -130,7 +133,7 @@ async function trabalhar() {
     const { deps, pegar } = criarDeps()
     const contagem = await processarFila({
       pegar,
-      melhorar: (post) => melhorarUmPost(deps, post),
+      melhorar: (post, prazo) => melhorarUmPost(deps, post, prazo),
       desistir: (post) => deps.marcar(post, 'desistiu'),
       agora: () => Date.now(),
     })
