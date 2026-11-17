@@ -210,6 +210,8 @@ const pt = {
   'importar.resumo.foraitens': '⚠ Não couberam (limite de {max} itens), com as fotos: {lista}',
   'importar.resumo.forafotos': '⚠ Não couberam (limite de {max} fotos por item): {lista}',
   'importar.resumo.linha': '⚠ Linha {linha}: {motivo}',
+  'importar.resumo.naoabriu1': '⚠ 1 foto não abriu (use JPG ou PNG): {lista}',
+  'importar.resumo.naoabriuN': '⚠ {n} fotos não abriram (use JPG ou PNG): {lista}',
   'importar.resumo.precos': 'Na sua área, os preços não aparecem nos posts.',
   'importar.resumo.textos1': '⚠ Usamos só o primeiro arquivo de texto; 1 outro foi ignorado',
   'importar.resumo.textosN': '⚠ Usamos só o primeiro arquivo de texto; {n} outros foram ignorados',

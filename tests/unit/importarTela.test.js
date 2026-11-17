@@ -25,4 +25,8 @@ describe('textoDoResumo', () => {
     expect(r).toContain('⚠ Usamos só o primeiro arquivo de texto; 1 outro foi ignorado')
     expect(r[0]).toBe('Nada novo foi importado.')
   })
+  test('fotos que o navegador não abriu', () => {
+    expect(textoDoResumo({ ...base, naoAbriram: ['a.heic'] })).toContain('⚠ 1 foto não abriu (use JPG ou PNG): a.heic')
+    expect(textoDoResumo({ ...base, naoAbriram: ['a.heic', 'b.heic'] })).toContain('⚠ 2 fotos não abriram (use JPG ou PNG): a.heic, b.heic')
+  })
 })

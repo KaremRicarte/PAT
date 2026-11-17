@@ -22,6 +22,11 @@ export function textoDoResumo(r, { textosIgnorados = 0 } = {}) {
   if (r.foraItens?.length) linhas.push(t('importar.resumo.foraitens', { max: MAX_ITENS, lista: lista(r.foraItens) }))
   if (r.foraFotos?.length) linhas.push(t('importar.resumo.forafotos', { max: MAX_FOTOS, lista: lista(r.foraFotos) }))
   for (const e of r.erros ?? []) linhas.push(t('importar.resumo.linha', { linha: e.linha, motivo: t(e.chave) }))
+  if (r.naoAbriram?.length) {
+    linhas.push(r.naoAbriram.length === 1
+      ? t('importar.resumo.naoabriu1', { lista: lista(r.naoAbriram) })
+      : t('importar.resumo.naoabriuN', { n: r.naoAbriram.length, lista: lista(r.naoAbriram) }))
+  }
   if (r.precosIgnorados) linhas.push(t('importar.resumo.precos'))
   if (textosIgnorados) {
     linhas.push(textosIgnorados === 1 ? t('importar.resumo.textos1') : t('importar.resumo.textosN', { n: textosIgnorados }))
@@ -31,6 +36,11 @@ export function textoDoResumo(r, { textosIgnorados = 0 } = {}) {
 
 const ehTexto = (f) => /\.(txt|csv)$/i.test(f.name) || /^text\/(plain|csv)$/.test(f.type)
 const ehFoto = (f) => f.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)
+
+// Confere se o navegador consegue abrir a foto (o envio depende disso para reduzi-la).
+async function abre(arquivo) {
+  try { (await createImageBitmap(arquivo)).close(); return true } catch { return false }
+}
 
 // Lê pastas soltas na página (webkitGetAsEntry) e devolve todos os arquivos dentro delas.
 async function arquivosDaEntrada(entrada) {
@@ -62,14 +72,19 @@ export function pintarSelos(destino, item) {
 // Faixa de miniaturas do item. `urls` guarda os endereços temporários, para o quiz liberar ao redesenhar.
 export function faixaDeFotos({ item, supabase, urls, selos }) {
   const faixa = el('div', { class: 'faixa-fotos' })
+  const erro = el('p', { class: 'erro pequeno', role: 'alert', hidden: true, texto: t('quiz.item.fotos.erro') })
   const entrada = el('input', { type: 'file', multiple: true, accept: 'image/*', hidden: true })
   const adicionar = el('button', { type: 'button', class: 'secundario', texto: t('quiz.item.fotos.add') })
   adicionar.addEventListener('click', () => entrada.click())
   entrada.addEventListener('change', () => {
     const livres = MAX_FOTOS - item.fotos.length
-    for (const f of [...entrada.files].slice(0, Math.max(livres, 0))) item.fotos.push({ arquivo: f, nome: f.name })
+    const escolhidas = [...entrada.files].slice(0, Math.max(livres, 0))
     entrada.value = ''
-    pintar()
+    Promise.all(escolhidas.map(abre)).then((oks) => {
+      escolhidas.forEach((f, i) => { if (oks[i]) item.fotos.push({ arquivo: f, nome: f.name }) })
+      erro.hidden = oks.every(Boolean)
+      pintar()
+    })
   })
 
   function pintar(focar) {
@@ -94,7 +109,7 @@ export function faixaDeFotos({ item, supabase, urls, selos }) {
     if (focar) (adicionar.hidden ? faixa.querySelector('.remover-foto') : adicionar)?.focus()
   }
   pintar()
-  return faixa
+  return el('div', {}, faixa, erro)
 }
 
 // Botão "Importar lista e fotos", ajuda, exemplo, área de arrastar e resumo.
@@ -108,15 +123,18 @@ export function montarImportacao({ ramo, estado, aoMudar }) {
 
   async function importar(arquivos) {
     const textos = arquivos.filter(ehTexto)
-    const fotos = arquivos.filter((f) => !ehTexto(f) && ehFoto(f))
-    if (!textos.length && !fotos.length) return
+    const candidatas = arquivos.filter((f) => !ehTexto(f) && ehFoto(f))
+    if (!textos.length && !candidatas.length) return
     resumo.replaceChildren(el('p', { texto: t('importar.lendo') }))
     try {
+      const oks = await Promise.all(candidatas.map(abre))
+      const fotos = candidatas.filter((_, i) => oks[i])
+      const naoAbriram = candidatas.filter((_, i) => !oks[i]).map((f) => f.name)
       const lido = textos.length ? lerLista(decodificarTexto(await textos[0].arrayBuffer())) : { linhas: [], erros: [] }
       const r = juntarImportacao(estado.itens, { ...lido, arquivosDeFoto: fotos },
         { noPromo: !!ramo.noPromo, novoId: () => crypto.randomUUID() })
       estado.itens = r.itens
-      const linhas = textoDoResumo(r.resumo, { textosIgnorados: Math.max(textos.length - 1, 0) })
+      const linhas = textoDoResumo({ ...r.resumo, naoAbriram }, { textosIgnorados: Math.max(textos.length - 1, 0) })
       resumo.replaceChildren(el('p', { class: 'resumo-titulo', texto: linhas[0] }), ...linhas.slice(1).map((l) => el('p', { texto: l })))
       aoMudar()
     } catch (e) {
