@@ -3,16 +3,23 @@
 import type { Estrategia, Pilar, Rede, Tom } from '../modelos/tipos.ts'
 import { RAMOS } from '../modelos/ramos/index.ts'
 import { brl, paragrafos, textoDoPreco, type PostGerado } from '../modelos/gerar.ts'
-import { semTextoDoCliente, temPromocao, validarPost } from '../modelos/validar.ts'
+import { MAX_HASHTAGS, semTextoDoCliente, temPromocao, validarPost } from '../modelos/validar.ts'
 import { INSTRUCOES_POST } from './instrucoes.ts'
 
 export type ConteudoIA = { tipo: 'texto', texto: string } | { tipo: 'imagem', url: string }
-export type PedidoIA = { sistema: string, conteudo: ConteudoIA[], esquema: object, maxTokens: number }
+export type Esforco = 'low' | 'medium'
+// esforco: o do pedido vence o da ChamarIA (descrever foto e escolher imagem pedem 'low')
+export type PedidoIA = { sistema: string, conteudo: ConteudoIA[], esquema: object, maxTokens: number, esforco?: Esforco }
+// ocupado = a API está sobrecarregada ou limitando (429, 529, 5xx): passageiro, dá para tentar mais tarde
 export type RespostaIA =
   | { ok: true, dados: unknown, tokensEntrada: number, tokensSaida: number }
-  | { ok: false, motivo: 'recusa' | 'limite' | 'erro' | 'tempo', tokensEntrada?: number, tokensSaida?: number }
+  | { ok: false, motivo: 'recusa' | 'limite' | 'erro' | 'tempo' | 'ocupado', tokensEntrada?: number, tokensSaida?: number }
 export type ChamarIA = (pedido: PedidoIA) => Promise<RespostaIA>
 export type Tokens = { entrada: number, saida: number }
+
+// Erro HTTP da API -> motivo: 429 (limite de pedidos), 529 (sobrecarga) e 5xx são passageiros ('ocupado').
+export const motivoDoErroHttp = (status: number | undefined): 'ocupado' | 'erro' =>
+  status === 429 || (status != null && status >= 500) ? 'ocupado' : 'erro'
 
 export type EntradaPost = {
   ramo: string,
@@ -44,7 +51,8 @@ export const ESQUEMA_POST = {
   additionalProperties: false,
 } as const
 
-const MAX_TOKENS_POST = 4000
+// o Opus 5.5 sempre pensa antes de responder: max_tokens cobre o pensamento e a resposta
+const MAX_TOKENS_POST = 16000
 
 const ESTRATEGIAS: Record<Estrategia, string> = {
   vender: 'Vender mais', crescer: 'Crescer o perfil', credibilidade: 'Credibilidade', tempo: 'Economizar tempo',
@@ -57,6 +65,17 @@ const TIPOS: Record<PostGerado['tipo'], string> = {
 const FORMATOS: Record<PostGerado['formato'], string> = {
   arte: 'arte com uma foto', carrossel: 'carrossel', montagem: 'vídeo de montagem com fotos',
   gravar: 'vídeo para gravar', texto: 'só texto',
+}
+
+const DIAS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+// '2026-12-04' -> 'sexta-feira, 4 de dezembro' (data do calendário, sem fuso). Formato inesperado: a data como veio.
+export function dataPorExtenso(data: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(data)
+  if (!m) return data
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
+  if (Number.isNaN(d.getTime())) return data
+  return `${DIAS[d.getUTCDay()]}, ${d.getUTCDate()} de ${MESES[d.getUTCMonth()]}`
 }
 
 const comArroba = (insta: string | null) => (insta ? (insta.startsWith('@') ? insta : `@${insta}`) : null)
@@ -82,7 +101,7 @@ function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
     `Negócio: ${e.negocio.nome}${insta ? ` (Instagram ${insta})` : ''}.`,
     `Tom de voz: ${tom ? `${tom[1]} (${tom[2]})` : e.negocio.tom}.`,
     `Estratégia do mês: ${ESTRATEGIAS[e.estrategia]}.`,
-    `Onde e quando: ${REDES[l.rede]}, ${TIPOS[l.tipo]}, formato ${FORMATOS[l.formato]}, dia ${l.data}. Pilar: ${PILARES[l.pilar]}.`,
+    `Onde e quando: ${REDES[l.rede]}, ${TIPOS[l.tipo]}, formato ${FORMATOS[l.formato]}, dia ${l.data} (${dataPorExtenso(l.data)}). Pilar: ${PILARES[l.pilar]}.`,
     e.produto
       ? `Serviço ou produto do post: ${e.produto.nome}${e.produto.descricao ? `. Descrição do cliente: ${e.produto.descricao}` : ''}.`
       : 'Post de tema geral, sem um serviço específico.',
@@ -119,8 +138,9 @@ function lerPartes(d: unknown): Partes | null {
   }
 }
 
-const VALOR = /R\$\s?\d[\d.]*(?:,\d{1,2})?/g
-const soEspacos = (s: string) => s.replace(/\s/g, ' ')
+const VALOR = /R\$\s*\d[\d.]*(?:,\d{1,2})?/g
+// compara os valores sem nenhum espaço: "R$ 49,90", "R$49,90" e com espaço não separável são o mesmo valor
+const semEspacos = (s: string) => s.replace(/\s/g, '')
 
 // Junta as partes no formato de parágrafos dos modelos (gerar.ts) e checa com as mesmas regras.
 function montar(e: EntradaPost, p: Partes, noPromo: boolean): { post: CamposDaIA, problemas: string[] } {
@@ -131,6 +151,8 @@ function montar(e: EntradaPost, p: Partes, noPromo: boolean): { post: CamposDaIA
   const hashtags = semHashtags(e.lugar) ? [] : p.hashtags
     .map((h) => h.replace(/\s+/g, '')).filter((h) => h.replace(/#/g, ''))
     .map((h) => (h.startsWith('#') ? h : `#${h}`))
+    // hashtags a mais: corta no máximo da rede em vez de reprovar o post
+    .slice(0, MAX_HASHTAGS[e.lugar.rede])
   const post: CamposDaIA = {
     titulo: p.titulo,
     legenda: paragrafos(p.gancho, p.meio, preco?.texto, p.convite, assinatura),
@@ -153,9 +175,9 @@ function montar(e: EntradaPost, p: Partes, noPromo: boolean): { post: CamposDaIA
   }
   // Em post de preço o R$ é permitido, mas só com os valores informados.
   if (preco) {
-    const permitidos = new Set([preco.preco_de, preco.preco_por].filter((v) => v != null).map((v) => soEspacos(brl(v!))))
+    const permitidos = new Set([preco.preco_de, preco.preco_por].filter((v) => v != null).map((v) => semEspacos(brl(v!))))
     const escritos = [p.titulo, p.gancho, p.meio, p.convite, p.roteiro ?? '', ...p.hashtags].join('\n')
-    if ((escritos.match(VALOR) ?? []).some((v) => !permitidos.has(soEspacos(v)))) {
+    if ((escritos.match(VALOR) ?? []).some((v) => !permitidos.has(semEspacos(v)))) {
       problemas.push('valor em reais diferente do informado')
     }
   }

@@ -318,6 +318,44 @@ describe('prazo da execução (relógio falso)', () => {
   })
 })
 
+describe('API ocupada (429, 529, 5xx)', () => {
+  const descrita = { [`${UID}/produtos/a.jpg`]: { descricao: 'Cabelo liso.', serve: true } }
+
+  test('ocupada ao escrever: o post volta para a fila (não desiste), nada gravado', async () => {
+    const m = montar({ info: descrita, escrever: () => ({ ok: false, motivo: 'ocupado' }) })
+    expect(await melhorarUmPost(m.deps, post())).toBe('ocupado')
+    expect(m.gravados).toEqual([])
+    expect(m.marcados).toEqual([{ id: 'p1', estado: 'fila' }])
+  })
+
+  test('ocupada ao descrever a foto: volta para a fila sem escrever nem guardar a descrição', async () => {
+    const m = montar({ descrever: () => ({ ok: false, motivo: 'ocupado' }) })
+    expect(await melhorarUmPost(m.deps, post())).toBe('ocupado')
+    expect(m.pedidos.map((p) => p.esquema)).toEqual([ESQUEMA_FOTO])
+    expect(m.fotosGravadas).toEqual([])
+    expect(m.marcados).toEqual([{ id: 'p1', estado: 'fila' }])
+  })
+
+  test('ocupada ao escolher a imagem do post geral: volta para a fila', async () => {
+    const m = montar({ ctx: contexto({ produtos: [] }), pexels: [{ id: '1', url: 'https://images.pexels.com/1.jpg', autor: 'A' }],
+      escolher: () => ({ ok: false, motivo: 'ocupado' }) })
+    expect(await melhorarUmPost(m.deps, post({ produto_id: null }))).toBe('ocupado')
+    expect(m.gravados).toEqual([])
+    expect(m.marcados).toEqual([{ id: 'p1', estado: 'fila' }])
+  })
+
+  test('descrever a foto e escolher a imagem pedem esforço baixo; escrever, não', async () => {
+    const m = montar({ ctx: contexto({ produtos: [], negocio: { nome: 'Studio Lia', insta: null, tom: 'proximo', fotos: [`${UID}/fotos/x.jpg`] } }),
+      pexels: [{ id: '1', url: 'https://images.pexels.com/1.jpg', autor: 'A' }] })
+    await melhorarUmPost(m.deps, post({ produto_id: null }))
+    const por = (e: object) => m.pedidos.filter((p) => p.esquema === e)
+    expect(por(ESQUEMA_FOTO).length).toBeGreaterThan(0)
+    expect(por(ESQUEMA_ESCOLHA).length).toBeGreaterThan(0)
+    expect([...por(ESQUEMA_FOTO), ...por(ESQUEMA_ESCOLHA)].every((p) => p.esforco === 'low' && p.maxTokens === 8000)).toBe(true)
+    expect(por(ESQUEMA_POST).every((p) => p.esforco === undefined && p.maxTokens === 16000)).toBe(true)
+  })
+})
+
 describe('sem foto e ramos só de texto', () => {
   test('sem_foto: escreve sem foto e grava foto_path null', async () => {
     const minha = `${UID}/negocio/minha.jpg`
@@ -372,7 +410,7 @@ describe('processarFila', () => {
     })
     expect(feitos).toEqual(['b'])
     expect(marcados).toEqual(['a'])
-    expect(r).toEqual({ pronto: 1, desistiu: 0, 'cliente-mexeu': 0, adiado: 0, erro: 1 })
+    expect(r).toEqual({ pronto: 1, desistiu: 0, 'cliente-mexeu': 0, adiado: 0, ocupado: 0, erro: 1 })
   })
 
   test('passa o prazo da execução (início + 110 s) para cada post', async () => {
@@ -385,6 +423,18 @@ describe('processarFila', () => {
       agora: () => 1_000,
     })
     expect(prazos).toEqual([111_000])
+  })
+
+  test('API ocupada num post: termina o lote e não pega outro; o lote é de 3', async () => {
+    const limites: number[] = []
+    const r = await processarFila({
+      pegar: async (n) => { limites.push(n); return [post({ id: 'a' }), post({ id: 'b' })] },
+      melhorar: async (p) => (p.id === 'a' ? 'ocupado' : 'pronto'),
+      desistir: async () => {},
+      agora: () => 0,
+    })
+    expect(limites).toEqual([3])
+    expect(r).toMatchObject({ pronto: 1, ocupado: 1 })
   })
 
   test('para de pegar lotes quando o tempo acaba', async () => {

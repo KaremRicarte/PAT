@@ -43,3 +43,9 @@ test('recusa ou resposta fora do formato → null', async () => {
   expect(await descreverFoto(falsa({ ok: true, tokensEntrada: 1, tokensSaida: 1, dados: { serve: true } }).chamar,
     { url: 'u', contexto: '' })).toBeNull()
 })
+
+test('descrever a foto pede esforço baixo e max_tokens 8000 (o pensamento conta)', async () => {
+  const { chamar, pedidos } = falsa({ ok: true, tokensEntrada: 1, tokensSaida: 1, dados: { descricao: 'Bolo.', serve: true, motivo: null } })
+  await descreverFoto(chamar, { url: 'u', contexto: '' })
+  expect(pedidos[0]).toMatchObject({ esforco: 'low', maxTokens: 8000 })
+})

@@ -203,7 +203,7 @@ test('IA ok: grava o texto da IA (origem ia, pronto), conta a troca e registra o
   expect(r.status).toBe(200)
   expect(pedidos).toHaveLength(1)
   expect(pedidos[0].esquema).toBe(ESQUEMA_POST)
-  expect(tempos[0]).toBeLessThanOrEqual(20_000)
+  expect(tempos[0]).toBeLessThanOrEqual(30_000)
   expect(usos).toEqual([expect.objectContaining({ clienteId: 'c1', tipo: 'troca' })])
   const campos = gravado(deps)
   expect(campos).toMatchObject({
@@ -298,9 +298,9 @@ test('limite do mês da IA estourado: modelo, e a troca conta nas 10', async () 
   expect(gravado(deps)).toMatchObject({ origem: 'modelo', trocas: 3 })
 })
 
-test('o cliente espera no máximo ~20 s: sem tempo para a nova tentativa, fica o modelo', async () => {
+test('o cliente espera no máximo ~30 s: sem tempo para a nova tentativa, fica o modelo', async () => {
   const relogio = { t: 0 }
-  const { deps, pedidos } = comIA(() => { relogio.t += 15_000; return ok({ ...TEXTO_IA, meio: 'Hoje com 50% de desconto!' }) },
+  const { deps, pedidos } = comIA(() => { relogio.t += 25_000; return ok({ ...TEXTO_IA, meio: 'Hoje com 50% de desconto!' }) },
     { agora: () => relogio.t })
   await trocarPostDoCliente({ post_id: ID }, deps)
   expect(pedidos).toHaveLength(1) // a 2ª tentativa não começa com só 5 s

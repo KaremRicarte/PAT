@@ -1,5 +1,5 @@
 // Função trocar-post ("Gerar outro"): troca o texto de um post do cliente por outro escrito pela IA na hora
-// (até ~20 s); sem a IA, por outro dos modelos prontos.
+// (até ~30 s); sem a IA, por outro dos modelos prontos.
 // Quem chama é sempre o próprio cliente; o id vem do token validado pelo Auth, nunca do corpo.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import type { Resposta } from '../admin-clientes/acoes.ts'
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       if (error) throw error
     },
     // sem chave: null (nada de IA nem de uso registrado). Cada chamada recebe o tempo que sobra do prazo.
-    chamar: CHAVE_IA ? (ms) => criarChamarIA(CHAVE_IA, { timeoutMs: Math.min(ms, TEMPO_TROCA_MS) }) : null,
+    chamar: CHAVE_IA ? (ms) => criarChamarIA(CHAVE_IA, { timeoutMs: Math.min(ms, TEMPO_TROCA_MS), effort: 'low' }) : null,
     agora: () => Date.now(),
     contarNoMes: contarUsoNoMes(db),
     registrarUso: registrarUso(db),

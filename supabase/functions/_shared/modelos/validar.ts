@@ -9,7 +9,7 @@ export const temPromocao = (s: string) => PROIBIDAS.test(s)
 // Na vitrine de preço (só "por"), o R$ pode; promoção, desconto, off e black friday não. "Oferta" segue livre.
 const PROMOCAO = /(?<!\p{L})(promo(ção|ções|cional|cionais|s)?|descontos?|off)(?!\p{L})|black friday/iu
 const SOBRAS = /undefined|\{prod\}|\{loja\}/
-const MAX_HASHTAGS: Record<PostGerado['rede'], number> = { instagram: 5, tiktok: 5, facebook: 3, whatsapp: 0 }
+export const MAX_HASHTAGS: Record<PostGerado['rede'], number> = { instagram: 5, tiktok: 5, facebook: 3, whatsapp: 0 }
 
 const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 // Tira do texto o que o cliente escreveu (nome do negócio, nome e descrição dos itens), sem diferenciar maiúsculas:

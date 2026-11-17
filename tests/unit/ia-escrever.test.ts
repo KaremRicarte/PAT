@@ -1,4 +1,4 @@
-import { escreverPost, type ChamarIA, type EntradaPost } from '../../supabase/functions/_shared/ia/escrever.ts'
+import { dataPorExtenso, escreverPost, motivoDoErroHttp, type ChamarIA, type EntradaPost } from '../../supabase/functions/_shared/ia/escrever.ts'
 import { INSTRUCOES_POST } from '../../supabase/functions/_shared/ia/instrucoes.ts'
 import { custoUsd } from '../../supabase/functions/_shared/ia/custo.ts'
 
@@ -190,4 +190,58 @@ test('palavra de promoção no texto do cliente não reprova o post sem preço',
 test('post de promoção pode falar em promoção', async () => {
   const { chamar } = falsa(ok(resposta({ meio: 'A promoção vale para a escova completa.' })))
   expect(await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9 }))).not.toBeNull()
+})
+
+test('valores em reais iguais aos informados passam com qualquer espaço (ou sem espaço)', async () => {
+  for (const v of ['R$149,90', 'R$ 149,90', 'R$  149,90']) {
+    const { chamar } = falsa(ok(resposta({ meio: `Hoje sai por ${v}.` })))
+    const r = await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9 }))
+    expect(r?.tentativas).toBe(1)
+  }
+  // com espaço duplo o valor errado também é visto
+  const { chamar } = falsa(ok(resposta({ meio: 'Hoje sai por R$  99.' })), ok(resposta()))
+  expect((await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9 })))!.tentativas).toBe(2)
+})
+
+test('hashtags a mais são cortadas no máximo da rede, sem reprovar', async () => {
+  const muitas = ['#a', '#b', '#c', '#d', '#e', '#f', '#g']
+  const ig = falsa(ok(resposta({ hashtags: muitas })))
+  const r = await escreverPost(ig.chamar, entrada())
+  expect(r!.tentativas).toBe(1)
+  expect(r!.post.hashtags).toEqual(['#a', '#b', '#c', '#d', '#e'])
+  const fb = falsa(ok(resposta({ hashtags: muitas })))
+  expect((await escreverPost(fb.chamar, entrada({}, { rede: 'facebook' })))!.post.hashtags).toEqual(['#a', '#b', '#c'])
+})
+
+test('a data vai também por extenso (dia da semana, dia e mês) e as instruções proíbem urgência inventada', async () => {
+  expect(dataPorExtenso('2026-12-04')).toBe('sexta-feira, 4 de dezembro')
+  expect(dataPorExtenso('2026-11-01')).toBe('domingo, 1 de novembro')
+  expect(dataPorExtenso('xx')).toBe('xx')
+  const { chamar, pedidos } = falsa(ok(resposta()))
+  await escreverPost(chamar, entrada())
+  expect(textoDo(pedidos[0])).toContain('2026-12-04 (sexta-feira, 4 de dezembro)')
+  expect(INSTRUCOES_POST).toMatch(/só até sexta/)
+})
+
+test('escrever o post: max_tokens 16000 (o pensamento conta) e o esforço padrão', async () => {
+  const { chamar, pedidos } = falsa(ok(resposta()))
+  await escreverPost(chamar, entrada())
+  expect(pedidos[0].maxTokens).toBe(16000)
+  expect(pedidos[0].esforco).toBeUndefined()
+})
+
+test('motivoDoErroHttp: 429, 529 e 5xx são passageiros (ocupado); o resto é erro', () => {
+  expect(motivoDoErroHttp(429)).toBe('ocupado')
+  expect(motivoDoErroHttp(529)).toBe('ocupado')
+  expect(motivoDoErroHttp(500)).toBe('ocupado')
+  expect(motivoDoErroHttp(503)).toBe('ocupado')
+  expect(motivoDoErroHttp(400)).toBe('erro')
+  expect(motivoDoErroHttp(401)).toBe('erro')
+  expect(motivoDoErroHttp(undefined)).toBe('erro')
+})
+
+test('API ocupada → null (quem chama na hora segue com o modelo)', async () => {
+  const { chamar, pedidos } = falsa({ ok: false, motivo: 'ocupado' })
+  expect(await escreverPost(chamar, entrada())).toBeNull()
+  expect(pedidos).toHaveLength(1)
 })

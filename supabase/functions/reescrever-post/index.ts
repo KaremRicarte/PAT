@@ -1,4 +1,4 @@
-// Função reescrever-post: depois do "Trocar imagem", a IA reescreve na hora (até ~20 s) a legenda do post para a foto
+// Função reescrever-post: depois do "Trocar imagem", a IA reescreve na hora (até ~30 s) a legenda do post para a foto
 // atual. Quem chama é sempre o próprio cliente; o id vem do token validado pelo Auth, nunca do corpo.
 // Responde { post } (o texto novo) ou { post: null } (fica o texto de antes) — nunca erro por causa da IA.
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
       return data === true
     },
     // sem chave: null (nada de IA nem de uso registrado). Cada chamada recebe o tempo que sobra do prazo.
-    chamar: CHAVE_IA ? (ms) => criarChamarIA(CHAVE_IA, { timeoutMs: Math.min(ms, TEMPO_TROCA_MS) }) : null,
+    chamar: CHAVE_IA ? (ms) => criarChamarIA(CHAVE_IA, { timeoutMs: Math.min(ms, TEMPO_TROCA_MS), effort: 'low' }) : null,
     agora: () => Date.now(),
     contarNoMes: contarUsoNoMes(db),
     registrarUso: registrarUso(db),

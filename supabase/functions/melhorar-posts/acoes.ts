@@ -39,7 +39,8 @@ export type LinhaFotoIA = {
 }
 export type CamposGravados = CamposDaIA & { foto_path: string | null, origem: 'ia', ia_estado: 'pronto' }
 // adiado = sem tempo nesta execução: volta para a fila, intacto, para a próxima
-export type Resultado = 'pronto' | 'desistiu' | 'cliente-mexeu' | 'adiado'
+// ocupado = a API está sobrecarregada (429, 529, 5xx): volta para a fila e a execução não pega mais lotes
+export type Resultado = 'pronto' | 'desistiu' | 'cliente-mexeu' | 'adiado' | 'ocupado'
 
 export type DepsMelhorar = Omit<DepsImagens, 'escolher'> & {
   // null = sem ANTHROPIC_API_KEY: nada de IA, o post desiste (fica o modelo e a faixa "Melhorando…" termina).
@@ -101,7 +102,7 @@ export function criarEscolher(chamar: ChamarIA): DepsImagens['escolher'] {
       conteudo.push({ tipo: 'texto', texto: ['Candidatas pela descrição:', ...soDescricao.map((c) => `- id "${c.id}": ${c.descricao}`)].join('\n') })
     }
     conteudo.push({ tipo: 'texto', texto: `Tema do post: ${tema || 'post do negócio'}.\nEscolha a candidata que melhor ilustra o tema, ou null.` })
-    const r = await chamar({ sistema: INSTRUCOES_ESCOLHA, conteudo, esquema: ESQUEMA_ESCOLHA, maxTokens: 1000 })
+    const r = await chamar({ sistema: INSTRUCOES_ESCOLHA, conteudo, esquema: ESQUEMA_ESCOLHA, maxTokens: 8000, esforco: 'low' })
     if (!r.ok || !r.dados || typeof r.dados !== 'object') return null
     const id = (r.dados as Record<string, unknown>).id
     return typeof id === 'string' && lista.some((c) => c.id === id) ? id : null
@@ -120,6 +121,8 @@ export const MIN_CHAMADA_MS = 15_000
 export const RESERVA_ESCRITA_MS = 45_000
 
 class SemTempo extends Error {}
+// a API respondeu 'ocupado': o post volta para a fila (escreverPost/descreverFoto não pegam esta exceção)
+class Ocupado extends Error {}
 
 // ---------- Um post ----------
 
@@ -128,6 +131,7 @@ class SemTempo extends Error {}
 export async function melhorarUmPost(deps: DepsMelhorar, post: PostDaFila, prazo = Number.POSITIVE_INFINITY): Promise<Resultado> {
   const desistir = async (): Promise<Resultado> => { await deps.marcar(post, 'desistiu'); return 'desistiu' }
   const adiar = async (): Promise<Resultado> => { await deps.marcar(post, 'fila'); return 'adiado' }
+  const devolver = async (): Promise<Resultado> => { await deps.marcar(post, 'fila'); return 'ocupado' }
 
   if (!deps.chamar) return desistir()
   const restante = () => prazo - deps.agora()
@@ -136,6 +140,7 @@ export async function melhorarUmPost(deps: DepsMelhorar, post: PostDaFila, prazo
     return await melhorarComPrazo(deps, post, restante, desistir)
   } catch (e) {
     if (e instanceof SemTempo) return adiar()
+    if (e instanceof Ocupado) return devolver()
     throw e
   }
 }
@@ -169,6 +174,7 @@ async function melhorarComPrazo(
       clienteId, tipo, registrar: deps.registrarUso, contarNoMes: deps.contarNoMes,
     })(pedido)
     if (!r.ok && r.motivo === 'tempo' && ms < TEMPO_MAX_CHAMADA_MS) throw new SemTempo()
+    if (!r.ok && r.motivo === 'ocupado') throw new Ocupado()
     return r
   }
   const chamarFoto = chamada('foto', RESERVA_ESCRITA_MS)
@@ -280,7 +286,7 @@ async function trazerParaOCliente(
 
 // ---------- A fila ----------
 
-export const LOTE = 6
+export const LOTE = 3
 // a função trabalha até ~110 s; um lote novo só começa se ainda sobra tempo para terminá-lo
 export const TEMPO_TOTAL_MS = 110_000
 export const MARGEM_LOTE_MS = 50_000
@@ -294,7 +300,7 @@ export async function processarFila(d: {
   desistir: (post: PostDaFila) => Promise<void>,
   agora: () => number,
 }): Promise<Contagem> {
-  const contagem: Contagem = { pronto: 0, desistiu: 0, 'cliente-mexeu': 0, adiado: 0, erro: 0 }
+  const contagem: Contagem = { pronto: 0, desistiu: 0, 'cliente-mexeu': 0, adiado: 0, ocupado: 0, erro: 0 }
   const inicio = d.agora()
   const prazo = inicio + TEMPO_TOTAL_MS
   while (d.agora() - inicio < TEMPO_TOTAL_MS - MARGEM_LOTE_MS) {
@@ -309,6 +315,8 @@ export async function processarFila(d: {
         try { await d.desistir(post) } catch (e2) { console.error('melhorar-posts: não consegui marcar', post.id, e2) }
       }
     }))
+    // API ocupada: não adianta pegar mais posts agora; os devolvidos ficam para a próxima execução
+    if (contagem.ocupado) break
   }
   return contagem
 }

@@ -13,7 +13,8 @@ export const ESQUEMA_FOTO = {
   additionalProperties: false,
 } as const
 
-const MAX_TOKENS_FOTO = 2000
+// cobre o pensamento e a resposta
+const MAX_TOKENS_FOTO = 8000
 const MOTIVO_PADRAO = 'A foto não ficou boa para um post. Tente outra, nítida e bem iluminada.'
 
 export async function descreverFoto(
@@ -27,6 +28,7 @@ export async function descreverFoto(
     ],
     esquema: ESQUEMA_FOTO,
     maxTokens: MAX_TOKENS_FOTO,
+    esforco: 'low',
   })
   if (!r.ok || !r.dados || typeof r.dados !== 'object') return null
   const d = r.dados as Record<string, unknown>

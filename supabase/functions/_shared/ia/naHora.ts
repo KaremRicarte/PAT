@@ -7,7 +7,7 @@ import { montarEntradaPost, SEM_DESCRICAO, type DadosDoCliente, type LugarDoPost
 
 // O cliente está esperando: todas as chamadas juntas (inclusive a nova tentativa de escreverPost) cabem neste tempo.
 // (Cada chamada também é cortada em TEMPO_TROCA_MS pelo adaptador.)
-export const TEMPO_NA_HORA_MS = 20_000
+export const TEMPO_NA_HORA_MS = 30_000
 // menos que isto não vale começar outra chamada
 export const MIN_NA_HORA_MS = 8_000
 

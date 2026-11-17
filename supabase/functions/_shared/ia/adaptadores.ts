@@ -3,14 +3,14 @@
 // (escrever.ts, descrever.ts, imagens.ts, uso.ts); aqui só há rede e banco, e nada lança erro para quem chama.
 import Anthropic from 'npm:@anthropic-ai/sdk@1.4.0'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import type { ChamarIA, ConteudoIA, RespostaIA } from './escrever.ts'
+import { motivoDoErroHttp, type ChamarIA, type ConteudoIA, type Esforco, type RespostaIA } from './escrever.ts'
 import type { Externa } from './imagens.ts'
 import type { RegistroUso } from './uso.ts'
 
 export const MODELO = 'claude-opus-5-5'
 // Tempo máximo de uma chamada: fila em segundo plano e trocas na hora ("Gerar outro", "Trocar imagem").
 export const TEMPO_FILA_MS = 60_000
-export const TEMPO_TROCA_MS = 20_000
+export const TEMPO_TROCA_MS = 30_000
 
 type Bloco = Anthropic.Beta.Messages.BetaTextBlockParam | Anthropic.Beta.Messages.BetaImageBlockParam
 
@@ -21,7 +21,8 @@ const bloco = (c: ConteudoIA): Bloco => (c.tipo === 'texto'
 // ChamarIA com o Claude Opus 5.5. Sem chave: sempre { ok:false, motivo:'erro' } (o app segue com os modelos).
 // Sem novas tentativas escondidas no SDK (maxRetries: 0): cada chamada à API passa por comLimiteEUso,
 // que conta e registra cada uma no limite do mês. Quem quiser tentar de novo chama outra vez.
-export function criarChamarIA(apiKey: string | undefined, opcoes: { timeoutMs: number }): ChamarIA {
+// effort: 'low' nas chamadas com o cliente esperando; o `esforco` do pedido vence.
+export function criarChamarIA(apiKey: string | undefined, opcoes: { timeoutMs: number, effort?: Esforco }): ChamarIA {
   if (!apiKey) return async () => ({ ok: false, motivo: 'erro' })
   const client = new Anthropic({ apiKey, maxRetries: 0, timeout: opcoes.timeoutMs })
 
@@ -34,7 +35,7 @@ export function criarChamarIA(apiKey: string | undefined, opcoes: { timeoutMs: n
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
         output_config: {
-          effort: 'medium',
+          effort: pedido.esforco ?? opcoes.effort ?? 'medium',
           format: { type: 'json_schema', schema: pedido.esquema as { [k: string]: unknown } },
         },
         system: pedido.sistema,
@@ -71,8 +72,12 @@ export function criarChamarIA(apiKey: string | undefined, opcoes: { timeoutMs: n
       if (e instanceof Anthropic.APIUserAbortError || e instanceof Anthropic.APIConnectionTimeoutError) {
         return { ok: false, motivo: 'tempo' }
       }
-      if (e instanceof Anthropic.APIError) console.error('IA: erro da API', e.status, e.message)
-      else console.error('IA: erro', e)
+      if (e instanceof Anthropic.APIError) {
+        console.error('IA: erro da API', e.status, e.message)
+        // 429, 529 e 5xx: passageiro ('ocupado'); a fila devolve o post para tentar depois
+        return { ok: false, motivo: motivoDoErroHttp(e.status) }
+      }
+      console.error('IA: erro', e)
       return { ok: false, motivo: 'erro' }
     }
   }
