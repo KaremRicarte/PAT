@@ -38,9 +38,9 @@ const ORDEM_TIPO = { feed: 0, stories: 1, video: 2, status: 3, lista: 4 }
 
 const unq = (s: string) => s.replace(/^"|"$/g, '')
 const limitar = (s: string, n = 90) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s)
-const paragrafos = (...p: (string | null | undefined | false)[]) => p.filter(Boolean).join('\n\n')
+export const paragrafos = (...p: (string | null | undefined | false)[]) => p.filter(Boolean).join('\n\n')
 // Igual ao selo da arte (situacao.js `dinheiro`): sem ",00" quando inteiro, duas casas quando fracionado.
-const brl = (v: number) => {
+export const brl = (v: number) => {
   const c = Math.round(v * 100) % 100 !== 0 ? 2 : 0
   return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c }).replace(/\s/g, ' ')
 }
@@ -79,12 +79,16 @@ export function diasDePreco(feed: readonly string[], itens: readonly ItemDoMes[]
   return new Map(dias.map((d, i) => [d, comPreco[i]]))
 }
 
+// O parágrafo de valor que os posts de preço levam (promoção: de/por; vitrine: só por). Também usado pela IA.
+export const textoDoPreco = (preco_de: number | null, preco_por: number) =>
+  preco_de != null ? `De ${brl(preco_de)} por ${brl(preco_por)}. Aproveite enquanto durar!` : `Por ${brl(preco_por)}.`
+
 // O parágrafo e os campos de preço de um item com tratamento.
 function precoDoItem({ pr, trat }: ItemComPreco) {
   const preco = pr.preco!
   return trat === 'promo'
-    ? { texto: `De ${brl(preco)} por ${brl(pr.preco_promo!)}. Aproveite enquanto durar!`, preco_de: preco, preco_por: pr.preco_promo! }
-    : { texto: `Por ${brl(preco)}.`, preco_de: null, preco_por: preco }
+    ? { texto: textoDoPreco(preco, pr.preco_promo!), preco_de: preco, preco_por: pr.preco_promo! }
+    : { texto: textoDoPreco(null, preco), preco_de: null, preco_por: preco }
 }
 
 // Partes de um post de feed antes de escolher o convite (o convite só é sorteado quando o post é aceito).
