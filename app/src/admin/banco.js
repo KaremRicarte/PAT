@@ -63,29 +63,36 @@ export function areaBanco() {
     if (!ramo.value) return erro(t('banco.escolha'))
     const lote = ramo.value
     if (ocupado) return
+    if (!arquivos.length) return
     const candidatas = arquivos.filter(ehFoto)
     if (!candidatas.length) return erro(t('banco.falhas', { n: arquivos.length }))
     ocupado = true
     enviar.disabled = true
     ramo.disabled = true
-    const paths = []
-    let falhas = 0
-    for (const [i, a] of candidatas.entries()) {
-      msg.replaceChildren(el('p', { class: 'muted', role: 'status', texto: t('banco.enviando', { i: i + 1, n: candidatas.length }) }))
-      try {
-        const p = await enviarParaBanco(lote, await reduzirFoto(a, FOTO_MAX, 'image/jpeg'))
-        if (p) paths.push(p); else falhas++
-      } catch { falhas++ } // HEIC ou arquivo que o navegador não abre: pula
+    try {
+      const paths = []
+      let falhas = 0
+      for (const [i, a] of candidatas.entries()) {
+        msg.replaceChildren(el('p', { class: 'muted', role: 'status', texto: t('banco.enviando', { i: i + 1, n: candidatas.length }) }))
+        try {
+          const p = await enviarParaBanco(lote, await reduzirFoto(a, FOTO_MAX, 'image/jpeg'))
+          if (p) paths.push(p); else falhas++
+        } catch { falhas++ } // HEIC ou arquivo que o navegador não abre: pula
+      }
+      if (paths.length) {
+        msg.replaceChildren(el('p', { class: 'muted', role: 'status', texto: t('banco.descrevendo') }))
+        await descreverBanco(paths, lote)
+      }
+      if (falhas) erro(t('banco.falhas', { n: falhas })); else msg.replaceChildren()
+      await recarregar()
+    } catch (e) {
+      console.error(e)
+      erro(t('erro.geral'))
+    } finally {
+      ocupado = false
+      ramo.disabled = false
+      enviar.disabled = !ramo.value
     }
-    if (paths.length) {
-      msg.replaceChildren(el('p', { class: 'muted', role: 'status', texto: t('banco.descrevendo') }))
-      await descreverBanco(paths, lote)
-    }
-    ocupado = false
-    ramo.disabled = false
-    enviar.disabled = !ramo.value
-    if (falhas) erro(t('banco.falhas', { n: falhas })); else msg.replaceChildren()
-    await recarregar()
   }
 
   ramo.addEventListener('change', () => { if (ocupado) return; enviar.disabled = !ramo.value; msg.replaceChildren(); recarregar() })
