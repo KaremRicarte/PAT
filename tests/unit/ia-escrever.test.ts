@@ -172,3 +172,22 @@ test('(g) custoUsd: US$ 4 por milhão de entrada e US$ 20 por milhão de saída'
   expect(custoUsd(0, 1_000_000)).toBe(20)
   expect(custoUsd(1000, 200)).toBeCloseTo(0.008, 10)
 })
+
+test('post sem preço (beleza) com "desconto": 2ª chamada recebe o problema; 2ª ruim → null', async () => {
+  const ruim = ok(resposta({ meio: 'Aproveite o desconto desta semana.' }))
+  const { chamar, pedidos } = falsa(ruim, ruim)
+  expect(await escreverPost(chamar, entrada())).toBeNull()
+  expect(pedidos).toHaveLength(2)
+  expect(textoDo(pedidos[1])).toContain('fala de promoção/desconto/oferta num post sem preço')
+})
+
+test('palavra de promoção no texto do cliente não reprova o post sem preço', async () => {
+  const { chamar } = falsa(ok(resposta({ meio: 'Conheça o Combo Oferta da Lia, feito com calma.' })))
+  const r = await escreverPost(chamar, entrada({ textosDoCliente: ['Studio Lia', 'Combo Oferta da Lia'] }))
+  expect(r).not.toBeNull()
+})
+
+test('post de promoção pode falar em promoção', async () => {
+  const { chamar } = falsa(ok(resposta({ meio: 'A promoção vale para a escova completa.' })))
+  expect(await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9 }))).not.toBeNull()
+})

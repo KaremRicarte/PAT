@@ -14,7 +14,7 @@ const MAX_HASHTAGS: Record<PostGerado['rede'], number> = { instagram: 5, tiktok:
 const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 // Tira do texto o que o cliente escreveu (nome do negócio, nome e descrição dos itens), sem diferenciar maiúsculas:
 // as regras de preço por tratamento só valem para o texto dos modelos.
-const semTextoDoCliente = (t: string, doCliente: string[]) =>
+export const semTextoDoCliente = (t: string, doCliente: string[]) =>
   doCliente.reduce((acc, c) => acc.replace(new RegExp(escapar(c), 'giu'), ' '), t)
 
 // `textosDoCliente`: o que o cliente escreveu; não conta nas regras de R$ e de vitrine

@@ -3,7 +3,7 @@
 import type { Estrategia, Pilar, Rede, Tom } from '../modelos/tipos.ts'
 import { RAMOS } from '../modelos/ramos/index.ts'
 import { brl, paragrafos, textoDoPreco, type PostGerado } from '../modelos/gerar.ts'
-import { validarPost } from '../modelos/validar.ts'
+import { semTextoDoCliente, temPromocao, validarPost } from '../modelos/validar.ts'
 import { INSTRUCOES_POST } from './instrucoes.ts'
 
 export type ConteudoIA = { tipo: 'texto', texto: string } | { tipo: 'imagem', url: string }
@@ -142,6 +142,15 @@ function montar(e: EntradaPost, p: Partes, noPromo: boolean): { post: CamposDaIA
     preco_de: preco?.preco_de ?? null, preco_por: preco?.preco_por ?? null,
   }
   const problemas = validarPost(completo, ramo, e.textosDoCliente)
+  // Fora dos posts de preço, nada de promoção/desconto/oferta (o validarPost só barra o R$ nesses ramos).
+  // O que o cliente escreveu (nome do negócio, do serviço, descrição) não conta, como no validarPost.
+  if (!preco && !ramo.noPromo) {
+    const doCliente = [...new Set(e.textosDoCliente.map((c) => c.trim()).filter(Boolean))].sort((a, b) => b.length - a.length)
+    const daIA = [p.titulo, p.gancho, p.meio, p.convite, p.roteiro ?? '', ...p.hashtags]
+    if (daIA.some((t) => temPromocao(semTextoDoCliente(t, doCliente)))) {
+      problemas.push('fala de promoção/desconto/oferta num post sem preço')
+    }
+  }
   // Em post de preço o R$ é permitido, mas só com os valores informados.
   if (preco) {
     const permitidos = new Set([preco.preco_de, preco.preco_por].filter((v) => v != null).map((v) => soEspacos(brl(v!))))
