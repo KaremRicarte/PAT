@@ -5,7 +5,7 @@ import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.t
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { opcoes, telaPassos } from './quiz.js'
 import { estadoDoNegocio } from './perguntas.js'
-import { salvarItens, itensParaSalvar } from './negocio.js'
+import { salvarItens, itensParaSalvar, carregarNegocio } from './negocio.js'
 
 const ESTRATEGIAS = ['vender', 'crescer', 'credibilidade', 'tempo']
 
@@ -41,10 +41,14 @@ export function telaQuizMes(ctx) {
   if (!alvo) return atualizar()
   const estado = estadoDoNegocio(ctx.negocio, ctx.produtos, ramo)
   telaPassos({
-    titulo: t('mesq.titulo'), perguntas: ['itens'], rotuloFinal: t('quiz.continuar'),
+    perguntas: ['itens'], rotuloFinal: t('quiz.continuar'),
     ctx: { ramo, estado, supabase }, aoCancelar: meses.length ? atualizar : undefined,
     aoSalvar: async (e, aoProgredir) => {
       await salvarItens(supabase, cliente.id, itensParaSalvar(e.itens, ramo), aoProgredir)
+      // recarrega: o Voltar refaz o passo 1 a partir do que foi gravado (não da lista antiga)
+      const { negocio, produtos } = await carregarNegocio(supabase, cliente.id)
+      ctx.negocio = negocio
+      ctx.produtos = produtos
       telaEstrategia({ ctx, ramo, alvo, voltar: () => telaQuizMes(ctx) })
     },
   })
