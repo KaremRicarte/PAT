@@ -12,7 +12,8 @@ export type PostQueFalta = {
   ordem: number, estado: string, postado_em: string | null, ano_mes: string, estrategia: string,
 }
 export type CamposRefeitos = Pick<PostGerado, 'titulo' | 'legenda' | 'hashtags' | 'roteiro' | 'pilar' | 'produto_id' | 'preco_de' | 'preco_por'> &
-  { estado: 'gerado', foto_path: null, sem_foto: false }
+  // o post volta a ser de modelo e entra de novo na fila da IA (melhorar-posts)
+  { estado: 'gerado', foto_path: null, sem_foto: false, origem: 'modelo', ia_estado: 'fila' }
 
 export type DepsRefazer = {
   cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null } | null>,
@@ -66,7 +67,7 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
       mudancas.push({ id: post.id, campos: {
         titulo: novo.titulo, legenda: novo.legenda, hashtags: novo.hashtags, roteiro: novo.roteiro,
         pilar: novo.pilar, produto_id: novo.produto_id, preco_de: novo.preco_de, preco_por: novo.preco_por,
-        estado: 'gerado', foto_path: null, sem_foto: false,
+        estado: 'gerado', foto_path: null, sem_foto: false, origem: 'modelo', ia_estado: 'fila',
       } })
     })
   }

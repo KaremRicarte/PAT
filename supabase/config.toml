@@ -456,3 +456,7 @@ verify_jwt = false
 # A função confere o login (e o papel de admin, para o banco de imagens) por conta própria (auth.getUser).
 [functions.descrever-fotos]
 verify_jwt = false
+
+# Chamada pelo pg_cron e pelas cutucadas: confere o cabeçalho x-melhorar-secret por conta própria.
+[functions.melhorar-posts]
+verify_jwt = false

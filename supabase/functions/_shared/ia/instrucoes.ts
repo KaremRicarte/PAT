@@ -75,3 +75,9 @@ A foto serve quando está nítida (sem tremido nem foco perdido no assunto princ
 Use o contexto recebido (ramo, negócio, serviço) só para saber o que é relevante descrever.
 
 Responda somente no formato pedido.`
+
+export const INSTRUCOES_ESCOLHA = `Você escolhe a imagem de um post de rede social de um pequeno negócio brasileiro. Recebe algumas candidatas (cada uma com um id, e com a imagem ou a descrição dela) e o tema do post.
+
+Escolha a candidata que melhor ilustra o tema e que pareça profissional: nítida, bem iluminada, sem texto, logotipo ou marca d'água de terceiros dominando, e sem pessoas desconhecidas em destaque. Prefira imagens que combinem com o ramo do negócio. Se nenhuma servir de verdade para o tema, devolva id null: um post só com texto é melhor que uma imagem que não combina.
+
+Devolva somente o id exatamente como recebido, no formato pedido.`

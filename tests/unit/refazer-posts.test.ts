@@ -86,7 +86,7 @@ describe('refazerPostsDoCliente', () => {
     expect(r).toEqual({ status: 200, corpo: { refeitos: esperados.length } })
     const gravados = (deps.gravar as ReturnType<typeof vi.fn>).mock.calls[0][0]
     expect(gravados.map((m: { id: string }) => m.id)).toEqual(esperados)
-    for (const m of gravados) expect(m.campos).toMatchObject({ estado: 'gerado', foto_path: null, sem_foto: false })
+    for (const m of gravados) expect(m.campos).toMatchObject({ estado: 'gerado', foto_path: null, sem_foto: false, origem: 'modelo', ia_estado: 'fila' })
     expect(gravados.every((m: { campos: { produto_id: string | null } }) => m.campos.produto_id !== 'p1')).toBe(true)
   })
   test('todos: grava também os aprovados', async () => {

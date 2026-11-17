@@ -3,6 +3,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import { hojeEmSaoPaulo } from '../_shared/modelos/calendario.ts'
+import { cutucarMelhorarPosts } from '../_shared/cutucar.ts'
 import { gerarMesDoCliente, type DepsMes } from './acoes.ts'
 
 const CORS = {
@@ -54,7 +55,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    return responder(await gerarMesDoCliente(corpo, deps))
+    const resposta = await gerarMesDoCliente(corpo, deps)
+    // mês gravado com modelos: a IA começa a melhorar os posts em segundo plano
+    if (resposta.status === 201) cutucarMelhorarPosts(URL_PROJETO)
+    return responder(resposta)
   } catch (e) {
     console.error(e)
     return responder({ status: 500, corpo: { erro: 'Erro inesperado.' } })
