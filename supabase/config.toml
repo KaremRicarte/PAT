@@ -446,6 +446,10 @@ verify_jwt = false
 verify_jwt = false
 
 # A função confere o login por conta própria (auth.getUser).
+[functions.reescrever-post]
+verify_jwt = false
+
+# A função confere o login por conta própria (auth.getUser).
 [functions.trocar-estrategia]
 verify_jwt = false
 

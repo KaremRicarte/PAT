@@ -357,7 +357,8 @@ const pt = {
   'reprovar.titulo': 'O que fazer com este post?',
   'reprovar.gerar': 'Gerar outro',
   'reprovar.gerar.dica': 'Troca o texto por outro. Você ainda tem {n} de {total} trocas este mês.',
-  'reprovar.gerando': 'Gerando outro…',
+  'reprovar.gerando': 'Escrevendo…',
+  'reprovar.gerando.dica': 'Escrevendo um texto novo para este post. Leva alguns segundos.',
   'reprovar.limite': 'Você já usou as {total} trocas deste mês.',
   'reprovar.descartar': 'Só descartar',
   'reprovar.descartar.dica': 'O post sai do seu mês. Dá para desfazer.',
@@ -377,6 +378,9 @@ const pt = {
   'foto.enviando': 'Enviando a foto…',
   'foto.trocada': 'Imagem trocada ✓',
   'foto.tirada': 'Pronto: arte sem foto ✓',
+  'foto.escrevendo': 'Escrevendo a legenda para a foto nova…',
+  'foto.reescrita': 'Imagem trocada e legenda nova ✓',
+  'foto.tirada.reescrita': 'Pronto: arte sem foto e legenda nova ✓',
   'foto.naoabriu': 'Não consegui abrir esta foto. Tente outra.',
 
   // enviar meu vídeo

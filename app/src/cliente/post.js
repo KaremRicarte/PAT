@@ -130,8 +130,10 @@ export function telaPost(ctx, post, aoVoltar) {
   }
 
   // ---------- legenda, hashtags e roteiro ----------
+  // "Escrevendo…" enquanto a IA reescreve a legenda para a foto nova (região viva: o leitor de tela avisa)
+  const escrevendo = el('p', { class: 'pequeno muted', role: 'status', hidden: true })
   function desenharTextos() {
-    textos.replaceChildren(el('div', { class: 'texto-post' },
+    textos.replaceChildren(escrevendo, el('div', { class: 'texto-post' },
       el('p', { class: 'legenda', texto: post.legenda }),
       post.hashtags?.length ? el('p', { class: 'muted hashtags', texto: post.hashtags.join(' ') }) : null,
       post.roteiro
@@ -316,8 +318,20 @@ export function telaPost(ctx, post, aoVoltar) {
       dizer('')
       desenharArteGrande()
     }
-    const ok = await gravarEscolhaDeFoto({ supabase, uid: ctx.cliente.id, post, escolha, aoMudar: aoMudarFoto })
-    if (ok) aviso(t(escolha.sem_foto ? 'foto.tirada' : 'foto.trocada'))
+    // Depois da foto, a IA reescreve a legenda para ela (alguns segundos, com "Escrevendo…").
+    let textoNovo = false
+    const aoEscrevendo = (sim) => {
+      escrevendo.textContent = sim ? t('foto.escrevendo') : ''
+      escrevendo.hidden = !sim
+    }
+    const aoMudarTexto = () => {
+      textoNovo = true
+      esquecerMiniaturas() // o título da arte mudou
+      if (!arte.isConnected) return ctx.aoMudarPost?.(post)
+      desenharTudo()
+    }
+    const ok = await gravarEscolhaDeFoto({ supabase, uid: ctx.cliente.id, post, escolha, aoMudar: aoMudarFoto, aoEscrevendo, aoMudarTexto })
+    if (ok) aviso(t(escolha.sem_foto ? (textoNovo ? 'foto.tirada.reescrita' : 'foto.tirada') : (textoNovo ? 'foto.reescrita' : 'foto.trocada')))
   }
   const trocarImagem = () => abrirTrocaDeFoto({ supabase, post, produtos: ctx.produtos, ramo: ctx.ramo, fotosInfo: ctx.fotosInfo, aoEscolher: escolherFoto })
   const enviarVideo = () => envioDeVideo?.abrir() // direto no toque: o som e a galeria pedem o gesto
@@ -383,6 +397,8 @@ export function telaPost(ctx, post, aoVoltar) {
     const descartar = el('button', { type: 'button', class: 'secundario', 'aria-describedby': ids.descartar, texto: t('reprovar.descartar') })
     const cancelar = el('button', { type: 'button', class: 'secundario', texto: t('reprovar.cancelar') })
     const erro = el('p', { class: 'erro', role: 'alert', hidden: true })
+    // a IA escreve o texto novo na hora: alguns segundos de espera (região viva, para o leitor de tela)
+    const esperando = el('p', { class: 'pequeno muted', role: 'status' })
     const dialogo = el('dialog', { class: 'dialogo', 'aria-labelledby': ids.titulo },
       el('h2', { id: ids.titulo, texto: t('reprovar.titulo') }),
       el('div', { class: 'opcao' }, gerar, el('p', {
@@ -390,6 +406,7 @@ export function telaPost(ctx, post, aoVoltar) {
         texto: restam ? t('reprovar.gerar.dica', { n: restam, total: LIMITE_TROCAS }) : t('reprovar.limite', { total: LIMITE_TROCAS }),
       })),
       el('div', { class: 'opcao' }, descartar, el('p', { id: ids.descartar, class: 'pequeno muted', texto: t('reprovar.descartar.dica') })),
+      esperando,
       erro,
       cancelar)
     let ocupado = false
@@ -402,7 +419,9 @@ export function telaPost(ctx, post, aoVoltar) {
       gerar.disabled = descartar.disabled = cancelar.disabled = true
       gerar.textContent = t('reprovar.gerando')
       erro.hidden = true
+      esperando.textContent = t('reprovar.gerando.dica')
       const r = await gerarOutro({ supabase, post })
+      esperando.textContent = ''
       ocupado = false
       cancelar.disabled = descartar.disabled = false
       gerar.textContent = t('reprovar.gerar')

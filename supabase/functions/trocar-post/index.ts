@@ -1,7 +1,9 @@
-// Função trocar-post ("Gerar outro"): troca o texto de um post do cliente por outro dos modelos prontos.
+// Função trocar-post ("Gerar outro"): troca o texto de um post do cliente por outro escrito pela IA na hora
+// (até ~20 s); sem a IA, por outro dos modelos prontos.
 // Quem chama é sempre o próprio cliente; o id vem do token validado pelo Auth, nunca do corpo.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import type { Resposta } from '../admin-clientes/acoes.ts'
+import { contarUsoNoMes, criarChamarIA, registrarUso, TEMPO_TROCA_MS, urlAssinada } from '../_shared/ia/adaptadores.ts'
 import { trocarPostDoCliente, type DepsTroca, type PostDoMes } from './acoes.ts'
 
 const CORS = {
@@ -15,6 +17,7 @@ const responder = ({ status, corpo }: Resposta) =>
 
 const URL_PROJETO = Deno.env.get('SUPABASE_URL')!
 const CHAVE = Deno.env.get('PAT_SECRET_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const CHAVE_IA = Deno.env.get('ANTHROPIC_API_KEY')
 
 type LinhaPost = Omit<PostDoMes, 'cliente_id' | 'ano_mes' | 'estrategia'> &
   { meses: { cliente_id: string, ano_mes: string, estrategia: string } }
@@ -41,7 +44,7 @@ Deno.serve(async (req) => {
     cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo').eq('id', quem.id).maybeSingle()),
     async post(id) {
       const linha = await ler<LinhaPost>(db.from('posts')
-        .select('id, mes_id, data, rede, tipo, formato, horario, ordem, trocas, legenda, meses!inner(cliente_id, ano_mes, estrategia)')
+        .select('id, mes_id, data, rede, tipo, formato, horario, ordem, trocas, legenda, produto_id, foto_path, sem_foto, meses!inner(cliente_id, ano_mes, estrategia)')
         .eq('id', id).maybeSingle())
       if (!linha) return null
       const { meses, ...post } = linha
@@ -50,12 +53,23 @@ Deno.serve(async (req) => {
     trocasDoMes: async (mesId) => ((await ler(db.from('posts').select('trocas').eq('mes_id', mesId))) ?? [])
       .reduce((soma: number, p: { trocas: number }) => soma + p.trocas, 0),
     negocio: () => ler(db.from('negocios').select('nome, insta, tom, horario').eq('cliente_id', quem.id).maybeSingle()),
-    produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo')
+    produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, fotos, foto_path')
       .eq('cliente_id', quem.id).order('ordem'))) ?? [],
     async gravar(id, campos) {
       const { error } = await db.from('posts').update(campos).eq('id', id)
       if (error) throw error
     },
+    // sem chave: null (nada de IA nem de uso registrado). Cada chamada recebe o tempo que sobra do prazo.
+    chamar: CHAVE_IA ? (ms) => criarChamarIA(CHAVE_IA, { timeoutMs: Math.min(ms, TEMPO_TROCA_MS) }) : null,
+    agora: () => Date.now(),
+    contarNoMes: contarUsoNoMes(db),
+    registrarUso: registrarUso(db),
+    async fotosInfo(paths) {
+      const linhas = await ler<{ path: string, descricao: string | null, serve: boolean | null }[]>(
+        db.from('fotos_ia').select('path, descricao, serve').in('path', paths))
+      return Object.fromEntries((linhas ?? []).map((l) => [l.path, { descricao: l.descricao, serve: l.serve }]))
+    },
+    urlAssinada: (path) => urlAssinada(db, 'marcas', path),
   }
 
   try {

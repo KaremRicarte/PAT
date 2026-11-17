@@ -1,10 +1,13 @@
 import { trocarPostDoCliente, type DepsTroca } from '../../supabase/functions/trocar-post/acoes.ts'
 import { gerarMes } from '../../supabase/functions/_shared/modelos/gerar.ts'
+import { ESQUEMA_POST, type ChamarIA, type PedidoIA, type RespostaIA } from '../../supabase/functions/_shared/ia/escrever.ts'
+import type { RegistroUso } from '../../supabase/functions/_shared/ia/uso.ts'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const POST = {
   id: ID, mes_id: 'm1', data: '2026-12-02', rede: 'instagram', tipo: 'feed', formato: 'arte', horario: '18:30',
   ordem: 0, trocas: 2, legenda: 'texto antigo', cliente_id: 'c1', ano_mes: '2026-12', estrategia: 'vender',
+  produto_id: null as string | null, foto_path: null as string | null, sem_foto: false,
 }
 
 const falsos = (extra: Partial<DepsTroca> = {}): DepsTroca => ({
@@ -17,6 +20,13 @@ const falsos = (extra: Partial<DepsTroca> = {}): DepsTroca => ({
     { id: 'p2', nome: 'Trena a laser', descricao: null, preco: null, preco_promo: null },
   ],
   gravar: vi.fn(async () => {}),
+  // sem chave da Anthropic: o caminho de hoje (modelos)
+  chamar: null,
+  agora: () => 0,
+  contarNoMes: async () => 0,
+  registrarUso: async () => {},
+  fotosInfo: async () => ({}),
+  urlAssinada: async (path) => `https://assinada/${path}`,
   ...extra,
 })
 
@@ -75,9 +85,11 @@ test('troca grava o texto novo, volta a situação e soma 1', async () => {
   const [id, campos] = (deps.gravar as ReturnType<typeof vi.fn>).mock.calls[0]
   expect(id).toBe(ID)
   expect(Object.keys(campos).sort()).toEqual(
-    ['estado', 'foto_path', 'hashtags', 'legenda', 'pilar', 'preco_de', 'preco_por', 'produto_id', 'roteiro', 'sem_foto',
-      'titulo', 'trocas'])
+    ['estado', 'foto_path', 'hashtags', 'ia_estado', 'legenda', 'origem', 'pilar', 'preco_de', 'preco_por', 'produto_id',
+      'roteiro', 'sem_foto', 'titulo', 'trocas'])
   expect(campos).toMatchObject({ estado: 'gerado', foto_path: null, sem_foto: false, trocas: 3, preco_de: null, preco_por: null })
+  // texto de modelo pedido pelo cliente: a fila não o reescreve
+  expect(campos).toMatchObject({ origem: 'modelo', ia_estado: 'pulado' })
   expect(campos.legenda).not.toBe('texto antigo')
   expect(r.corpo.post).toMatchObject({
     ...campos, id: ID, mes_id: 'm1', data: POST.data, rede: 'instagram', tipo: 'feed', formato: 'arte', horario: '18:30', ordem: 0,
@@ -151,4 +163,154 @@ test('descrição do cliente com R$ não trava a troca (Facebook leva a descriç
   const r = await trocarPostDoCliente({ post_id: ID }, deps)
   expect(r.status).toBe(200)
   expect(deps.gravar).toHaveBeenCalled()
+})
+
+// ---------- Com a IA (spec §3.5) ----------
+
+const TEXTO_IA = {
+  titulo: 'A ferramenta certa faz o serviço render',
+  gancho: 'Sabe aquele furo torto que estraga a parede?',
+  meio: 'Com a furadeira certa e a broca do tamanho certo, o furo sai reto na primeira vez.',
+  convite: 'Passa aqui na loja e a gente te mostra qual serve para o seu serviço.',
+  hashtags: ['#ferramentas'],
+  roteiro: 'Como montar: a foto inteira, com o título por cima.',
+}
+const ok = (dados: unknown): RespostaIA => ({ ok: true, dados, tokensEntrada: 1000, tokensSaida: 100 })
+
+function comIA(responder: (p: PedidoIA) => RespostaIA | Promise<RespostaIA>, extra: Partial<DepsTroca> = {}) {
+  const pedidos: PedidoIA[] = []
+  const usos: RegistroUso[] = []
+  const tempos: number[] = []
+  const chamar: ChamarIA = async (p) => { pedidos.push(p); return responder(p) }
+  const deps = falsos({
+    chamar: (ms) => { tempos.push(ms); return chamar },
+    registrarUso: async (r) => { usos.push(r) },
+    ...extra,
+  })
+  return { deps, pedidos, usos, tempos }
+}
+const gravado = (deps: DepsTroca) => (deps.gravar as ReturnType<typeof vi.fn>).mock.calls[0][1]
+
+// dois serviços com fotos
+const COM_FOTOS = [
+  { id: 'p1', nome: 'Furadeira', descricao: null, preco: 99.9, preco_promo: null, fotos: ['c1/produtos/a.jpg', 'c1/produtos/b.jpg'] },
+  { id: 'p2', nome: 'Trena a laser', descricao: null, preco: null, preco_promo: null, fotos: ['c1/produtos/t.jpg', 'c1/produtos/u.jpg'] },
+]
+
+test('IA ok: grava o texto da IA (origem ia, pronto), conta a troca e registra o uso como troca', async () => {
+  const { deps, pedidos, usos, tempos } = comIA(() => ok(TEXTO_IA))
+  const r = await trocarPostDoCliente({ post_id: ID }, deps)
+  expect(r.status).toBe(200)
+  expect(pedidos).toHaveLength(1)
+  expect(pedidos[0].esquema).toBe(ESQUEMA_POST)
+  expect(tempos[0]).toBeLessThanOrEqual(20_000)
+  expect(usos).toEqual([expect.objectContaining({ clienteId: 'c1', tipo: 'troca' })])
+  const campos = gravado(deps)
+  expect(campos).toMatchObject({
+    titulo: TEXTO_IA.titulo, hashtags: ['#ferramentas'], roteiro: TEXTO_IA.roteiro,
+    estado: 'gerado', sem_foto: false, trocas: 3, origem: 'ia', ia_estado: 'pronto',
+  })
+  expect(campos.legenda).toContain(TEXTO_IA.gancho)
+  expect(campos.legenda).toContain(TEXTO_IA.convite)
+  expect(r.corpo.post).toMatchObject({ ...campos, id: ID, data: POST.data, horario: '18:30' })
+})
+
+test('IA ok num lugar de serviço: escreve a partir da foto do serviço (pulando a reprovada) e grava essa foto', async () => {
+  const { deps, pedidos } = comIA(() => ok(TEXTO_IA), {
+    produtos: async () => COM_FOTOS,
+    fotosInfo: async (paths) => Object.fromEntries(paths.map((p) => [p, { descricao: `Foto ${p}`, serve: !p.endsWith('a.jpg') && !p.endsWith('t.jpg') }])),
+  })
+  const r = await trocarPostDoCliente({ post_id: ID }, deps)
+  expect(r.status).toBe(200)
+  const campos = gravado(deps)
+  expect(campos.produto_id).not.toBeNull() // este lugar é de serviço
+  expect(campos.foto_path).toBe(campos.produto_id === 'p1' ? 'c1/produtos/b.jpg' : 'c1/produtos/u.jpg')
+  expect(pedidos[0].conteudo[0]).toEqual({ tipo: 'imagem', url: `https://assinada/${campos.foto_path}` })
+  expect(JSON.stringify(pedidos[0].conteudo)).toContain(`Foto ${campos.foto_path}`)
+})
+
+test('lugar de tema geral com a foto que o cliente escolheu: a foto fica e a IA escreve a partir dela', async () => {
+  // o feed de 09/12 é de tema geral e continua geral depois da troca
+  const { deps, pedidos } = comIA(() => ok(TEXTO_IA), {
+    post: async () => ({ ...POST, data: '2026-12-09', ordem: 15, foto_path: 'c1/posts/x.jpg' }),
+  })
+  expect((await trocarPostDoCliente({ post_id: ID }, deps)).status).toBe(200)
+  const campos = gravado(deps)
+  expect(campos.produto_id).toBeNull()
+  expect(campos.foto_path).toBe('c1/posts/x.jpg')
+  expect(pedidos[0].conteudo[0]).toEqual({ tipo: 'imagem', url: 'https://assinada/c1/posts/x.jpg' })
+})
+
+test('foto de outra pasta nunca vai para a IA nem para o post', async () => {
+  const { deps, pedidos } = comIA(() => ok(TEXTO_IA), {
+    post: async () => ({ ...POST, foto_path: 'c2/posts/x.jpg' }),
+    produtos: async () => [
+      { id: 'p1', nome: 'Furadeira', descricao: null, preco: null, preco_promo: null, fotos: ['c2/produtos/a.jpg'] },
+      { id: 'p2', nome: 'Trena a laser', descricao: null, preco: null, preco_promo: null, fotos: ['c2/produtos/t.jpg'] },
+    ],
+  })
+  await trocarPostDoCliente({ post_id: ID }, deps)
+  expect(pedidos).toHaveLength(1)
+  expect(JSON.stringify(pedidos)).not.toContain('c2/')
+  expect(gravado(deps).foto_path).toBeNull()
+})
+
+test.each([
+  ['a IA falha', () => ({ ok: false, motivo: 'erro' }) as RespostaIA],
+  ['a IA recusa', () => ({ ok: false, motivo: 'recusa' }) as RespostaIA],
+  ['a IA demora', () => ({ ok: false, motivo: 'tempo' }) as RespostaIA],
+  ['o texto da IA reprova duas vezes', () => ok({ ...TEXTO_IA, meio: 'Hoje com 50% de desconto!' })],
+])('%s → fica o modelo, como hoje (e a troca conta)', async (_, responder) => {
+  const { deps } = comIA(responder)
+  const r = await trocarPostDoCliente({ post_id: ID }, deps)
+  expect(r.status).toBe(200)
+  const campos = gravado(deps)
+  expect(campos).toMatchObject({ origem: 'modelo', ia_estado: 'pulado', foto_path: null, trocas: 3 })
+  expect(campos.legenda).not.toContain(TEXTO_IA.gancho)
+})
+
+test('erro inesperado no caminho da IA (ex.: Storage) → modelo, sem erro para o cliente', async () => {
+  const erro = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { deps } = comIA(() => ok(TEXTO_IA), {
+    produtos: async () => COM_FOTOS,
+    urlAssinada: async () => { throw new Error('storage fora') },
+  })
+  const r = await trocarPostDoCliente({ post_id: ID }, deps)
+  expect(r.status).toBe(200)
+  expect(gravado(deps)).toMatchObject({ origem: 'modelo', ia_estado: 'pulado' })
+  erro.mockRestore()
+})
+
+test('sem chave da Anthropic: nada de IA nem de uso registrado', async () => {
+  const registrarUso = vi.fn(async () => {})
+  const contarNoMes = vi.fn(async () => 0)
+  const deps = falsos({ registrarUso, contarNoMes })
+  expect((await trocarPostDoCliente({ post_id: ID }, deps)).status).toBe(200)
+  expect(registrarUso).not.toHaveBeenCalled()
+  expect(contarNoMes).not.toHaveBeenCalled()
+  expect(gravado(deps)).toMatchObject({ origem: 'modelo', ia_estado: 'pulado' })
+})
+
+test('limite do mês da IA estourado: modelo, e a troca conta nas 10', async () => {
+  const { deps, pedidos } = comIA(() => ok(TEXTO_IA), { contarNoMes: async () => 400 })
+  expect((await trocarPostDoCliente({ post_id: ID }, deps)).status).toBe(200)
+  expect(pedidos).toHaveLength(0)
+  expect(gravado(deps)).toMatchObject({ origem: 'modelo', trocas: 3 })
+})
+
+test('o cliente espera no máximo ~20 s: sem tempo para a nova tentativa, fica o modelo', async () => {
+  const relogio = { t: 0 }
+  const { deps, pedidos } = comIA(() => { relogio.t += 15_000; return ok({ ...TEXTO_IA, meio: 'Hoje com 50% de desconto!' }) },
+    { agora: () => relogio.t })
+  await trocarPostDoCliente({ post_id: ID }, deps)
+  expect(pedidos).toHaveLength(1) // a 2ª tentativa não começa com só 5 s
+  expect(gravado(deps)).toMatchObject({ origem: 'modelo' })
+})
+
+test('limite de trocas e post alheio barram antes da IA', async () => {
+  const a = comIA(() => ok(TEXTO_IA), { trocasDoMes: async () => 10 })
+  expect((await trocarPostDoCliente({ post_id: ID }, a.deps)).status).toBe(429)
+  const b = comIA(() => ok(TEXTO_IA), { post: async () => ({ ...POST, cliente_id: 'c2' }) })
+  expect((await trocarPostDoCliente({ post_id: ID }, b.deps)).status).toBe(404)
+  expect([...a.pedidos, ...b.pedidos]).toHaveLength(0)
 })

@@ -48,6 +48,8 @@ export const LIMITE_TROCAS = 10 // o mesmo LIMITE_TROCAS de supabase/functions/t
 export const trocasDoMes = (posts) => posts.reduce((soma, p) => soma + (p.trocas ?? 0), 0)
 
 // Pede outro texto para o post. Não muda o post: quem chama aplica o { post } devolvido.
+// A IA escreve o texto na hora (até ~20 s; sem ela, vem um modelo): quem chama mostra "Escrevendo…" enquanto espera.
+// O post devolvido traz origem e ia_estado (o selo "Escrito para você" segue a origem).
 // { erro } traz a mensagem da função (limite de trocas, nenhum texto novo…) ou a de sem conexão.
 export async function gerarOutro({ supabase, post }) {
   if (emAndamento.has(post.id)) return { erro: t('post.aguarde') }

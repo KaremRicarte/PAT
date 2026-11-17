@@ -128,3 +128,80 @@ test('opcoesDeFoto lista todas as fotos de todos os itens, sem repetir', () => {
   expect(fotos.map((f) => f.path)).toEqual(['a', 'b', 'c'])
   expect(fotos.find((f) => f.atual).path).toBe('b')
 })
+
+// ---------- Depois de trocar a foto, a IA reescreve a legenda (reescrever-post) ----------
+// supabase falso com update e functions.invoke
+function comFuncao(resposta) {
+  const { supabase, updates } = falso()
+  const chamadas = []
+  supabase.functions = { invoke: async (nome, opcoes) => { chamadas.push({ nome, opcoes }); return resposta() } }
+  return { supabase, updates, chamadas }
+}
+const POST_GERADO = (id) => ({ id, estado: 'gerado', postado_em: null, foto_path: null, sem_foto: false, legenda: 'antiga', titulo: 'T', origem: 'modelo' })
+
+test('foto trocada: "Escrevendo…" enquanto a IA reescreve e o post devolvido é aplicado', async () => {
+  const novo = { id: 'r1', titulo: 'Novo', legenda: 'nova', hashtags: ['#x'], roteiro: null, origem: 'ia', ia_estado: 'pronto' }
+  const { supabase, chamadas } = comFuncao(async () => ({ data: { post: novo }, error: null }))
+  const post = POST_GERADO('r1')
+  const estados = []
+  const aoMudarTexto = vi.fn(() => estados.push(`texto:${post.legenda}`))
+  const ok = await gravarEscolhaDeFoto({
+    supabase, uid: 'u1', post, escolha: { foto_path: 'u1/produtos/c.jpg' },
+    aoEscrevendo: (sim) => estados.push(`escrevendo:${sim}`), aoMudarTexto,
+  })
+  expect(ok).toBe(true)
+  expect(chamadas).toEqual([{ nome: 'reescrever-post', opcoes: { body: { post_id: 'r1' } } }])
+  expect(estados).toEqual(['escrevendo:true', 'texto:nova', 'escrevendo:false'])
+  expect(post).toMatchObject({ foto_path: 'u1/produtos/c.jpg', titulo: 'Novo', legenda: 'nova', origem: 'ia', ia_estado: 'pronto' })
+})
+
+test('IA sem texto novo ({ post: null }) ou função fora do ar: a foto fica trocada e o texto como estava, sem erro', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  for (const resposta of [
+    async () => ({ data: { post: null }, error: null }),
+    async () => ({ data: null, error: { name: 'FunctionsFetchError' } }),
+    async () => { throw new TypeError('Failed to fetch') },
+  ]) {
+    aviso.mockClear()
+    const { supabase } = comFuncao(resposta)
+    const post = POST_GERADO('r2')
+    const aoMudarTexto = vi.fn()
+    expect(await gravarEscolhaDeFoto({ supabase, uid: 'u1', post, escolha: { foto_path: 'u1/produtos/c.jpg' }, aoMudarTexto })).toBe(true)
+    expect(aoMudarTexto).not.toHaveBeenCalled()
+    expect(post).toMatchObject({ foto_path: 'u1/produtos/c.jpg', legenda: 'antiga' })
+    expect(aviso).not.toHaveBeenCalled()
+  }
+})
+
+test('"Sem foto" também reescreve (o texto pode falar da foto antiga)', async () => {
+  const { supabase, chamadas } = comFuncao(async () => ({ data: { post: null }, error: null }))
+  await gravarEscolhaDeFoto({ supabase, uid: 'u1', post: POST_GERADO('r3'), escolha: { sem_foto: true } })
+  expect(chamadas.map((c) => c.nome)).toEqual(['reescrever-post'])
+})
+
+test('post aprovado ou postado: a foto troca, mas o texto que o cliente aceitou não é reescrito', async () => {
+  for (const mudanca of [{ estado: 'aprovado' }, { postado_em: '2026-11-20T12:00:00Z' }]) {
+    const { supabase, chamadas } = comFuncao(async () => ({ data: { post: { legenda: 'x' } }, error: null }))
+    const post = { ...POST_GERADO('r4'), ...mudanca }
+    expect(await gravarEscolhaDeFoto({ supabase, uid: 'u1', post, escolha: { foto_path: 'u1/produtos/c.jpg' } })).toBe(true)
+    expect(chamadas).toEqual([])
+  }
+})
+
+test('foto que não gravou: nada de reescrever', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  reduzirFoto.mockResolvedValueOnce({})
+  const { supabase: s, chamadas } = comFuncao(async () => ({ data: { post: { legenda: 'x' } }, error: null }))
+  s.storage = { from: () => ({ upload: async () => ({ error: { message: 'offline' } }) }) }
+  expect(await gravarEscolhaDeFoto({ supabase: s, uid: 'u1', post: POST_GERADO('r5'), escolha: { arquivo: {} } })).toBe(false)
+  expect(chamadas).toEqual([])
+})
+
+test('o texto mudou no aparelho enquanto a IA escrevia (ex.: Gerar outro): a resposta atrasada não o sobrescreve', async () => {
+  const post = POST_GERADO('r6')
+  const { supabase } = comFuncao(async () => { post.legenda = 'do Gerar outro'; return { data: { post: { id: 'r6', legenda: 'da IA' } }, error: null } })
+  const aoMudarTexto = vi.fn()
+  await gravarEscolhaDeFoto({ supabase, uid: 'u1', post, escolha: { foto_path: 'u1/produtos/c.jpg' }, aoMudarTexto })
+  expect(post.legenda).toBe('do Gerar outro')
+  expect(aoMudarTexto).not.toHaveBeenCalled()
+})

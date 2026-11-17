@@ -1,5 +1,6 @@
 // Trocar imagem do post: a janela com as fotos dos produtos, "Enviar outra foto" e "Sem foto",
-// e a gravação da escolha (foto nova: reduz, envia ao Storage e grava o caminho).
+// a gravação da escolha (foto nova: reduz, envia ao Storage e grava o caminho) e, depois, a legenda reescrita
+// pela IA para a foto nova (função reescrever-post).
 import { t } from '../textos.js'
 import { el, aviso } from '../comum.js'
 import { fotoDoPost, fotosDoProduto, todasAsFotos } from './situacao.js'
@@ -97,8 +98,41 @@ const enviando = new Set() // posts com uma foto nova ainda subindo
 
 // Grava a escolha feita na janela. aoMudar redesenha (chamado na hora e, se falhar, ao voltar).
 // Foto nova: reduz no aparelho, envia para ${uid}/posts/${id}.jpg e esquece a imagem velha do cache.
-// Devolve true quando gravou.
-export async function gravarEscolhaDeFoto({ supabase, uid, post, escolha, aoMudar }) {
+// Depois de gravar, a IA reescreve a legenda para a foto (reescreverLegenda: aoEscrevendo e aoMudarTexto).
+// Devolve true quando a foto gravou.
+export async function gravarEscolhaDeFoto({ supabase, uid, post, escolha, aoMudar, aoEscrevendo, aoMudarTexto }) {
+  const ok = await gravarFoto({ supabase, uid, post, escolha, aoMudar })
+  if (ok) await reescreverLegenda({ supabase, post, aoEscrevendo, aoMudarTexto })
+  return ok
+}
+
+// Só o texto que o cliente ainda não aceitou é reescrito (a mesma regra da função reescrever-post).
+export const podeReescrever = (post) => ['gerado', 'reprovado'].includes(post.estado) && !post.postado_em
+
+// A IA reescreve a legenda para a foto atual. aoEscrevendo(true/false) marca a espera ("Escrevendo…");
+// aoMudarTexto é chamado quando o post recebeu o texto novo. Sem texto novo (IA indisponível, sem conexão…)
+// fica tudo como estava, em silêncio: a foto já trocou. Devolve true se o texto mudou.
+export async function reescreverLegenda({ supabase, post, aoEscrevendo, aoMudarTexto }) {
+  if (!podeReescrever(post)) return false
+  const legendaAntes = post.legenda
+  aoEscrevendo?.(true)
+  try {
+    const { data, error } = await supabase.functions.invoke('reescrever-post', { body: { post_id: post.id } })
+    if (error) { console.error(error); return false }
+    // o texto mudou no aparelho enquanto a IA escrevia (ex.: Gerar outro): o mais novo fica
+    if (!data?.post || post.legenda !== legendaAntes) return false
+    Object.assign(post, data.post)
+    aoMudarTexto?.()
+    return true
+  } catch (e) {
+    console.error(e)
+    return false
+  } finally {
+    aoEscrevendo?.(false)
+  }
+}
+
+async function gravarFoto({ supabase, uid, post, escolha, aoMudar }) {
   // Com outra gravação do post em andamento, gravarMudanca ignoraria esta: avisa em vez de ficar em silêncio.
   const gravar = (mudanca) => {
     if (postOcupado(post)) { aviso(t('post.aguarde')); return false }

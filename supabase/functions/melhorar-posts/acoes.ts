@@ -4,7 +4,8 @@
 import type { Estrategia, Pilar, Rede, Tom } from '../_shared/modelos/tipos.ts'
 import type { PostGerado } from '../_shared/modelos/gerar.ts'
 import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
-import { escreverPost, type CamposDaIA, type ChamarIA, type ConteudoIA, type EntradaPost } from '../_shared/ia/escrever.ts'
+import { escreverPost, type CamposDaIA, type ChamarIA, type ConteudoIA } from '../_shared/ia/escrever.ts'
+import { caminhoSeguro, fotosDoProduto, montarEntradaPost, SEM_DESCRICAO } from '../_shared/ia/entrada.ts'
 import { descreverFoto } from '../_shared/ia/descrever.ts'
 import {
   escolherImagemGeral, fotoDoLugar, temaDaImagem,
@@ -70,16 +71,6 @@ export type DepsMelhorar = Omit<DepsImagens, 'escolher'> & {
 const ESTRATEGIAS: readonly string[] = ['vender', 'crescer', 'credibilidade', 'tempo']
 // fotos do cliente ainda sem descrição que um post de tema geral descreve na hora (as outras ficam para os próximos)
 const DESCREVER_POR_POST = 2
-const SEM_DESCRICAO = 'Veja a foto anexada.'
-
-const caminhoSeguro = (p: string) => !p.split('/').some((s) => s === '..' || s === '.' || s === '')
-const numero = (v: number | string | null): number | null => {
-  if (v == null || v === '') return null
-  const n = Number(v)
-  return Number.isFinite(n) ? n : null
-}
-// Mesma regra de fotosDoProduto (imagens.ts / situacao.js).
-const fotosDoProduto = (p: ProdutoDoCliente): string[] => (p.fotos?.length ? p.fotos : p.foto_path ? [p.foto_path] : [])
 
 // ---------- A IA escolhendo a imagem (DepsImagens.escolher) ----------
 
@@ -247,20 +238,9 @@ async function melhorarComPrazo(
   const url = foto ? await deps.urlAssinada(foto.path) : null
   const fotoPath = semFoto ? null : post.foto_path ?? (url ? foto!.path : null)
 
-  const entrada: EntradaPost = {
-    ramo,
-    negocio: { nome: negocio.nome, insta: negocio.insta, tom: negocio.tom },
-    estrategia: ctx.estrategia as Estrategia,
-    lugar: {
-      data: post.data, rede: post.rede, tipo: post.tipo, formato: post.formato, pilar: post.pilar,
-      preco_de: numero(post.preco_de), preco_por: numero(post.preco_por),
-    },
-    produto: produto ? { nome: produto.nome, descricao: produto.descricao } : null,
-    foto: foto && url ? { url, descricao: foto.descricao } : null,
-    textoModelo: [post.titulo, post.legenda].filter(Boolean).join('\n\n'),
-    // mesmos textos do cliente de gerar-mes (o que ele escreveu não conta nas checagens)
-    textosDoCliente: [negocio.nome, ...ctx.produtos.flatMap((p) => [p.nome, p.descricao ?? ''])],
-  }
+  const entrada = montarEntradaPost(
+    { ramo, estrategia: ctx.estrategia as Estrategia, negocio, produtos: ctx.produtos },
+    post, foto && url ? { url, descricao: foto.descricao } : null)
   const escrito = await escreverPost(chamarPost, entrada)
   if (!escrito) return desistir()
 
