@@ -70,14 +70,14 @@ function pintarSelos(destino, item) {
 }
 
 // Faixa de miniaturas do item. `urls` guarda os endereços temporários, para o quiz liberar ao redesenhar.
-export function faixaDeFotos({ item, supabase, urls, selos, fotosInfo }) {
+export function faixaDeFotos({ item, supabase, urls, selos, fotosInfo, max = MAX_FOTOS }) {
   const faixa = el('div', { class: 'faixa-fotos' })
   const erro = el('p', { class: 'erro pequeno', role: 'alert', hidden: true, texto: t('quiz.item.fotos.erro') })
   const entrada = el('input', { type: 'file', multiple: true, accept: 'image/*', hidden: true })
   const adicionar = el('button', { type: 'button', class: 'secundario', texto: t('quiz.item.fotos.add') })
   adicionar.addEventListener('click', () => entrada.click())
   entrada.addEventListener('change', () => {
-    const livres = MAX_FOTOS - item.fotos.length
+    const livres = max - item.fotos.length
     const escolhidas = [...entrada.files].slice(0, Math.max(livres, 0))
     entrada.value = ''
     Promise.all(escolhidas.map(abre)).then((oks) => {
@@ -107,7 +107,7 @@ export function faixaDeFotos({ item, supabase, urls, selos, fotosInfo }) {
         : null
       return el('div', { class: ruim ? 'miniatura com-aviso' : 'miniatura' }, img, x, ruim)
     })
-    adicionar.hidden = item.fotos.length >= MAX_FOTOS
+    adicionar.hidden = item.fotos.length >= max
     faixa.replaceChildren(...miniaturas, adicionar, entrada)
     pintarSelos(selos, item)
     if (focar) (adicionar.hidden ? faixa.querySelector('.remover-foto') : adicionar)?.focus()

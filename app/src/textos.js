@@ -93,6 +93,8 @@ const pt = {
   'meu.rotulo.tom': 'Jeito de falar',
   'meu.rotulo.horario': 'Horário',
   'meu.rotulo.cores': 'Cores',
+  'meu.rotulo.fotos': 'Minhas fotos',
+  'meu.fotos.dica': 'Fotos do seu espaço, equipe e trabalhos (até {max}). Elas deixam suas artes mais variadas.',
   'meu.rotulo.redes': 'Redes',
   'meu.redes.aviso': 'Para mudar as redes, fale com a administração.',
 
@@ -192,6 +194,9 @@ const pt = {
   'quiz.continuar': 'Continuar',
   'quiz.salvar': 'Salvar e continuar',
   'quiz.salvar.so': 'Salvar',
+  'resumo.fotos.nenhuma': 'Nenhuma foto',
+  'resumo.fotos.1': '1 foto',
+  'resumo.fotos.n': '{n} fotos',
   'resumo.logo': 'logo',
   'resumo.semlogo': 'sem logo',
   'quiz.nome.titulo': 'Como se chama o seu negócio?',

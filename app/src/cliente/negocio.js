@@ -5,6 +5,7 @@ import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar
 
 export const MAX_ITENS = 20
 export const MAX_FOTOS = 6
+export const MAX_FOTOS_NEGOCIO = 30 // "Minhas fotos" (spec §3.7)
 export const FOTO_MAX = 1600 // lado maior das fotos, em px
 export const LOGO_MAX = 800
 
@@ -67,7 +68,7 @@ export async function reduzirFoto(arquivo, maximo, tipo) {
 
 export async function carregarNegocio(supabase, uid) {
   const [n, p] = await Promise.all([
-    supabase.from('negocios').select('nome, insta, assinatura, tom, horario, cor1, cor2, logo_path')
+    supabase.from('negocios').select('nome, insta, assinatura, tom, horario, cor1, cor2, logo_path, fotos')
       .eq('cliente_id', uid).maybeSingle(),
     supabase.from('produtos').select('id, nome, descricao, preco, preco_promo, fotos, foto_path').eq('cliente_id', uid).order('ordem'),
   ])
@@ -133,18 +134,7 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
   const { data: antigos, error: e2 } = await supabase.from('produtos').select('id, foto_path, fotos').eq('cliente_id', uid)
   if (e2) throw e2
   const pathsDe = (a) => [...new Set([...(a.fotos ?? []), ...(a.foto_path ? [a.foto_path] : [])])]
-  // fotos ainda usadas por posts (via "Trocar imagem") não saem do Storage
-  const { data: dePosts, error: e4 } = await supabase.from('posts').select('foto_path').not('foto_path', 'is', null)
-  const emUso = new Set((dePosts ?? []).map((x) => x.foto_path))
-  if (e4) console.error(e4) // sem saber o que os posts usam, não apaga nada do Storage
-  const limpar = async (paths) => {
-    if (e4) return
-    const lista = paths.filter((p) => !emUso.has(p))
-    if (lista.length) {
-      await marcas.remove(lista) // melhor esforço
-      try { await supabase.from('fotos_ia').delete().in('path', lista) } catch { /* melhor esforço */ }
-    }
-  }
+  const limpar = await limpadorDeStorage(supabase, marcas)
   const ficam = new Set(itens.map((i) => i.id))
   const sair = antigos.filter((a) => !ficam.has(a.id))
   if (sair.length) {
@@ -184,8 +174,28 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
   const novos = new Map(linhas.map((l) => [l.id, new Set(l.fotos)]))
   await limpar(antigos.filter((a) => novos.has(a.id)).flatMap((a) => pathsDe(a).filter((p) => !novos.get(a.id).has(p))))
 
-  // A IA descreve as fotos novas em segundo plano: salvar nunca espera por isso.
-  const todas = [...new Set(linhas.flatMap((l) => l.fotos))].slice(0, 30)
+  descreverEmSegundoPlano(supabase, uid, linhas.flatMap((l) => l.fotos), opcoes)
+}
+
+// Apaga do Storage (e as análises da IA) as fotos que ninguém mais usa. Fotos ainda usadas por posts
+// (via "Trocar imagem") ficam. Sem saber o que os posts usam, não apaga nada.
+async function limpadorDeStorage(supabase, marcas) {
+  const { data: dePosts, error } = await supabase.from('posts').select('foto_path').not('foto_path', 'is', null)
+  const emUso = new Set((dePosts ?? []).map((x) => x.foto_path))
+  if (error) console.error(error)
+  return async (paths) => {
+    if (error) return
+    const lista = paths.filter((p) => !emUso.has(p))
+    if (lista.length) {
+      await marcas.remove(lista) // melhor esforço
+      try { await supabase.from('fotos_ia').delete().in('path', lista) } catch { /* melhor esforço */ }
+    }
+  }
+}
+
+// A IA descreve as fotos em segundo plano: salvar nunca espera por isso.
+function descreverEmSegundoPlano(supabase, uid, paths, opcoes) {
+  const todas = [...new Set(paths)].slice(0, 30)
   if (todas.length && supabase.functions?.invoke) {
     Promise.resolve(supabase.functions.invoke('descrever-fotos', { body: { paths: todas } }))
       .then(() => new Promise((ok) => setTimeout(ok, 4000))) // dá tempo de as análises chegarem ao banco
@@ -193,6 +203,41 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
       .then((info) => opcoes.aoFotosInfo?.(info))
       .catch((e) => console.error(e))
   }
+}
+
+// "Minhas fotos": fotos: [{ path } | { arquivo, nome }] (até 30). Grava negocios.fotos; não mexe nos produtos.
+export async function salvarFotosDoNegocio(supabase, uid, fotos, aoProgredir, opcoes = {}) {
+  if (fotos.length > MAX_FOTOS_NEGOCIO) throw new Error('fotos demais')
+  const reduzir = opcoes.reduzir ?? ((arquivo) => reduzirFoto(arquivo, FOTO_MAX, 'image/jpeg'))
+  const { marcas, enviar } = enviadorDeArquivos(supabase)
+  const { data: atual, error: e1 } = await supabase.from('negocios').select('fotos').eq('cliente_id', uid).maybeSingle()
+  if (e1) throw e1
+  const antigas = atual?.fotos ?? []
+  const limpar = await limpadorDeStorage(supabase, marcas)
+
+  const total = fotos.filter((f) => f.arquivo).length
+  let feitas = 0
+  const enviadas = []
+  const caminhos = []
+  try {
+    for (const f of fotos) {
+      if (f.arquivo) {
+        const blob = await reduzir(f.arquivo)
+        const caminho = await enviar(`${uid}/negocio/${crypto.randomUUID()}.jpg`, blob, 'image/jpeg')
+        enviadas.push(caminho)
+        caminhos.push(caminho)
+        aoProgredir?.(++feitas, total)
+      } else caminhos.push(f.path)
+    }
+    const r = await supabase.from('negocios').update({ fotos: caminhos, atualizado_em: new Date().toISOString() }).eq('cliente_id', uid)
+    if (r.error) throw r.error
+  } catch (e) {
+    if (enviadas.length) { try { await marcas.remove(enviadas) } catch { /* melhor esforço */ } }
+    throw e
+  }
+  const ficam = new Set(caminhos)
+  await limpar(antigas.filter((p) => !ficam.has(p)))
+  descreverEmSegundoPlano(supabase, uid, caminhos, opcoes)
 }
 
 export async function salvarNegocio(supabase, uid, dados, itens, aoProgredir, opcoes = {}) {

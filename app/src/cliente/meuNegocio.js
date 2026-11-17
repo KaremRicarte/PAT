@@ -5,11 +5,11 @@ import { el, logo, mostrar } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { PERGUNTAS_FIXAS, estadoDoNegocio, resumoDaPergunta, nomesDasRedes } from './perguntas.js'
 import { telaPassos } from './quiz.js'
-import { salvarDadosNegocio, carregarNegocio, normalizarInsta } from './negocio.js'
+import { salvarDadosNegocio, salvarFotosDoNegocio, carregarNegocio, carregarFotosInfo, normalizarInsta } from './negocio.js'
 
 // Linhas puras: [{ chave, rotulo, resumo }] na ordem de PERGUNTAS_FIXAS (cores têm resumo vazio).
 export function linhasDoResumo(estado, ramo) {
-  return PERGUNTAS_FIXAS.map((chave) => ({ chave, rotulo: t(`meu.rotulo.${chave}`), resumo: resumoDaPergunta(chave, estado, ramo) }))
+  return [...PERGUNTAS_FIXAS, 'fotos'].map((chave) => ({ chave, rotulo: t(`meu.rotulo.${chave}`), resumo: resumoDaPergunta(chave, estado, ramo) }))
 }
 
 // ctx: { supabase, cliente, negocio, produtos, atualizar }
@@ -41,7 +41,14 @@ export function telaMeuNegocio(ctx) {
       titulo: t('meu.titulo'), perguntas: [chave], rotuloFinal: t('quiz.salvar.so'),
       ctx: { ramo, estado: e, supabase, fotosInfo: ctx.fotosInfo },
       aoCancelar: () => telaMeuNegocio(ctx),
-      aoSalvar: async (novo) => {
+      aoSalvar: async (novo, aoProgredir) => {
+        if (chave === 'fotos') { // não dispara a pergunta de refazer (spec §7.19)
+          await salvarFotosDoNegocio(supabase, cliente.id, novo.fotosNegocio, aoProgredir, { aoFotosInfo: (m) => { ctx.fotosInfo = m } })
+          const { negocio, produtos } = await carregarNegocio(supabase, cliente.id)
+          const fotosInfo = await carregarFotosInfo(supabase, cliente.id)
+          ctx.fotosInfo = fotosInfo
+          return telaMeuNegocio({ ...ctx, negocio, produtos, fotosInfo })
+        }
         await salvarDadosNegocio(supabase, cliente.id, { ...novo, insta: normalizarInsta(novo.insta) })
         const { negocio, produtos } = await carregarNegocio(supabase, cliente.id)
         telaMeuNegocio({ ...ctx, negocio, produtos })

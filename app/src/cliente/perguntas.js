@@ -4,7 +4,7 @@ import { t } from '../textos.js'
 import { el, campo } from '../comum.js'
 import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
 import { REDES } from '../../../supabase/functions/_shared/modelos/tipos.ts'
-import { MAX_ITENS, LOGO_MAX, validarItens, normalizarInsta, reduzirFoto } from './negocio.js'
+import { MAX_ITENS, LOGO_MAX, validarItens, normalizarInsta, reduzirFoto, MAX_FOTOS_NEGOCIO } from './negocio.js'
 import { montarImportacao, faixaDeFotos } from './importarTela.js'
 
 const HORARIOS = [['07:00', 'manha'], ['12:00', 'almoco'], ['19:00', 'noite']]
@@ -54,6 +54,7 @@ export function estadoDoNegocio(negocio, produtos, ramo) {
     tom: n?.tom ?? 'proximo', horario: n?.horario ?? '19:00',
     cor1: n?.cor1 ?? ramo.cores.cor1, cor2: n?.cor2 ?? ramo.cores.cor2,
     logo_path: n?.logo_path ?? null, logoBlob: null,
+    fotosNegocio: (n?.fotos ?? []).map((path) => ({ path })),
     itens: (produtos ?? []).map((p) => ({
       id: p.id, nome: p.nome, descricao: p.descricao ?? '',
       precoTexto: p.preco ? String(p.preco).replace('.', ',') : '',
@@ -69,6 +70,10 @@ export function resumoDaPergunta(chave, estado, ramo) {
   if (chave === 'marca') {
     const partes = [estado.logo_path || estado.logoBlob ? t('resumo.logo') : null, estado.insta || null].filter(Boolean)
     return partes.length ? partes.join(' · ') : t('resumo.semlogo')
+  }
+  if (chave === 'fotos') {
+    const n = estado.fotosNegocio?.length ?? 0
+    return n === 0 ? t('resumo.fotos.nenhuma') : n === 1 ? t('resumo.fotos.1') : t('resumo.fotos.n', { n })
   }
   if (chave === 'tom') return ramo.tons.find(([v]) => v === estado.tom)?.[1] ?? ''
   if (chave === 'horario') {
@@ -147,6 +152,15 @@ const BLOCOS = {
       titulo: ramo.itensQ,
       corpo: [...montarImportacao({ ramo, estado, aoMudar: redesenhar }), el('p', { class: 'muted', texto: t('quiz.itens.dica', { max: MAX_ITENS }) }), sugestoes, lista, adicionar],
       validar: () => { const k = validarItens(estado.itens, ramo); return k ? t(k, { max: MAX_ITENS }) : null },
+    }
+  },
+  fotos: ({ estado, supabase, fotosInfo }) => {
+    const item = { nome: t('meu.rotulo.fotos'), fotos: estado.fotosNegocio }
+    const selos = el('span', { class: 'selos-item' })
+    return {
+      titulo: t('meu.rotulo.fotos'),
+      corpo: [el('p', { class: 'muted', texto: t('meu.fotos.dica', { max: MAX_FOTOS_NEGOCIO }) }),
+        faixaDeFotos({ item, supabase, urls: [], selos, fotosInfo, max: MAX_FOTOS_NEGOCIO })],
     }
   },
   tom: ({ ramo, estado }) => ({

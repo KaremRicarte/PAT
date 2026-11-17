@@ -176,3 +176,48 @@ test('itensParaSalvar: converte preços do texto; promo só com preço; ramos no
   expect(c.preco).toBeNull()
   expect(c.preco_promo).toBeNull()
 })
+
+function fakeFotos({ antigas = [], posts = [], falhaUpdate = false } = {}) {
+  const reg = { enviados: [], removidos: [], gravado: null, iaApagada: [], invocado: null }
+  const q = (tabela) => {
+    const o = { select: () => o, eq: () => o, not: () => o, delete: () => o, in: (_c, l) => { if (tabela === 'fotos_ia') reg.iaApagada.push(...l); return o },
+      maybeSingle: async () => ({ data: { fotos: antigas }, error: null }),
+      update: (v) => { reg.gravado = v; return { eq: async () => ({ error: falhaUpdate ? new Error('x') : null }) } },
+      then: (ok) => ok({ data: tabela === 'posts' ? posts.map((foto_path) => ({ foto_path })) : [], error: null }) }
+    return o
+  }
+  return { reg, from: q,
+    storage: { from: () => ({ upload: async (c) => { reg.enviados.push(c); return { error: null } }, remove: async (l) => { reg.removidos.push(...l); return { error: null } } }) },
+    functions: { invoke: async (_n, o) => { reg.invocado = o.body.paths } } }
+}
+
+test('salvarFotosDoNegocio: envia novas, grava caminhos, remove as tiradas (menos as usadas por posts)', async () => {
+  const { salvarFotosDoNegocio } = await import('../../app/src/cliente/negocio.js')
+  const sb = fakeFotos({ antigas: ['u1/negocio/a.jpg', 'u1/negocio/b.jpg', 'u1/negocio/c.jpg'], posts: ['u1/negocio/c.jpg'] })
+  const prog = []
+  await salvarFotosDoNegocio(sb, 'u1', [{ path: 'u1/negocio/a.jpg' }, { arquivo: 'f', nome: 'f.jpg' }], (a, b) => prog.push([a, b]), { reduzir: async () => 'blob' })
+  expect(sb.reg.enviados).toHaveLength(1)
+  expect(sb.reg.enviados[0]).toMatch(/^u1\/negocio\/.+\.jpg$/)
+  expect(sb.reg.gravado.fotos).toEqual(['u1/negocio/a.jpg', sb.reg.enviados[0]])
+  expect(sb.reg.removidos).toEqual(['u1/negocio/b.jpg'])
+  expect(sb.reg.iaApagada).toEqual(['u1/negocio/b.jpg'])
+  expect(sb.reg.invocado).toEqual(sb.reg.gravado.fotos)
+  expect(prog).toEqual([[1, 1]])
+})
+
+test('salvarFotosDoNegocio: desfaz os envios se a gravação falha', async () => {
+  const { salvarFotosDoNegocio } = await import('../../app/src/cliente/negocio.js')
+  const sb = fakeFotos({ falhaUpdate: true })
+  await expect(salvarFotosDoNegocio(sb, 'u1', [{ arquivo: 'f' }], null, { reduzir: async () => 'b' })).rejects.toThrow()
+  expect(sb.reg.removidos).toEqual(sb.reg.enviados)
+  expect(sb.reg.enviados).toHaveLength(1)
+})
+
+test('salvarFotosDoNegocio: limite de 30', async () => {
+  const { salvarFotosDoNegocio, MAX_FOTOS_NEGOCIO } = await import('../../app/src/cliente/negocio.js')
+  expect(MAX_FOTOS_NEGOCIO).toBe(30)
+  const sb = fakeFotos()
+  const muitas = Array.from({ length: 31 }, (_, i) => ({ path: `p${i}` }))
+  await expect(salvarFotosDoNegocio(sb, 'u1', muitas)).rejects.toThrow()
+  expect(sb.reg.gravado).toBeNull()
+})
