@@ -17,6 +17,7 @@ export function areaBanco() {
   const resumo = el('p', { class: 'muted' })
   const grade = el('div', { class: 'grade-banco' })
 
+  let ocupado = false
   const erro = (texto) => msg.replaceChildren(el('p', { class: 'erro', role: 'alert', texto }))
 
   async function recarregar() {
@@ -61,9 +62,12 @@ export function areaBanco() {
   async function subir(arquivos) {
     if (!ramo.value) return erro(t('banco.escolha'))
     const lote = ramo.value
+    if (ocupado) return
     const candidatas = arquivos.filter(ehFoto)
-    if (!candidatas.length) return
+    if (!candidatas.length) return erro(t('banco.falhas', { n: arquivos.length }))
+    ocupado = true
     enviar.disabled = true
+    ramo.disabled = true
     const paths = []
     let falhas = 0
     for (const [i, a] of candidatas.entries()) {
@@ -77,12 +81,14 @@ export function areaBanco() {
       msg.replaceChildren(el('p', { class: 'muted', role: 'status', texto: t('banco.descrevendo') }))
       await descreverBanco(paths, lote)
     }
+    ocupado = false
+    ramo.disabled = false
     enviar.disabled = !ramo.value
     if (falhas) erro(t('banco.falhas', { n: falhas })); else msg.replaceChildren()
     await recarregar()
   }
 
-  ramo.addEventListener('change', () => { enviar.disabled = !ramo.value; msg.replaceChildren(); recarregar() })
+  ramo.addEventListener('change', () => { if (ocupado) return; enviar.disabled = !ramo.value; msg.replaceChildren(); recarregar() })
   enviar.addEventListener('click', () => entrada.click())
   entrada.addEventListener('change', () => { const f = [...entrada.files]; entrada.value = ''; subir(f) })
 
