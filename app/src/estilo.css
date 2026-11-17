@@ -292,9 +292,11 @@ a.botao:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
 .precos > div { min-width: 0; }
 .selos-item { display: inline-block; margin-left: 6px; }
 .faixa-fotos { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 6px; }
-.miniatura { position: relative; width: 104px; height: 104px; border-radius: 12px; overflow: hidden; background: var(--sunk); border: 1px solid var(--line); }
-.miniatura img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.remover-foto { position: absolute; top: 0; right: 0; width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: 0 0 0 12px; background: rgba(0, 0, 0, .72); color: var(--ink); border: 0; font-size: 18px; }
+.miniatura { position: relative; width: 120px; height: 120px; border-radius: 12px; background: var(--sunk); border: 1px solid var(--line); }
+.miniatura img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 11px; }
+/* Área de toque de 48px que sai um pouco da foto; o círculo visível tem só 32px. */
+.remover-foto { position: absolute; z-index: 1; top: -12px; right: -12px; width: 48px; height: 48px; min-height: 48px; padding: 0; background: transparent; border: 0; color: var(--ink); font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.remover-foto::before { content: ''; position: absolute; width: 32px; height: 32px; border-radius: 50%; background: rgba(0, 0, 0, .78); z-index: -1; }
 .zona-soltar { border: 2px dashed var(--pri); border-radius: 16px; padding: 32px 16px; margin: 12px 0; text-align: center; font-weight: 700; background: var(--pri-soft); }
 .zona-soltar[hidden], .faixa-fotos [hidden] { display: none; }
 .como-montar { margin: 8px 0 12px; }

@@ -39,7 +39,11 @@ const ORDEM_TIPO = { feed: 0, stories: 1, video: 2, status: 3, lista: 4 }
 const unq = (s: string) => s.replace(/^"|"$/g, '')
 const limitar = (s: string, n = 90) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s)
 const paragrafos = (...p: (string | null | undefined | false)[]) => p.filter(Boolean).join('\n\n')
-const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/\s/g, ' ')
+// Igual ao selo da arte (situacao.js `dinheiro`): sem ",00" quando inteiro, duas casas quando fracionado.
+const brl = (v: number) => {
+  const c = Math.round(v * 100) % 100 !== 0 ? 2 : 0
+  return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c }).replace(/\s/g, ' ')
+}
 const diaDaSemana = (data: string) => new Date(`${data}T00:00:00Z`).getUTCDay()
 
 const girar = <T>(lista: readonly T[], n: number): T[] => {

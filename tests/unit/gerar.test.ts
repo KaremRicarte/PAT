@@ -88,10 +88,10 @@ test('vender: 1 post de preço por item com preço, promoções primeiro, em sex
   }
   const [gramado, leste, porto] = ig
   expect(gramado.titulo.startsWith('Oferta: ')).toBe(true)
-  expect(gramado.legenda).toContain('De R$ 2.199,00 por R$ 1.799,00. Aproveite enquanto durar!')
-  expect(leste.legenda).toContain('De R$ 10.299,00 por R$ 9.999,00. Aproveite enquanto durar!')
+  expect(gramado.legenda).toContain('De R$ 2.199 por R$ 1.799. Aproveite enquanto durar!')
+  expect(leste.legenda).toContain('De R$ 10.299 por R$ 9.999. Aproveite enquanto durar!')
   expect(porto.titulo.startsWith('Oferta')).toBe(false)
-  expect(porto.legenda).toContain('Por R$ 1.999,00.')
+  expect(porto.legenda).toContain('Por R$ 1.999.')
   expect(PALAVRAS_PROMO.test(tudo(porto))).toBe(false)
   // sem preço: nenhum post fala de valor
   expect(todos.filter((p) => p.preco_por === null && tudo(p).includes('R$'))).toEqual([])
@@ -103,10 +103,10 @@ test('vender: 1 post de preço por item com preço, promoções primeiro, em sex
 test('vender: a lista do WhatsApp mostra o preço do item, do mesmo jeito', () => {
   const lista = gerarMes(turismo()).filter((p) => p.tipo === 'lista')
   expect(lista.map((p) => [p.produto_id, p.preco_de, p.preco_por])).toEqual([['g', 2199, 1799], ['l', 10299, 9999]])
-  expect(lista[0].legenda).toContain('De R$ 2.199,00 por R$ 1.799,00. Aproveite enquanto durar!')
+  expect(lista[0].legenda).toContain('De R$ 2.199 por R$ 1.799. Aproveite enquanto durar!')
   const vitrine = gerarMes(turismo({ produtos: [LISTA_SPEC[2], LISTA_SPEC[3]] })).filter((p) => p.tipo === 'lista')
   expect(vitrine.map((p) => [p.produto_id, p.preco_de, p.preco_por])).toEqual([['s', null, 1999], ['p', null, null]])
-  expect(vitrine[0].legenda).toContain('Por R$ 1.999,00.')
+  expect(vitrine[0].legenda).toContain('Por R$ 1.999.')
   expect(vitrine[1].legenda).not.toContain('R$')
 })
 

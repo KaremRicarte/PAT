@@ -23,6 +23,7 @@ export function validarItens(itens, ramo = { noPromo: false }) {
   if (!ramo.noPromo) {
     for (const i of itens) {
       const normal = precoDoTexto(i.precoTexto), promo = precoDoTexto(i.promoTexto)
+      if ((String(i.precoTexto ?? '').trim() && normal === null) || (String(i.promoTexto ?? '').trim() && promo === null)) return 'quiz.itens.precoinvalido'
       if (promo !== null && normal === null) return 'quiz.itens.semnormal'
       if (promo !== null && promo > normal) return 'quiz.itens.promomaior'
     }
@@ -36,6 +37,7 @@ export function precoDoTexto(s) {
   let txt = String(s ?? '').replace(/R\$|\s/g, '')
   if (!txt) return null
   if (txt.includes(',')) txt = txt.replace(/\./g, '').replace(',', '.')
+  else if (/^\d{1,3}(\.\d{3})+$/.test(txt)) txt = txt.replace(/\./g, '')
   if (!/^\d+(\.\d{1,2})?$/.test(txt)) return null
   const v = Number(txt)
   return v > 0 ? v : null

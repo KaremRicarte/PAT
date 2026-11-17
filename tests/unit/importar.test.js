@@ -17,6 +17,7 @@ describe('lerLista', () => {
   test('formato brasileiro e separadores', () => {
     expect(lerLista('AB;R$ 2.199,90;1.999,90').linhas[0]).toMatchObject({ preco: 2199.9, promo: 1999.9 })
     expect(lerLista('Gramado,2199,1799').linhas[0]).toMatchObject({ nome: 'Gramado', preco: 2199, promo: 1799 })
+    expect(lerLista('Leste Europeu;10.299;9.999').linhas[0]).toMatchObject({ preco: 10299, promo: 9999 })
     expect(lerLista('AB;1,50;1').linhas[0]).toMatchObject({ preco: 1.5, promo: 1 })
   })
   test('erros', () => {

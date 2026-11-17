@@ -169,6 +169,7 @@ const pt = {
   'quiz.itens.promo': 'Na sua área, os textos não podem falar de preço nem de promoção. Revise nomes e descrições.',
   'quiz.nome.promo': 'Na sua área, o nome não pode falar de preço nem de promoção.',
   'quiz.itens.semnormal': 'Para usar o preço promocional, informe também o preço normal.',
+  'quiz.itens.precoinvalido': 'Não entendi um dos preços. Use só números, como 2199 ou 2.199,90.',
   'quiz.itens.promomaior': 'O preço promocional precisa ser menor que o preço normal.',
   'quiz.itens.fotos': 'Cada item pode ter no máximo 6 fotos.',
   'quiz.itens.nome': 'Cada item precisa de um nome, com pelo menos 2 letras.',

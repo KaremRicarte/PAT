@@ -136,7 +136,7 @@ test('troca de um post de preço grava preco_de/preco_por do item atual', async 
   expect(r.status).toBe(200)
   const [, campos] = (deps.gravar as ReturnType<typeof vi.fn>).mock.calls[0]
   expect(campos).toMatchObject({ produto_id: 'p2', preco_de: 450, preco_por: 399 })
-  expect(campos.legenda).toContain('De R$ 450,00 por R$ 399,00.')
+  expect(campos.legenda).toContain('De R$ 450 por R$ 399.')
   expect(r.corpo.post).toMatchObject({ preco_de: 450, preco_por: 399 })
 })
 

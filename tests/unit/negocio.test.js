@@ -21,6 +21,7 @@ test('validarItens', () => {
 
 test.each([
   ['299,90', 299.9], ['R$ 1.299,90', 1299.9], ['50', 50], ['  80,5 ', 80.5], ['1299.90', 1299.9],
+  ['2.199', 2199], ['10.299', 10299], ['1.500', 1500], ['1.234.567', 1234567], ['1.5', 1.5], ['1.50', 1.5], ['2.199,90', 2199.9],
   ['', null], ['   ', null], ['abc', null], ['0', null], ['-10', null],
 ])('precoDoTexto(%j) → %s', (s, esperado) => {
   expect(precoDoTexto(s)).toBe(esperado)
@@ -46,6 +47,9 @@ test('validarItens: promoção e fotos', () => {
   expect(validarItens([{ ...ok, precoTexto: '' }])).toBe('quiz.itens.semnormal')
   expect(validarItens([{ ...ok, promoTexto: '120' }])).toBe('quiz.itens.promomaior')
   expect(validarItens([{ ...ok, promoTexto: '100' }])).toBeNull()
+  expect(validarItens([{ ...ok, precoTexto: 'abc' }])).toBe('quiz.itens.precoinvalido')
+  expect(validarItens([{ ...ok, promoTexto: '8x' }])).toBe('quiz.itens.precoinvalido')
+  expect(validarItens([{ ...ok, precoTexto: 'abc' }], { noPromo: true })).toBeNull()
   expect(validarItens([{ ...ok, fotos: Array.from({ length: 7 }, (_, i) => ({ path: `p${i}` })) }])).toBe('quiz.itens.fotos')
   expect(validarItens([{ ...ok, fotos: Array.from({ length: 6 }, (_, i) => ({ path: `p${i}` })) }])).toBeNull()
   expect(validarItens([{ ...ok, precoTexto: '', promoTexto: '80' }], { noPromo: true })).toBeNull()
@@ -57,7 +61,7 @@ test('toda chave que validarItens devolve existe em textos', async () => {
   const casos = [
     [[]], [Array.from({ length: 21 }, () => ok)], [[{ ...ok, nome: 'a' }]],
     [[{ ...ok, nome: 'Corte R$ 10' }], { noPromo: true }],
-    [[{ ...ok, precoTexto: '' }]], [[{ ...ok, promoTexto: '200' }]],
+    [[{ ...ok, precoTexto: '' }]], [[{ ...ok, promoTexto: '200' }]], [[{ ...ok, precoTexto: 'abc' }]],
     [[{ ...ok, fotos: Array(7).fill({ path: 'x' }) }]],
   ]
   for (const [itens, ramo] of casos) {
