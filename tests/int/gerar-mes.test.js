@@ -77,10 +77,11 @@ test('cliente sem ramo → 400', async () => {
     .toEqual({ status: 400, corpo: { erro: 'Seu ramo ainda não foi definido. Fale com a administração.' } })
 })
 
-test('gerar só com o TikTok grava só posts do TikTok e as redes do mês', async () => {
+test('cliente só com TikTok: gera só posts do TikTok e grava as redes do mês', async () => {
   const a = await pronto()
   await novoNegocio(a)
-  const r = await gerar(a.db, { estrategia: 'vender', redes: ['tiktok'] })
+  await servico().from('clientes').update({ redes: ['tiktok'] }).eq('id', a.id)
+  const r = await gerar(a.db)
   expect(r.status).toBe(201)
   const { data: posts } = await a.db.from('posts').select('rede').eq('mes_id', r.corpo.id)
   expect(posts.length).toBe(r.corpo.total)
@@ -90,13 +91,21 @@ test('gerar só com o TikTok grava só posts do TikTok e as redes do mês', asyn
   expect(mes.redes).toEqual(['tiktok'])
 })
 
-test('redes vazias → 400 e nada é gravado', async () => {
+test('redes enviadas pelo app são ignoradas (vale o cadastro do cliente)', async () => {
   const a = await pronto()
   await novoNegocio(a)
-  expect(await gerar(a.db, { estrategia: 'vender', redes: [] }))
-    .toEqual({ status: 400, corpo: { erro: 'Escolha pelo menos uma rede.' } })
-  const { data: meses } = await servico().from('meses').select('id').eq('cliente_id', a.id)
-  expect(meses).toEqual([])
+  await servico().from('clientes').update({ redes: ['facebook'] }).eq('id', a.id)
+  const r = await gerar(a.db, { estrategia: 'vender', redes: ['instagram'] })
+  expect(r.status).toBe(201)
+  const { data: mes } = await a.db.from('meses').select('redes').eq('id', r.corpo.id).single()
+  expect(mes.redes).toEqual(['facebook'])
+})
+
+test('cliente não consegue alterar as próprias redes', async () => {
+  const a = await pronto()
+  await a.db.from('clientes').update({ redes: ['tiktok'] }).eq('id', a.id)
+  const { data } = await servico().from('clientes').select('redes').eq('id', a.id).single()
+  expect(data.redes).toEqual(['instagram', 'facebook', 'tiktok', 'whatsapp'])
 })
 
 it('criar_mes grava preco_de e preco_por', async () => {

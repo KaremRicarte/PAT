@@ -1,6 +1,6 @@
 import { t } from '../textos.js'
 import { el, logo, campo, mostrar, aoEnviar, botaoSair } from '../comum.js'
-import { listarClientes, criarCliente, redefinirSenha, definirSituacao, definirRamo } from './dados.js'
+import { listarClientes, criarCliente, redefinirSenha, definirSituacao, definirRamo, definirRedes } from './dados.js'
 import { listaRamos } from './ramo.js'
 
 export function telaSoAdmin(supabase) {
@@ -94,11 +94,13 @@ function formNovo(aviso, recarregar) {
 }
 
 function tabela(clientes, aviso, recarregar) {
-  const cab = [t('admin.nome'), t('admin.email'), t('admin.telefone'), t('admin.ramo'), t('admin.idioma'), t('admin.situacao'), '']
+  const cab = [t('admin.nome'), t('admin.email'), t('admin.telefone'), t('admin.ramo'), t('admin.redes'), t('admin.idioma'), t('admin.situacao'), '']
   return el('table', { class: 'clientes' },
     el('thead', {}, el('tr', {}, cab.map(c => el('th', { scope: 'col', texto: c })))),
     el('tbody', {}, clientes.map(c => linha(c, aviso, recarregar))))
 }
+
+const REDES = ['instagram', 'facebook', 'tiktok', 'whatsapp']
 
 function linha(c, aviso, recarregar) {
   const bloqueado = c.situacao === 'bloqueado'
@@ -140,6 +142,23 @@ function linha(c, aviso, recarregar) {
     await recarregar()
   })
 
+  const atuais = new Set(c.redes ?? REDES)
+  const caixas = REDES.map((rede) => {
+    const caixa = el('input', { type: 'checkbox', checked: atuais.has(rede) })
+    caixa.addEventListener('change', async () => {
+      const novas = REDES.filter((x) => (x === rede ? caixa.checked : atuais.has(x)))
+      const erro = (msg) => aviso.replaceChildren(el('p', { class: 'erro', role: 'alert', texto: msg }))
+      if (!novas.length) { caixa.checked = true; return erro(t('admin.redes.minimo')) }
+      caixa.disabled = true
+      const r = await definirRedes(c.id, novas)
+      caixa.disabled = false
+      if (r.erro) { caixa.checked = !caixa.checked; return erro(r.erro) }
+      atuais.clear(); novas.forEach((x) => atuais.add(x))
+      aviso.replaceChildren()
+    })
+    return el('label', { class: 'rede-caixa' }, caixa, ' ', t('rede.' + rede))
+  })
+
   const celula = (rotulo, ...filhos) => el('td', { 'data-rotulo': rotulo }, ...filhos)
   return el('tr', {},
     celula(t('admin.nome'), el('strong', { texto: c.nome })),
@@ -147,6 +166,7 @@ function linha(c, aviso, recarregar) {
     celula(t('admin.telefone'), c.telefone),
     celula(t('admin.ramo'), ramo,
       c.ramo ? null : el('span', { class: 'selo ruim', texto: t('admin.semramo') })),
+    celula(t('admin.redes'), el('div', { class: 'redes-admin' }, caixas)),
     celula(t('admin.idioma'), c.idioma === 'es' ? t('admin.idioma.es') : t('admin.idioma.pt')),
     celula(t('admin.situacao'),
       el('span', { class: bloqueado ? 'selo ruim' : 'selo bom', texto: bloqueado ? t('admin.bloqueado') : t('admin.ativo') }),

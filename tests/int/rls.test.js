@@ -13,6 +13,14 @@ test('cliente não consegue se desbloquear nem limpar a senha provisória', asyn
   const { data } = await servico().from('clientes').select('situacao,senha_provisoria').eq('id', a.id).single()
   expect(data).toEqual({ situacao: 'bloqueado', senha_provisoria: true })
 })
+test('cliente não consegue mudar as próprias redes; a admin consegue', async () => {
+  const a = await novoCliente(), adm = await novaAdmin()
+  await a.db.from('clientes').update({ redes: ['tiktok'] }).eq('id', a.id)
+  const lê = async () => (await servico().from('clientes').select('redes').eq('id', a.id).single()).data.redes
+  expect(await lê()).toEqual(['instagram', 'facebook', 'tiktok', 'whatsapp'])
+  await adm.db.from('clientes').update({ redes: ['tiktok'] }).eq('id', a.id)
+  expect(await lê()).toEqual(['tiktok'])
+})
 test('marcar_senha_trocada afeta só quem chama', async () => {
   const a = await novoCliente(), b = await novoCliente()
   await a.db.rpc('marcar_senha_trocada')

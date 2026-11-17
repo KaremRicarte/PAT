@@ -95,17 +95,7 @@ test('psicologia com "100% online" e "promover" gera normalmente', async () => {
 const TODAS = ['instagram', 'facebook', 'tiktok', 'whatsapp']
 const chamada = (deps: DepsMes) => (deps.salvar as ReturnType<typeof vi.fn>).mock.calls[0]
 
-test.each([
-  ['vazio', []], ['valor desconhecido', ['instagram', 'orkut']], ['não-array', 'instagram'], ['null', null],
-  ['número na lista', [1]],
-])('redes %s → 400', async (_, redes) => {
-  const deps = falsos()
-  expect(await gerarMesDoCliente({ estrategia: 'vender', redes }, deps))
-    .toEqual({ status: 400, corpo: { erro: 'Escolha pelo menos uma rede.' } })
-  expect(deps.salvar).not.toHaveBeenCalled()
-})
-
-test('sem redes no corpo → todas (app antigo)', async () => {
+test('cliente sem redes (ausente) → as 4', async () => {
   const deps = falsos()
   expect((await gerarMesDoCliente({ estrategia: 'vender' }, deps)).status).toBe(201)
   const [, , posts, redes] = chamada(deps)
@@ -113,36 +103,25 @@ test('sem redes no corpo → todas (app antigo)', async () => {
   expect(new Set(posts.map((p: { rede: string }) => p.rede))).toEqual(new Set(TODAS))
 })
 
-test('redes repetidas são removidas e salvar recebe só as escolhidas', async () => {
-  const deps = falsos()
-  const r = await gerarMesDoCliente({ estrategia: 'vender', redes: ['whatsapp', 'tiktok', 'whatsapp'] }, deps)
+test('usa as redes do cliente e ignora as do corpo', async () => {
+  const deps = falsos({
+    cliente: async () => ({ id: 'c1', situacao: 'ativo', senha_provisoria: false, ramo: 'ferramentas', redes: ['tiktok'] }),
+  })
+  const r = await gerarMesDoCliente({ estrategia: 'vender', redes: ['instagram'] }, deps)
   expect(r.status).toBe(201)
   const [, , posts, redes] = chamada(deps)
-  expect(redes).toEqual(['whatsapp', 'tiktok'])
-  expect(new Set(posts.map((p: { rede: string }) => p.rede))).toEqual(new Set(['whatsapp', 'tiktok']))
-  expect(r.corpo).toEqual({ id: 'm1', anoMes: '2026-11', total: posts.length })
+  expect(redes).toEqual(['tiktok'])
+  expect(new Set(posts.map((p: { rede: string }) => p.rede))).toEqual(new Set(['tiktok']))
 })
 
-test('texto do cliente com R$, "desconto" ou "off" não trava o mês (vender, itens de vitrine)', async () => {
-  const { gerarMes } = await import('../../supabase/functions/_shared/modelos/gerar.ts')
-  const { validarMes, validarPost } = await import('../../supabase/functions/_shared/modelos/validar.ts')
-  const { agendaDoMes, mesAlvo } = await import('../../supabase/functions/_shared/modelos/calendario.ts')
-  const { RAMOS } = await import('../../supabase/functions/_shared/modelos/ramos/index.ts')
-  const produtos = [
-    { id: 'p1', nome: 'Furadeira', descricao: 'a partir de R$ 1.500', preco: 99.9, preco_promo: null },
-    { id: 'p2', nome: 'Serra circular', descricao: 'desconto especial', preco: 450, preco_promo: 450 },
-    { id: 'p3', nome: 'Trena off-road', descricao: null, preco: 80, preco_promo: null },
-  ]
-  const deps = falsos({ produtos: async () => produtos })
-  const r = await gerarMesDoCliente({ estrategia: 'vender' }, deps)
-  expect(r.status).toBe(201)
-  const [anoMes, , posts] = (deps.salvar as ReturnType<typeof vi.fn>).mock.calls[0]
-  const doCliente = ['Ferragens', ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
-  expect(posts.flatMap((p: never) => validarPost(p, RAMOS.ferramentas, doCliente))).toEqual([])
-  expect(posts.filter((p: { preco_por: number | null }) => p.preco_por !== null).length).toBeGreaterThan(0)
-  const alvo = mesAlvo('2026-11-16', [])!
-  expect(anoMes).toBe(alvo.anoMes)
-  expect(validarMes(posts, agendaDoMes(alvo.anoMes, alvo.inicio, 'vender'))).toEqual([])
-  // sem descontar o texto do cliente, as regras novas pegariam esses posts
-  expect(posts.flatMap((p: never) => validarPost(p, RAMOS.ferramentas)).length).toBeGreaterThan(0)
+test.each([
+  ['vazias', [], TODAS],
+  ['inválidas', ['orkut'], TODAS],
+  ['repetidas e fora de ordem', ['whatsapp', 'tiktok', 'whatsapp'], ['tiktok', 'whatsapp']],
+])('redes do cliente %s são normalizadas', async (_, valor, esperado) => {
+  const deps = falsos({
+    cliente: async () => ({ id: 'c1', situacao: 'ativo', senha_provisoria: false, ramo: 'ferramentas', redes: valor }),
+  })
+  expect((await gerarMesDoCliente({ estrategia: 'vender' }, deps)).status).toBe(201)
+  expect(chamada(deps)[3]).toEqual(esperado)
 })

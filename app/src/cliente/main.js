@@ -28,7 +28,7 @@ async function atualizar() {
   let cliente = null, negocio = null, produtos = [], meses = []
   if (sessao) {
     const { data, error } = await supabase.from('clientes')
-      .select('id, nome, ramo, situacao, senha_provisoria').eq('id', sessao.user.id).maybeSingle()
+      .select('id, nome, ramo, redes, situacao, senha_provisoria').eq('id', sessao.user.id).maybeSingle()
     if (error) return telaErro()
     cliente = data
   }

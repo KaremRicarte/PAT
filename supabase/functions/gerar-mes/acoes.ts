@@ -8,7 +8,7 @@ import { gerarMes, type Pacote, type PostGerado } from '../_shared/modelos/gerar
 import { temPromocao, validarMes, validarPost } from '../_shared/modelos/validar.ts'
 
 export type DepsMes = {
-  cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null } | null>,
+  cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null, redes?: string[] | null } | null>,
   negocio: () => Promise<{ nome: string, insta: string | null, tom: Tom, horario: string } | null>,
   produtos: () => Promise<Pacote['produtos']>,
   mesesGerados: () => Promise<string[]>,
@@ -19,11 +19,14 @@ export type DepsMes = {
 const ESTRATEGIAS: readonly string[] = ['vender', 'crescer', 'credibilidade', 'tempo']
 const r = (status: number, erro: string): Resposta => ({ status, corpo: { erro } })
 
-// Redes escolhidas no quiz do mês. Ausente = todas (app antigo); inválido = null. Sem repetidas.
-export function lerRedes(valor: unknown): Rede[] | null {
-  if (valor === undefined) return [...REDES]
-  if (!Array.isArray(valor) || !valor.length || !valor.every((x) => (REDES as readonly unknown[]).includes(x))) return null
-  return [...new Set(valor as Rede[])]
+// Redes do cliente (definidas pela administradora), na ordem de REDES e sem repetidas.
+// Ausentes, vazias ou inválidas = todas.
+export function lerRedes(valor: unknown): Rede[] {
+  if (Array.isArray(valor)) {
+    const certas = REDES.filter((x) => valor.includes(x))
+    if (certas.length && valor.every((x) => (REDES as readonly unknown[]).includes(x))) return [...certas]
+  }
+  return [...REDES]
 }
 
 export async function gerarMesDoCliente(entrada: unknown, deps: DepsMes): Promise<Resposta> {
@@ -36,8 +39,7 @@ export async function gerarMesDoCliente(entrada: unknown, deps: DepsMes): Promis
   const e = (entrada && typeof entrada === 'object' ? entrada : {}) as Record<string, unknown>
   const estrategia = e.estrategia
   if (typeof estrategia !== 'string' || !ESTRATEGIAS.includes(estrategia)) return r(400, 'Escolha uma estratégia.')
-  const redes = lerRedes(e.redes)
-  if (!redes) return r(400, 'Escolha pelo menos uma rede.')
+  const redes = lerRedes(cliente.redes)
 
   const [negocio, produtos, gerados] = await Promise.all([deps.negocio(), deps.produtos(), deps.mesesGerados()])
   if (!negocio || !produtos.length) return r(400, 'Complete o cadastro do seu negócio antes.')
