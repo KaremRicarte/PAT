@@ -16,6 +16,11 @@ export function rotuloEstrategia(estrategia, ramo) {
 const descricaoEstrategia = (estrategia, ramo) =>
   t(estrategia === 'vender' && ramo.noPromo ? 'estrategia.contatos.desc' : `estrategia.${estrategia}.desc`)
 
+// Cartões de escolha da estratégia (atual/sugerida marcada com `selo`, se houver).
+export const cartoesEstrategia = (ramo, escolhida, aoMudar, sugerida = null) =>
+  opcoes('estrategia', ESTRATEGIAS.map((e) => [e, rotuloEstrategia(e, ramo), descricaoEstrategia(e, ramo),
+    e === sugerida ? t('mesq.sugerido') : null]), escolhida, aoMudar)
+
 export function sugestaoEstrategia(mesAnterior) {
   return mesAnterior?.estrategia ?? 'tempo'
 }
@@ -63,8 +68,7 @@ function telaEstrategia({ ctx, ramo, alvo, voltar: aoVoltar }) {
   const form = el('form', { novalidate: true, class: 'quiz' },
     el('h1', { texto: t('mesq.titulo') }),
     el('p', { class: 'muted', texto: t('mesq.dica', { mes: nomeDoMes(alvo.anoMes) }) }),
-    opcoes('estrategia', ESTRATEGIAS.map((e) => [e, rotuloEstrategia(e, ramo), descricaoEstrategia(e, ramo),
-      e === sugerida ? t('mesq.sugerido') : null]), escolhida, (v) => { escolhida = v }),
+    cartoesEstrategia(ramo, escolhida, (v) => { escolhida = v }, sugerida),
     el('div', { class: 'acoes' }, gerar, voltar, botaoSair(supabase)))
   form.addEventListener('submit', (ev) => {
     ev.preventDefault()

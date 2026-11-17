@@ -109,6 +109,27 @@ const pt = {
   'refazer.ok': '{n} posts refeitos com os itens novos.',
   'refazer.ok.um': '1 post refeito com os itens novos.',
 
+  // cartão "Este mês"
+  'este.titulo': 'Este mês',
+  'este.estrategia': 'Estratégia',
+  'este.trocar': 'Trocar',
+  'este.editar': 'Editar/Importar',
+  'este.redes': 'Redes: {redes}',
+  'este.itens.um': '1 item',
+  'este.itens.n': '{n} itens',
+  'este.semfoto': '{n} sem foto',
+  'estrat.titulo': 'Trocar a estratégia do mês',
+  'estrat.dica': 'A estratégia atual está marcada.',
+  'estrat.confirma.titulo': 'Trocar a estratégia?',
+  'estrat.confirma': 'Os {n} posts que faltam serão refeitos com a estratégia {estrategia}, inclusive os aprovados. Os já postados não mudam.',
+  'estrat.confirma.um': 'O 1 post que falta será refeito com a estratégia {estrategia}, inclusive se estiver aprovado. Os já postados não mudam.',
+  'estrat.confirma.zero': 'A estratégia do mês muda para {estrategia}.',
+  'estrat.confirma.botao': 'Trocar e refazer',
+  'estrat.confirma.botao.zero': 'Trocar',
+  'estrat.cancelar': 'Cancelar',
+  'estrat.ok': 'Estratégia trocada. {n} posts refeitos.',
+  'estrat.ok.um': 'Estratégia trocada. 1 post refeito.',
+
   // calendário
   'cal.semana': 'D,S,T,Q,Q,S,S',
   'cal.resumo': 'Resumo do mês',

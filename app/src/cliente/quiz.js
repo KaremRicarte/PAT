@@ -2,9 +2,7 @@
 // quais perguntas rodar e o que fazer ao final (aoSalvar).
 import { t } from '../textos.js'
 import { el, logo, mostrar } from '../comum.js'
-import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
-import { itensParaSalvar, normalizarInsta, salvarNegocio } from './negocio.js'
-import { pergunta, estadoDoNegocio } from './perguntas.js'
+import { pergunta } from './perguntas.js'
 
 export { opcoes } from './perguntas.js'
 
@@ -54,21 +52,4 @@ export function telaPassos({ titulo, perguntas, ctx, rotuloFinal, aoSalvar, aoCa
     })
     mostrar(logo(), form)
   }
-}
-
-export const ORDEM_QUIZ = ['nome', 'itens', 'tom', 'horario', 'marca', 'cores']
-
-// Atalho do quiz completo atual (cadastro inicial e "Editar negócio"), até as Tarefas 4/6 o substituírem.
-export function telaQuiz({ supabase, cliente, inicial, aoSalvar, aoCancelar }) {
-  const ramo = RAMOS[cliente.ramo]
-  const estado = estadoDoNegocio(inicial?.negocio, inicial?.produtos, ramo)
-  telaPassos({
-    perguntas: ORDEM_QUIZ, ctx: { ramo, estado, supabase }, rotuloFinal: t('quiz.salvar'), aoCancelar,
-    aoSalvar: async (e, aoProgredir) => {
-      await salvarNegocio(supabase, cliente.id,
-        { ...e, insta: normalizarInsta(e.insta) },
-        itensParaSalvar(e.itens, ramo), aoProgredir)
-      await aoSalvar()
-    },
-  })
 }

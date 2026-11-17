@@ -1,13 +1,12 @@
 import { t } from '../textos.js'
 import { el, logo, mostrar, telaEntrar, botaoSair, formSenha, aviso } from '../comum.js'
 import { CONTATO_ADMIN, linkWhatsApp } from '../contato.js'
-import { telaQuiz, telaPassos } from './quiz.js'
+import { telaPassos } from './quiz.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { PERGUNTAS_FIXAS, estadoDoNegocio } from './perguntas.js'
 import { salvarDadosNegocio, normalizarInsta } from './negocio.js'
 import { telaQuizMes } from './mes.js'
 import { telaCalendario } from './calendario.js'
-import { depoisDeSalvar } from './refazer.js'
 
 // ctx: { supabase, cliente, negocio, produtos, meses, atualizar, fimDaRecuperacao }
 export function desenhar(tela, ctx) {
@@ -78,7 +77,7 @@ export function desenhar(tela, ctx) {
   }
 
   if (tela === 'quiz-mes') return telaQuizMes(ctx)
-  if (tela === 'mes') return telaCalendario(ctx, editarNegocio, diaDaUrl())
+  if (tela === 'mes') return telaCalendario(ctx, diaDaUrl())
 
   // 'erro': sessão sem cadastro de cliente
   return mostrar(logo(),
@@ -92,11 +91,4 @@ function diaDaUrl() {
   if (dia === null) return undefined
   history.replaceState(null, '', location.pathname)
   return /^\d{4}-\d{2}-\d{2}$/.test(dia) ? dia : undefined
-}
-
-// Reabre o quiz preenchido; voltar recarrega o app. Salvar pergunta se quer refazer os posts que faltam
-// (só quando os itens mudaram e há posts para refazer).
-export function editarNegocio({ supabase, cliente, negocio, produtos, meses, atualizar }) {
-  telaQuiz({ supabase, cliente, inicial: { negocio, produtos },
-    aoSalvar: () => depoisDeSalvar({ supabase, cliente, produtos, meses, atualizar }), aoCancelar: atualizar })
 }

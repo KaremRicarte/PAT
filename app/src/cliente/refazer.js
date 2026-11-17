@@ -47,7 +47,7 @@ export function telaRefazer({ supabase, conta, atualizar }) {
   const refazer = async (modo) => {
     for (const b of botoes) b.disabled = true
     erro.hidden = true
-    const r = await chamar(supabase, modo)
+    const r = await chamarFuncao(supabase, 'refazer-posts', { modo })
     if (r.erro) {
       erro.textContent = r.erro
       erro.hidden = false
@@ -72,9 +72,10 @@ export function telaRefazer({ supabase, conta, atualizar }) {
     el('div', { class: 'acoes' }, botoes))
 }
 
-async function chamar(supabase, modo) {
+// Chama uma função de refazer posts: { refeitos } ou { erro } com a mensagem pronta para mostrar.
+export async function chamarFuncao(supabase, nome, body) {
   try {
-    const { data, error } = await supabase.functions.invoke('refazer-posts', { body: { modo } })
+    const { data, error } = await supabase.functions.invoke(nome, { body })
     if (!error) return { refeitos: data?.refeitos ?? 0 }
     console.error(error)
     if (error?.name === 'FunctionsFetchError' || !error?.context?.json) return { erro: t('erro.conexao') }

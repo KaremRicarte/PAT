@@ -6,9 +6,10 @@ import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.t
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto } from './situacao.js'
 import { miniatura } from '../artes/imagens.js'
-import { telaQuizMes, rotuloEstrategia, mesMostrado, preferirMes } from './mes.js'
+import { telaQuizMes, mesMostrado, preferirMes } from './mes.js'
 import { aplicarAcao } from './acoesPost.js'
 import { telaPost } from './post.js'
+import { cartaoEsteMes, telaServicos } from './esteMes.js'
 import { montarLembretes } from './lembretes.js'
 
 const SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -75,7 +76,7 @@ export async function guardarMiniatura(cache, chave, gerar) {
   return canvas
 }
 
-export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
+export async function telaCalendario(ctx, diaEscolhido) {
   const { supabase, meses } = ctx
   const vez = ++vezDoDesenho
   ctx.ramo = RAMOS[ctx.cliente.ramo]
@@ -111,7 +112,7 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
   const trocaMes = meses.length > 1
     ? el('div', { class: 'chips' }, meses.slice(0, 3).map((m) => el('button', {
       type: 'button', class: m.id === mes.id ? 'chip ativo' : 'chip', 'aria-pressed': String(m.id === mes.id),
-      texto: nomeDoMes(m.ano_mes), onclick: () => { preferirMes(m.ano_mes); telaCalendario(ctx, editarNegocio) },
+      texto: nomeDoMes(m.ano_mes), onclick: () => { preferirMes(m.ano_mes); telaCalendario(ctx) },
     })))
     : null
 
@@ -172,7 +173,7 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
 
   // Voltar da tela do post: o calendário no mesmo dia, com o foco no cartão do post.
   const abrirPost = (post) => telaPost(ctx, post, async () => {
-    await telaCalendario(ctx, editarNegocio, post.data)
+    await telaCalendario(ctx, post.data)
     const cartao = document.querySelector(`[data-post="${post.id}"]`)
     cartao?.focus({ preventScroll: true })
     cartao?.scrollIntoView({ block: 'center' })
@@ -237,7 +238,7 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
       el('div', { class: 'acoes-linha' },
         el('button', { type: 'button', class: 'secundario', texto: t('lembrete.agoranao'),
           onclick: () => { adiarAvisoFotos(); avisoFotos.remove(); botoesDia.get(escolhido)?.focus(); aviso(t('fotos.adiado')) } }),
-        el('button', { type: 'button', texto: t('fotos.aviso.botao'), onclick: () => editarNegocio(ctx) })))
+        el('button', { type: 'button', texto: t('fotos.aviso.botao'), onclick: () => telaServicos(ctx) })))
   }
 
   // ---------- lembretes: o sino no topo e o aviso entre o resumo e a grade (chegam depois) ----------
@@ -255,7 +256,7 @@ export async function telaCalendario(ctx, editarNegocio, diaEscolhido) {
         sino, botaoSair(supabase))),
     trocaMes,
     el('h1', { texto: t('mes.titulo', { mes: nomeDoMes(mes.ano_mes) }) }),
-    el('p', {}, el('span', { class: 'selo neutro', texto: rotuloEstrategia(mes.estrategia, ctx.ramo) })),
+    cartaoEsteMes(ctx, mes),
     el('div', { class: 'acoes' }, proximo),
     dicas,
     resumo,
