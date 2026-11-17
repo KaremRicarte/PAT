@@ -53,12 +53,14 @@ test('opcoesDeFoto: com sem_foto num ramo textOnly, nenhuma foto é a atual', ()
 // ---------- gravarEscolhaDeFoto ----------
 // supabase falso: guarda os uploads e os updates; o update devolve o post já mudado.
 function falso({ erroUpload = null } = {}) {
-  const uploads = [], updates = []
+  const uploads = [], updates = [], apagadas = []
   const supabase = {
     storage: { from: (bucket) => ({ upload: async (caminho, blob, opcoes) => { uploads.push({ bucket, caminho, blob, opcoes }); return { error: erroUpload } } }) },
-    from: () => ({ update: (mudanca) => ({ eq: () => ({ select: () => ({ single: async () => { updates.push(mudanca); return { data: mudanca, error: null } } }) }) }) }),
+    from: (tabela) => (tabela === 'fotos_ia'
+      ? { delete: () => ({ eq: async (coluna, valor) => { apagadas.push([coluna, valor]); return { error: null } } }) }
+      : { update: (mudanca) => ({ eq: () => ({ select: () => ({ single: async () => { updates.push(mudanca); return { data: mudanca, error: null } } }) }) }) }),
   }
-  return { supabase, uploads, updates }
+  return { supabase, uploads, updates, apagadas }
 }
 
 test('foto nova: reduz para JPEG, sobe para a pasta do post e grava o caminho', async () => {
@@ -204,4 +206,34 @@ test('o texto mudou no aparelho enquanto a IA escrevia (ex.: Gerar outro): a res
   await gravarEscolhaDeFoto({ supabase, uid: 'u1', post, escolha: { foto_path: 'u1/produtos/c.jpg' }, aoMudarTexto })
   expect(post.legenda).toBe('do Gerar outro')
   expect(aoMudarTexto).not.toHaveBeenCalled()
+})
+
+test('foto nova no mesmo caminho: a análise antiga sai (banco e mapa) e uma nova é pedida', async () => {
+  reduzirFoto.mockResolvedValueOnce({})
+  const { supabase, apagadas, updates } = falso()
+  const chamadas = []
+  supabase.functions = { invoke: async (nome, opcoes) => { chamadas.push({ nome, opcoes }); return { data: { post: null }, error: null } } }
+  const fotosInfo = new Map([['u1/posts/r7.jpg', { serve: false, motivo: 'escura' }], ['u1/produtos/a.jpg', { serve: true }]])
+  const post = POST_GERADO('r7')
+  expect(await gravarEscolhaDeFoto({ supabase, uid: 'u1', post, escolha: { arquivo: {} }, fotosInfo })).toBe(true)
+  expect(apagadas).toEqual([['path', 'u1/posts/r7.jpg']])
+  expect([...fotosInfo.keys()]).toEqual(['u1/produtos/a.jpg'])
+  expect(updates).toEqual([{ foto_path: 'u1/posts/r7.jpg', sem_foto: false }])
+  expect(chamadas).toContainEqual({ nome: 'descrever-fotos', opcoes: { body: { paths: ['u1/posts/r7.jpg'] } } })
+})
+
+test('apagar a análise antiga falhou: a troca segue mesmo assim', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  reduzirFoto.mockResolvedValueOnce({})
+  const { supabase, updates } = falso()
+  const original = supabase.from
+  supabase.from = (tabela) => (tabela === 'fotos_ia' ? { delete: () => ({ eq: async () => { throw new Error('offline') } }) } : original(tabela))
+  expect(await gravarEscolhaDeFoto({ supabase, uid: 'u1', post: { id: 'r8', foto_path: null, sem_foto: false }, escolha: { arquivo: {} } })).toBe(true)
+  expect(updates).toEqual([{ foto_path: 'u1/posts/r8.jpg', sem_foto: false }])
+})
+
+test('foto escolhida da lista (não enviada): nada de apagar análise', async () => {
+  const { supabase, apagadas } = falso()
+  await gravarEscolhaDeFoto({ supabase, uid: 'u1', post: { id: 'r9', foto_path: null, sem_foto: false }, escolha: { foto_path: 'u1/produtos/c.jpg' } })
+  expect(apagadas).toEqual([])
 })

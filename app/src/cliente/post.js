@@ -330,7 +330,7 @@ export function telaPost(ctx, post, aoVoltar) {
       if (!arte.isConnected) return ctx.aoMudarPost?.(post)
       desenharTudo()
     }
-    const ok = await gravarEscolhaDeFoto({ supabase, uid: ctx.cliente.id, post, escolha, aoMudar: aoMudarFoto, aoEscrevendo, aoMudarTexto })
+    const ok = await gravarEscolhaDeFoto({ supabase, uid: ctx.cliente.id, post, escolha, aoMudar: aoMudarFoto, aoEscrevendo, aoMudarTexto, fotosInfo: ctx.fotosInfo })
     if (ok) aviso(t(escolha.sem_foto ? (textoNovo ? 'foto.tirada.reescrita' : 'foto.tirada') : (textoNovo ? 'foto.reescrita' : 'foto.trocada')))
   }
   const trocarImagem = () => abrirTrocaDeFoto({ supabase, post, produtos: ctx.produtos, ramo: ctx.ramo, fotosInfo: ctx.fotosInfo, aoEscolher: escolherFoto })

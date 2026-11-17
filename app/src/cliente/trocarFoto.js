@@ -100,8 +100,9 @@ const enviando = new Set() // posts com uma foto nova ainda subindo
 // Foto nova: reduz no aparelho, envia para ${uid}/posts/${id}.jpg e esquece a imagem velha do cache.
 // Depois de gravar, a IA reescreve a legenda para a foto (reescreverLegenda: aoEscrevendo e aoMudarTexto).
 // Devolve true quando a foto gravou.
-export async function gravarEscolhaDeFoto({ supabase, uid, post, escolha, aoMudar, aoEscrevendo, aoMudarTexto }) {
-  const ok = await gravarFoto({ supabase, uid, post, escolha, aoMudar })
+// fotosInfo (o Map de ctx.fotosInfo): a análise da foto antiga do mesmo caminho sai dele.
+export async function gravarEscolhaDeFoto({ supabase, uid, post, escolha, aoMudar, aoEscrevendo, aoMudarTexto, fotosInfo }) {
+  const ok = await gravarFoto({ supabase, uid, post, escolha, aoMudar, fotosInfo })
   if (ok) await reescreverLegenda({ supabase, post, aoEscrevendo, aoMudarTexto })
   return ok
 }
@@ -132,7 +133,24 @@ export async function reescreverLegenda({ supabase, post, aoEscrevendo, aoMudarT
   }
 }
 
-async function gravarFoto({ supabase, uid, post, escolha, aoMudar }) {
+// Foto nova no mesmo caminho: a análise da foto anterior (fotos_ia) não vale mais. Apaga a linha (o cliente pode
+// apagar as dele) e pede uma análise nova em segundo plano (spec §7 item 10). Nada disso impede a troca.
+async function esquecerAnalise(supabase, caminho, fotosInfo) {
+  fotosInfo?.delete?.(caminho)
+  try {
+    const { error } = await supabase.from('fotos_ia').delete().eq('path', caminho)
+    if (error) console.error(error)
+  } catch (e) {
+    console.error(e)
+  }
+}
+function pedirAnalise(supabase, caminho) {
+  if (!supabase.functions?.invoke) return
+  Promise.resolve(supabase.functions.invoke('descrever-fotos', { body: { paths: [caminho] } }))
+    .catch((e) => console.error(e))
+}
+
+async function gravarFoto({ supabase, uid, post, escolha, aoMudar, fotosInfo }) {
   // Com outra gravação do post em andamento, gravarMudanca ignoraria esta: avisa em vez de ficar em silêncio.
   const gravar = (mudanca) => {
     if (postOcupado(post)) { aviso(t('post.aguarde')); return false }
@@ -161,7 +179,10 @@ async function gravarFoto({ supabase, uid, post, escolha, aoMudar }) {
       return false
     }
     esquecerImagem(caminho) // mesmo caminho, imagem nova: o cache não pode devolver a antiga
-    return await gravar({ foto_path: caminho, sem_foto: false })
+    await esquecerAnalise(supabase, caminho, fotosInfo)
+    const ok = await gravar({ foto_path: caminho, sem_foto: false })
+    pedirAnalise(supabase, caminho) // a foto já está no Storage: vale analisar mesmo se o post não gravou
+    return ok
   } finally {
     enviando.delete(post.id)
   }
