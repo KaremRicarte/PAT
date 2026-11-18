@@ -34,10 +34,13 @@ function deps(o: Partial<DepsImagens> = {}): DepsImagens {
     buscarPexels: async () => [],
     buscarPixabay: async () => [],
     idsUsados: async () => [],
+    palavras: async () => ({ busca_pt: 'mesa posta', busca_en: 'table setting', prompt_imagem: 'a set table' }),
+    gerar: null,
+    geradasNoMes: async () => 0,
     ...o,
   }
 }
-const base = { clienteId: 'c1', ramo: 'salao', temaDoPost: 'unhas', fotosDoCliente: [], hoje: '2026-11-17' }
+const base = { clienteId: 'c1', ramo: 'salao', temaDoPost: 'unhas', fotosDoCliente: [], hoje: '2026-11-17', formato: 'feed' as const }
 
 describe('escolherImagemGeral', () => {
   it('foto do cliente vem primeiro, escolhida pela descrição; reprovada nunca', async () => {
@@ -92,6 +95,79 @@ describe('escolherImagemGeral', () => {
   })
   it('tudo vazio -> null', async () => {
     expect(await escolherImagemGeral(deps(), base)).toBeNull()
+  })
+})
+
+describe('escolherImagemGeral: palavras-chave, aproximação e geração', () => {
+  const nova = { id: 'x1', url: 'u', autor: 'A' }
+  it('Pixabay recebe as palavras-chave, não o tema', async () => {
+    const termos: string[] = []
+    await escolherImagemGeral(deps({ buscarPixabay: async (t) => { termos.push(t); return [] } }), base)
+    expect(termos[0]).toBe('mesa posta')
+  })
+  it('busca em inglês quando o português não traz nada novo', async () => {
+    const termos: string[] = []
+    const r = await escolherImagemGeral(deps({
+      buscarPixabay: async (t) => { termos.push(t); return t === 'table setting' ? [nova] : [] },
+    }), base)
+    expect(r?.origem).toBe('pixabay')
+    expect(termos).toEqual(['mesa posta', 'table setting'])
+  })
+  it('palavras null: busca com o tema e não gera', async () => {
+    const termos: string[] = []
+    let gerou = false
+    const r = await escolherImagemGeral(deps({
+      palavras: async () => null,
+      buscarPixabay: async (t) => { termos.push(t); return [] },
+      gerar: async () => { gerou = true; return { id: 'g', url: 'u' } },
+    }), base)
+    expect(termos).toEqual(['unhas'])
+    expect(gerou).toBe(false)
+    expect(r).toBeNull()
+  })
+  it('gera quando nada serve', async () => {
+    const chamadas: unknown[][] = []
+    const r = await escolherImagemGeral(deps({
+      gerar: async (...a) => { chamadas.push(a); return { id: 'g1', url: 'https://v3b.fal.media/x.jpg' } },
+    }), base)
+    expect(r).toMatchObject({ origem: 'gerada', path: 'https://v3b.fal.media/x.jpg', descricao: 'a set table', externo: { id: 'g1' } })
+    expect(chamadas).toEqual([['a set table', 'feed']])
+  })
+  it('limite de geradas: não gera', async () => {
+    let gerou = false
+    const r = await escolherImagemGeral(deps({
+      geradasNoMes: async () => 20, gerar: async () => { gerou = true; return { id: 'g', url: 'u' } },
+    }), base)
+    expect(gerou).toBe(false)
+    expect(r).toBeNull()
+  })
+  it('erro ao contar as geradas: não gera', async () => {
+    let gerou = false
+    const r = await escolherImagemGeral(deps({
+      geradasNoMes: async () => { throw new Error('rpc') }, gerar: async () => { gerou = true; return { id: 'g', url: 'u' } },
+    }), base)
+    expect(gerou).toBe(false)
+    expect(r).toBeNull()
+  })
+  it('palavras não é chamada quando a foto do cliente serve', async () => {
+    let chamou = false
+    const r = await escolherImagemGeral(deps({ palavras: async () => { chamou = true; return null } }),
+      { ...base, fotosDoCliente: [{ path: 'f.jpg', descricao: 'x', serve: true }] })
+    expect(r?.origem).toBe('cliente')
+    expect(chamou).toBe(false)
+  })
+  it('aproximação: Minhas fotos primeiro, descrição prefixada, tema com sufixo, uma só chamada', async () => {
+    const chamadas: { ids: string[], descs: (string | undefined)[], tema: string }[] = []
+    await escolherImagemGeral(deps({
+      escolher: async (c, tema) => { chamadas.push({ ids: c.map((x) => x.id), descs: c.map((x) => x.descricao), tema }); return null },
+    }), { ...base, aproximacao: true, fotosDoCliente: [
+      { path: 'p.jpg', descricao: 'produto', serve: true, doNegocio: false },
+      { path: 'n.jpg', descricao: 'fachada', serve: true, doNegocio: true },
+    ] })
+    expect(chamadas).toHaveLength(1)
+    expect(chamadas[0].ids).toEqual(['n.jpg', 'p.jpg'])
+    expect(chamadas[0].descs[0]!.startsWith('Foto do próprio negócio: ')).toBe(true)
+    expect(chamadas[0].tema.endsWith('(post de aproximação: prefira uma foto do próprio negócio)')).toBe(true)
   })
 })
 

@@ -3,6 +3,7 @@ import {
   type Contexto, type DepsMelhorar, type LinhaFotoIA, type PostDaFila,
 } from '../../supabase/functions/melhorar-posts/acoes.ts'
 import { ESQUEMA_POST, type ChamarIA, type PedidoIA, type RespostaIA } from '../../supabase/functions/_shared/ia/escrever.ts'
+import { ESQUEMA_PALAVRAS } from '../../supabase/functions/_shared/ia/palavras.ts'
 import { ESQUEMA_FOTO } from '../../supabase/functions/_shared/ia/descrever.ts'
 import type { RegistroUso } from '../../supabase/functions/_shared/ia/uso.ts'
 
@@ -17,6 +18,8 @@ const TEXTO_IA = {
   hashtags: ['#escovaprogressiva'],
   roteiro: 'Como montar: a foto inteira, com o título por cima.',
 }
+const PALAVRAS = { busca_pt: 'mesa posta', busca_en: 'table setting', prompt_imagem: 'a set table' }
+const GERADA = { id: 'g1', url: 'https://v3b.fal.media/g1.jpg', largura: 864, altura: 1080, bloqueada: false }
 const ok = (dados: unknown): RespostaIA => ({ ok: true, dados, tokensEntrada: 1000, tokensSaida: 100 })
 
 const post = (extra: Partial<PostDaFila> = {}): PostDaFila => ({
@@ -49,6 +52,10 @@ type Opcoes = {
   // relógio falso (ms); cada chamada à IA pode avançá-lo
   relogio?: { t: number },
   duracaoChamada?: number,
+  // imagem gerada devolvida por deps.gerarImagem (null = a geração falhou; omitido = sem chave, gerarImagem null)
+  gerada?: typeof GERADA | null,
+  geradas?: number,
+  palavras?: (p: PedidoIA) => RespostaIA,
 }
 
 function montar(o: Opcoes = {}) {
@@ -62,6 +69,7 @@ function montar(o: Opcoes = {}) {
   const usadas: [string, string][] = []
   const tempos: number[] = []
   const buscas: string[] = []
+  const geracoes: [string, string, number][] = []
   const relogio = o.relogio ?? { t: 0 }
   const chamar: ChamarIA = async (p) => {
     pedidos.push(p)
@@ -69,6 +77,7 @@ function montar(o: Opcoes = {}) {
     if (p.esquema === ESQUEMA_POST) return (o.escrever ?? (() => ok(TEXTO_IA)))(p)
     if (p.esquema === ESQUEMA_FOTO) return (o.descrever ?? (() => ok({ descricao: 'Cabelo liso e brilhante.', serve: true, motivo: null })))(p)
     if (p.esquema === ESQUEMA_ESCOLHA) return (o.escolher ?? (() => ok({ id: null })))(p)
+    if (p.esquema === ESQUEMA_PALAVRAS) return (o.palavras ?? (() => ok(PALAVRAS)))(p)
     throw new Error('pedido inesperado')
   }
   const deps: DepsMelhorar = {
@@ -85,6 +94,8 @@ function montar(o: Opcoes = {}) {
     buscarPexels: async () => { buscas.push('pexels'); return o.pexels ?? [] },
     buscarPixabay: async () => [],
     idsUsados: async () => [],
+    gerarImagem: o.gerada === undefined ? null : async (prompt, formato, ms) => { geracoes.push([prompt, formato, ms]); return o.gerada! },
+    geradasNoMes: async () => o.geradas ?? 0,
     copiarExterna: async (cliente, origem, e) => { copias.push(e.url); return `${cliente}/banco/${origem}-${e.id}.jpg` },
     copiarDoBanco: async (cliente, path) => { copias.push(path); return `${cliente}/banco/banco-${path.split('/').pop()}` },
     registrarUsada: async (cliente, path) => { usadas.push([cliente, path]) },
@@ -92,7 +103,7 @@ function montar(o: Opcoes = {}) {
     marcar: async (p, estado) => { marcados.push({ id: p.id, estado }) },
     hoje: () => '2026-11-17',
   }
-  return { deps, pedidos, usos, gravados, marcados, fotosGravadas, urls, copias, usadas, tempos, buscas }
+  return { deps, pedidos, usos, gravados, marcados, fotosGravadas, urls, copias, usadas, tempos, buscas, geracoes }
 }
 
 const imagensDo = (p: PedidoIA) => p.conteudo.filter((c) => c.tipo === 'imagem').map((c) => (c as { url: string }).url)
@@ -228,7 +239,7 @@ describe('melhorarUmPost', () => {
       autor: 'Ana', descricao: 'salão claro', serve: true, motivo: null })
     // a IA escreve vendo a cópia, não a URL externa
     expect(imagensDo(m.pedidos.find((p) => p.esquema === ESQUEMA_POST)!)).toEqual([`https://assinada/${path}`])
-    expect(m.usos.map((u) => u.tipo)).toEqual(['imagem', 'post'])
+    expect(m.usos.map((u) => u.tipo)).toEqual(['imagem', 'imagem', 'post']) // palavras-chave + escolha
   })
 
   test('post geral: foto do banco próprio é copiada e registrada em fotos_usadas', async () => {
@@ -394,6 +405,107 @@ describe('sem foto e ramos só de texto', () => {
     const m = montar({ ctx: psico(), info: { [`${UID}/produtos/a.jpg`]: { descricao: 'Sala.', serve: true } }, escrever: () => ok(TEXTO_PSICO) })
     expect(await melhorarUmPost(m.deps, post())).toBe('pronto')
     expect(m.gravados[0].campos.foto_path).toBe(`${UID}/produtos/a.jpg`)
+  })
+})
+
+describe('imagem gerada, aproximação e imagem ilustrativa', () => {
+  const geral = () => contexto({ produtos: [] })
+  const pg = (extra: Partial<PostDaFila> = {}) => post({ produto_id: null, ...extra })
+  const escrita = (m: ReturnType<typeof montar>) => JSON.stringify(m.pedidos.find((p) => p.esquema === ESQUEMA_POST))
+
+  test('post geral sem foto nenhuma gera: copia como gerada, grava a foto e o uso, escreve com imagem ilustrativa', async () => {
+    const m = montar({ ctx: geral(), gerada: GERADA })
+    expect(await melhorarUmPost(m.deps, pg())).toBe('pronto')
+    const path = `${UID}/banco/gerada-g1.jpg`
+    expect(m.copias).toEqual([GERADA.url])
+    expect(m.fotosGravadas).toContainEqual({ path, cliente_id: UID, origem: 'gerada', ramo: 'beleza', externo_id: 'g1',
+      autor: null, descricao: 'a set table', serve: true, motivo: null })
+    expect(m.usos).toContainEqual({ clienteId: UID, tipo: 'gerada', tokensEntrada: 0, tokensSaida: 0, custoUsd: 0.003 })
+    expect(m.gravados[0].campos.foto_path).toBe(path)
+    expect(escrita(m)).toContain('imagem ilustrativa')
+  })
+
+  test('bloqueada: registra o uso, não copia nada e grava só texto', async () => {
+    const m = montar({ ctx: geral(), gerada: { ...GERADA, bloqueada: true } })
+    expect(await melhorarUmPost(m.deps, pg())).toBe('pronto')
+    expect(m.usos.filter((u) => u.tipo === 'gerada')).toHaveLength(1)
+    expect(m.copias).toEqual([])
+    expect(m.gravados[0].campos.foto_path).toBeNull()
+  })
+
+  test('sem chave de geração (gerarImagem null): só texto e nenhum uso gerada', async () => {
+    const m = montar({ ctx: geral() })
+    expect(await melhorarUmPost(m.deps, pg())).toBe('pronto')
+    expect(m.gravados[0].campos.foto_path).toBeNull()
+    expect(m.usos.filter((u) => u.tipo === 'gerada')).toEqual([])
+  })
+
+  test('geração que falha (null): só texto e nenhum uso gerada', async () => {
+    const m = montar({ ctx: geral(), gerada: null })
+    expect(await melhorarUmPost(m.deps, pg())).toBe('pronto')
+    expect(m.geracoes).toHaveLength(1)
+    expect(m.usos.filter((u) => u.tipo === 'gerada')).toEqual([])
+  })
+
+  test('limite de geradas no mês: não gera', async () => {
+    const m = montar({ ctx: geral(), gerada: GERADA, geradas: 20 })
+    expect(await melhorarUmPost(m.deps, pg())).toBe('pronto')
+    expect(m.geracoes).toEqual([])
+  })
+
+  test('post de serviço sem fotos: não gera', async () => {
+    const m = montar({ gerada: GERADA, ctx: contexto({ produtos: [{ id: 's1', nome: 'Escova', descricao: null, fotos: [], foto_path: null }] }) })
+    expect(await melhorarUmPost(m.deps, post())).toBe('pronto')
+    expect(m.geracoes).toEqual([])
+  })
+
+  test('ramo só de texto: nunca gera', async () => {
+    const m = montar({ gerada: GERADA, ctx: contexto({ ramo: 'psicologia', produtos: [] }) })
+    expect(await melhorarUmPost(m.deps, pg())).toBe('pronto')
+    expect(m.geracoes).toEqual([])
+  })
+
+  test('formato: feed gera feed; stories gera vertical; o tempo da geração é no máximo 30 s', async () => {
+    const m = montar({ ctx: geral(), gerada: GERADA })
+    await melhorarUmPost(m.deps, pg())
+    const m2 = montar({ ctx: geral(), gerada: GERADA })
+    await melhorarUmPost(m2.deps, pg({ tipo: 'stories' }))
+    expect(m.geracoes).toEqual([['a set table', 'feed', 30_000]])
+    expect(m2.geracoes).toEqual([['a set table', 'vertical', 30_000]])
+  })
+
+  test('pouco tempo antes da geração: adiado e não gera', async () => {
+    // sobra RESERVA_ESCRITA_MS + MARGEM_MS + 9_000: dá para as chamadas de IA (15 s mínimas), mas não para gerar (10 s)
+    const m = montar({ ctx: geral(), gerada: GERADA, relogio: { t: 0 } })
+    expect(await melhorarUmPost(m.deps, pg(), 45_000 + 5_000 + 9_000)).toBe('adiado')
+    expect(m.geracoes).toEqual([])
+    expect(m.marcados).toEqual([{ id: 'p1', estado: 'fila' }])
+  })
+
+  test('pilar aprox: a escolha recebe a foto de Minhas fotos antes da foto de produto', async () => {
+    const minha = `${UID}/negocio/f.jpg`, prod = `${UID}/produtos/a.jpg`
+    const m = montar({
+      ctx: contexto({ negocio: { nome: 'Studio Lia', insta: null, tom: 'proximo', fotos: [minha] } }),
+      info: { [prod]: { descricao: 'Produto.', serve: true }, [minha]: { descricao: 'Fachada.', serve: true } },
+    })
+    await melhorarUmPost(m.deps, pg({ pilar: 'aprox' }))
+    const e = JSON.stringify(m.pedidos.find((p) => p.esquema === ESQUEMA_ESCOLHA))
+    expect(e.indexOf(minha)).toBeGreaterThan(-1)
+    expect(e.indexOf(minha)).toBeLessThan(e.indexOf(prod))
+    expect(e).toContain('Foto do próprio negócio: Fachada.')
+  })
+
+  test('imagem do banco ou do Pexels é ilustrativa; foto do cliente não', async () => {
+    const m = montar({ ctx: geral(), banco: [{ path: 'beleza/b1.jpg', descricao: 'Pincéis.', serve: true }], escolher: () => ok({ id: 'beleza/b1.jpg' }) })
+    await melhorarUmPost(m.deps, pg())
+    expect(escrita(m)).toContain('imagem ilustrativa')
+    const minha = `${UID}/negocio/f.jpg`
+    const m2 = montar({
+      ctx: contexto({ produtos: [], negocio: { nome: 'Studio Lia', insta: null, tom: 'proximo', fotos: [minha] } }),
+      info: { [minha]: { descricao: 'Fachada.', serve: true } }, escolher: () => ok({ id: minha }),
+    })
+    await melhorarUmPost(m2.deps, pg())
+    expect(escrita(m2)).not.toContain('imagem ilustrativa')
   })
 })
 

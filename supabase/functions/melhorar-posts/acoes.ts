@@ -5,12 +5,14 @@ import type { Estrategia, Pilar, Rede, Tom } from '../_shared/modelos/tipos.ts'
 import type { PostGerado } from '../_shared/modelos/gerar.ts'
 import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import { escreverPost, type CamposDaIA, type ChamarIA, type ConteudoIA } from '../_shared/ia/escrever.ts'
-import { caminhoSeguro, fotosDoProduto, montarEntradaPost, SEM_DESCRICAO } from '../_shared/ia/entrada.ts'
+import { caminhoSeguro, fotoIlustrativa, fotosDoProduto, montarEntradaPost, SEM_DESCRICAO } from '../_shared/ia/entrada.ts'
+import { criarPalavras } from '../_shared/ia/palavras.ts'
 import { descreverFoto } from '../_shared/ia/descrever.ts'
 import {
   escolherImagemGeral, fotoDoLugar, temaDaImagem,
   type DepsImagens, type FotosInfo, type ImagemEscolhida,
 } from '../_shared/ia/imagens.ts'
+import { custoImagemGerada } from '../_shared/ia/custo.ts'
 import { comLimiteEUso, LIMITE_MENSAL, type RegistroUso, type TipoUso } from '../_shared/ia/uso.ts'
 import { INSTRUCOES_ESCOLHA } from '../_shared/ia/instrucoes.ts'
 
@@ -34,15 +36,18 @@ export type Contexto = {
 }
 export type InfoFoto = { descricao: string | null, serve: boolean | null }
 export type LinhaFotoIA = {
-  path: string, cliente_id: string, origem: 'cliente' | 'banco' | 'pexels' | 'pixabay', ramo: string | null,
-  externo_id?: string, autor?: string, descricao: string, serve: boolean, motivo: string | null,
+  path: string, cliente_id: string, origem: 'cliente' | 'banco' | 'pexels' | 'pixabay' | 'gerada', ramo: string | null,
+  externo_id?: string, autor?: string | null, descricao: string, serve: boolean, motivo: string | null,
 }
 export type CamposGravados = CamposDaIA & { foto_path: string | null, origem: 'ia', ia_estado: 'pronto' }
 // adiado = sem tempo nesta execução: volta para a fila, intacto, para a próxima
 // ocupado = a API está sobrecarregada (429, 529, 5xx): volta para a fila e a execução não pega mais lotes
 export type Resultado = 'pronto' | 'desistiu' | 'cliente-mexeu' | 'adiado' | 'ocupado'
 
-export type DepsMelhorar = Omit<DepsImagens, 'escolher'> & {
+export type DepsMelhorar = Omit<DepsImagens, 'escolher' | 'palavras' | 'gerar'> & {
+  // Gera a imagem (fal.ai) em até `timeoutMs`; null = sem chave ou falhou. `bloqueada` = filtro de conteúdo do provedor.
+  gerarImagem: ((prompt: string, formato: 'feed' | 'vertical', timeoutMs: number) =>
+    Promise<{ id: string, url: string, largura: number, altura: number, bloqueada: boolean } | null>) | null,
   // null = sem ANTHROPIC_API_KEY: nada de IA, o post desiste (fica o modelo e a faixa "Melhorando…" termina).
   // Recebe o tempo máximo da chamada (cortado pelo prazo da execução).
   chamar: ((timeoutMs: number) => ChamarIA) | null,
@@ -57,7 +62,7 @@ export type DepsMelhorar = Omit<DepsImagens, 'escolher'> & {
   // URL assinada no bucket marcas; null se o arquivo não existe
   urlAssinada: (path: string) => Promise<string | null>,
   gravarFoto: (linha: LinhaFotoIA) => Promise<void>,
-  copiarExterna: (clienteId: string, origem: 'pexels' | 'pixabay', externa: { id: string, url: string }) => Promise<string | null>,
+  copiarExterna: (clienteId: string, origem: 'pexels' | 'pixabay' | 'gerada', externa: { id: string, url: string }) => Promise<string | null>,
   copiarDoBanco: (clienteId: string, pathNoBanco: string) => Promise<string | null>,
   // fotos_usadas (janela de 90 dias do banco próprio)
   registrarUsada: (clienteId: string, pathNoBanco: string) => Promise<void>,
@@ -181,6 +186,19 @@ async function melhorarComPrazo(
   const chamarImagem = chamada('imagem', RESERVA_ESCRITA_MS)
   const chamarPost = chamada('post', 0)
 
+  // Imagem gerada: o tempo da chamada é cortado pelo prazo (sem tempo, o post é adiado); o custo é registrado
+  // mesmo se o provedor bloqueou o conteúdo.
+  const gerar: DepsImagens['gerar'] = deps.gerarImagem ? async (prompt, formato) => {
+    const ms = Math.min(30_000, restante() - RESERVA_ESCRITA_MS - MARGEM_MS)
+    if (ms < 10_000) throw new SemTempo()
+    const g = await deps.gerarImagem!(prompt, formato, ms)
+    if (!g) return null
+    try {
+      await deps.registrarUso({ clienteId, tipo: 'gerada', tokensEntrada: 0, tokensSaida: 0, custoUsd: custoImagemGerada(g.largura, g.altura) })
+    } catch (e) { console.error('melhorar-posts: não consegui registrar o uso da imagem gerada', e) }
+    return g.bloqueada ? null : { id: g.id, url: g.url }
+  } : null
+
   const produtos = ctx.produtos.map((p) => ({ ...p, fotos: fotosDoProduto(p).filter(doCliente), foto_path: null }))
   const produto = post.produto_id ? produtos.find((p) => p.id === post.produto_id) ?? null : null
   const minhasFotos = (negocio.fotos ?? []).filter(doCliente)
@@ -226,7 +244,7 @@ async function melhorarComPrazo(
       break
     }
   } else if (!soTexto) {
-    // post de tema geral: fotos do cliente -> banco próprio -> Pexels -> Pixabay -> só texto
+    // post de tema geral: fotos do cliente -> banco próprio -> Pexels -> Pixabay -> imagem gerada -> só texto
     let descrever = DESCREVER_POR_POST
     for (const p of candidatas) {
       if (info[p]?.descricao || descrever <= 0) continue
@@ -234,9 +252,13 @@ async function melhorarComPrazo(
       await descrita(p)
     }
     const fotosDoCliente = candidatas.filter((p) => info[p]?.descricao)
-      .map((p) => ({ path: p, descricao: info[p].descricao as string, serve: info[p].serve !== false }))
-    const escolhida = await escolherImagemGeral({ ...deps, escolher: criarEscolher(chamarImagem) }, {
+      .map((p) => ({ path: p, descricao: info[p].descricao as string, serve: info[p].serve !== false, doNegocio: minhasFotos.includes(p) }))
+    const palavras = criarPalavras(chamarImagem)
+    const escolhida = await escolherImagemGeral({
+      ...deps, escolher: criarEscolher(chamarImagem), palavras: (tema) => palavras(tema, ramo), gerar,
+    }, {
       clienteId, ramo, temaDoPost: temaDaImagem(post), fotosDoCliente, hoje: deps.hoje(),
+      aproximacao: post.pilar === 'aprox', formato: post.tipo === 'feed' ? 'feed' : 'vertical',
     })
     if (escolhida) foto = await trazerParaOCliente(deps, clienteId, ramo, escolhida)
   }
@@ -246,7 +268,7 @@ async function melhorarComPrazo(
 
   const entrada = montarEntradaPost(
     { ramo, estrategia: ctx.estrategia as Estrategia, negocio, produtos: ctx.produtos },
-    post, foto && url ? { url, descricao: foto.descricao } : null)
+    post, foto && url ? { url, descricao: foto.descricao, ilustrativa: fotoIlustrativa(clienteId, foto.path) } : null)
   const escrito = await escreverPost(chamarPost, entrada)
   if (!escrito) return desistir()
 
@@ -275,7 +297,7 @@ async function trazerParaOCliente(
     if (!path) return null
     // guarda a origem, o id e o autor: é o que impede a mesma foto de ir para outro cliente
     await deps.gravarFoto({ path, cliente_id: clienteId, origem: e.origem, ramo, externo_id: e.externo.id,
-      autor: e.externo.autor, descricao: e.descricao, serve: true, motivo: null })
+      autor: e.origem === 'gerada' ? null : e.externo.autor, descricao: e.descricao, serve: true, motivo: null })
     return { path, descricao: e.descricao }
   } catch (erro) {
     // ex.: outro cliente pegou a mesma foto ao mesmo tempo (unique de fotos_ia): segue só com texto

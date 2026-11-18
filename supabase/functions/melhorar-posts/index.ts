@@ -98,6 +98,12 @@ function criarDeps(): { deps: DepsMelhorar, pegar: (n: number) => Promise<PostDa
         if ((linhas ?? []).length < PAGINA) return ids
       }
     },
+    // a imagem gerada (fal.ai) entra na Etapa seguinte; sem adaptador, nada é gerado
+    gerarImagem: null,
+    async geradasNoMes(clienteId) {
+      const n = await ler<number>(db.rpc('uso_ia_geradas_no_mes', { p_cliente: clienteId }))
+      return Number(n ?? 0)
+    },
     copiarExterna: (clienteId, origem, externa) => copiarExterna(db, clienteId, origem, externa),
     copiarDoBanco: (clienteId, path) => copiarDoBanco(db, clienteId, path),
     async registrarUsada(clienteId, path) {

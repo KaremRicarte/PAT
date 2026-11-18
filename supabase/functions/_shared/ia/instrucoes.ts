@@ -82,3 +82,12 @@ export const INSTRUCOES_ESCOLHA = `Você escolhe a imagem de um post de rede soc
 Escolha a candidata que melhor ilustra o tema e que pareça profissional: nítida, bem iluminada, sem texto, logotipo ou marca d'água de terceiros dominando, e sem pessoas desconhecidas em destaque. Prefira imagens que combinem com o ramo do negócio. Se nenhuma servir de verdade para o tema, devolva id null: um post só com texto é melhor que uma imagem que não combina.
 
 Devolva somente o id exatamente como recebido, no formato pedido.`
+
+export const INSTRUCOES_PALAVRAS = `Você prepara a busca de uma imagem para um post de rede social de um pequeno negócio brasileiro. Recebe o ramo do negócio e o tema do post.
+
+Devolva três campos:
+- busca_pt: 2 a 3 palavras em português para buscar uma foto num banco de imagens. Substantivos concretos e visuais (o que a câmera vê), sem verbos e sem perguntas.
+- busca_en: as mesmas 2 a 3 palavras em inglês.
+- prompt_imagem: em inglês, a descrição de uma cena ou objeto fotografável que ilustra o tema, numa ou duas frases. Sem pessoas, rostos, texto ou logotipos.
+
+Devolva somente os campos, no formato pedido.`

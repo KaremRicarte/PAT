@@ -100,7 +100,7 @@ const HOSTS_EXTERNOS = ['images.pexels.com', 'pixabay.com', 'cdn.pixabay.com']
 // Copia uma foto do Pexels/Pixabay para a pasta do cliente no bucket marcas e devolve o CAMINHO no Storage
 // ({uid}/banco/{origem}-{id}.jpg) — nunca a URL externa, que não pode virar foto_path. null se não deu.
 export async function copiarExterna(
-  db: SupabaseClient, clienteId: string, origem: 'pexels' | 'pixabay', externa: Pick<Externa, 'id' | 'url'>,
+  db: SupabaseClient, clienteId: string, origem: 'pexels' | 'pixabay' | 'gerada', externa: Pick<Externa, 'id' | 'url'>,
 ): Promise<string | null> {
   try {
     const url = new URL(externa.url)
