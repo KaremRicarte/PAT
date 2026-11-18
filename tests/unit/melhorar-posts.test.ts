@@ -475,12 +475,23 @@ describe('imagem gerada, aproximação e imagem ilustrativa', () => {
   })
 
   test('pouco tempo antes da geração: adiado e não gera', async () => {
-    // prazo 70 s: a chamada de palavras-chave começa com 20 s úteis (>= 15 s) e leva 11 s; a geração vê
-    // 59 s - 45 s (escrita) - 5 s (margem) = 9 s < 10 s e é adiada pela guarda de gerar (não pelo mínimo de chamada da IA)
+    // prazo 80 s: a chamada de palavras-chave começa com 30 s úteis (>= 15 s) e leva 11 s; a geração vê
+    // 69 s - 45 s (escrita) - 15 s (cópia) - 5 s (margem) = 4 s < 10 s e é adiada pela guarda de gerar (não pelo mínimo de chamada da IA)
     const m = montar({ ctx: geral(), gerada: GERADA, relogio: { t: 0 }, duracaoChamada: 11_000 })
-    expect(await melhorarUmPost(m.deps, pg(), 70_000)).toBe('adiado')
+    expect(await melhorarUmPost(m.deps, pg(), 80_000)).toBe('adiado')
     expect(m.pedidos.some((p) => p.esquema === ESQUEMA_PALAVRAS)).toBe(true)
     expect(m.geracoes).toEqual([])
+    expect(m.marcados).toEqual([{ id: 'p1', estado: 'fila' }])
+  })
+
+  test('a cópia da imagem gerada também tem tempo reservado: sem ele, adia em vez de pagar e perder a imagem', async () => {
+    // prazo 80 s, palavras-chave levam 15 s: sobram 65 s. Sem reservar a cópia (15 s) a geração teria 65 - 45 - 5 = 15 s
+    // e seria feita; com a reserva sobram 0 s e o post é adiado sem gerar nem registrar uso.
+    const m = montar({ ctx: geral(), gerada: GERADA, relogio: { t: 0 }, duracaoChamada: 15_000 })
+    expect(await melhorarUmPost(m.deps, pg(), 80_000)).toBe('adiado')
+    expect(m.pedidos.some((p) => p.esquema === ESQUEMA_PALAVRAS)).toBe(true)
+    expect(m.geracoes).toEqual([])
+    expect(m.usos.filter((u) => u.tipo === 'gerada')).toEqual([])
     expect(m.marcados).toEqual([{ id: 'p1', estado: 'fila' }])
   })
 

@@ -113,6 +113,18 @@ describe('escolherImagemGeral: palavras-chave, aproximação e geração', () =>
     expect(r?.origem).toBe('pixabay')
     expect(termos).toEqual(['mesa posta', 'table setting'])
   })
+  it('passa o idioma de cada termo: pt para busca_pt, en para busca_en, pt para o tema', async () => {
+    const pex: unknown[][] = [], pix: unknown[][] = []
+    await escolherImagemGeral(deps({
+      buscarPexels: async (...a) => { pex.push(a); return [] },
+      buscarPixabay: async (...a) => { pix.push(a); return [] },
+    }), base)
+    expect(pex).toEqual([['mesa posta', 'pt'], ['table setting', 'en']])
+    expect(pix).toEqual([['mesa posta', 'pt'], ['table setting', 'en']])
+    const tema: unknown[][] = []
+    await escolherImagemGeral(deps({ palavras: async () => null, buscarPixabay: async (...a) => { tema.push(a); return [] } }), base)
+    expect(tema).toEqual([['unhas', 'pt']])
+  })
   it('palavras null: busca com o tema e não gera', async () => {
     const termos: string[] = []
     let gerou = false

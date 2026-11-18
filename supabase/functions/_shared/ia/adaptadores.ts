@@ -158,14 +158,14 @@ export const contarUsoNoMes = (db: SupabaseClient) => async (clienteId: string):
 
 const POR_PAGINA = 15
 
-export function criarBuscarPexels(apiKey: string | undefined, porPagina = POR_PAGINA): (tema: string) => Promise<Externa[]> {
-  return async (tema) => {
+export function criarBuscarPexels(apiKey: string | undefined, porPagina = POR_PAGINA): (tema: string, idioma?: 'pt' | 'en') => Promise<Externa[]> {
+  return async (tema, idioma = 'pt') => {
     if (!apiKey || !tema.trim()) return []
     try {
       const u = new URL('https://api.pexels.com/v1/search')
       u.searchParams.set('query', tema.trim())
       u.searchParams.set('per_page', String(porPagina))
-      u.searchParams.set('locale', 'pt-BR')
+      u.searchParams.set('locale', idioma === 'en' ? 'en-US' : 'pt-BR')
       const r = await fetch(u, { headers: { Authorization: apiKey }, signal: AbortSignal.timeout(10_000) })
       if (!r.ok) { console.error('Pexels', r.status); return [] }
       const corpo = await r.json() as { photos?: { id: number, photographer?: string, alt?: string, src?: { large?: string } }[] }
@@ -180,15 +180,15 @@ export function criarBuscarPexels(apiKey: string | undefined, porPagina = POR_PA
   }
 }
 
-export function criarBuscarPixabay(apiKey: string | undefined, porPagina = POR_PAGINA): (tema: string) => Promise<Externa[]> {
-  return async (tema) => {
+export function criarBuscarPixabay(apiKey: string | undefined, porPagina = POR_PAGINA): (tema: string, idioma?: 'pt' | 'en') => Promise<Externa[]> {
+  return async (tema, idioma = 'pt') => {
     if (!apiKey || !tema.trim()) return []
     try {
       const u = new URL('https://pixabay.com/api/')
       u.searchParams.set('key', apiKey)
       u.searchParams.set('q', tema.trim().slice(0, 100))
       u.searchParams.set('image_type', 'photo')
-      u.searchParams.set('lang', 'pt')
+      u.searchParams.set('lang', idioma)
       u.searchParams.set('safesearch', 'true')
       u.searchParams.set('per_page', String(Math.max(3, porPagina)))
       const r = await fetch(u, { signal: AbortSignal.timeout(10_000) })
@@ -220,7 +220,7 @@ export function criarGerarImagem(apiKey: string | undefined) {
         signal: AbortSignal.timeout(timeoutMs),
       })
       if (!r.ok) { console.error('fal.ai', r.status); return null }
-      const g = lerRespostaFal(await r.json())
+      const g = lerRespostaFal(await r.json(), formato)
       return g ? { id: crypto.randomUUID(), ...g } : null
     } catch (e) {
       console.error('fal.ai', e instanceof Error ? e.name : 'erro')

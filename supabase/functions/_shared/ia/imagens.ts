@@ -35,8 +35,8 @@ export type DepsImagens = {
   bancoDoRamo: (ramo: string) => Promise<FotoDoBanco[]>,
   // Caminhos do banco que este cliente já recebeu desde `desdeISO` (AAAA-MM-DD).
   usadasPeloCliente: (clienteId: string, desdeISO: string) => Promise<string[]>,
-  buscarPexels: (tema: string) => Promise<Externa[]>,
-  buscarPixabay: (tema: string) => Promise<Externa[]>,
+  buscarPexels: (tema: string, idioma?: 'pt' | 'en') => Promise<Externa[]>,
+  buscarPixabay: (tema: string, idioma?: 'pt' | 'en') => Promise<Externa[]>,
   // Ids já usados por QUALQUER cliente (fotos externas não se repetem entre clientes).
   idsUsados: (fonte: 'pexels' | 'pixabay') => Promise<string[]>,
   // Palavras-chave (pt e en) e prompt de imagem para o tema; null = a IA não respondeu (busca pelo tema e não gera).
@@ -92,12 +92,12 @@ export async function escolherImagemGeral(deps: DepsImagens, a: {
   }
 
   const palavras = await deps.palavras(tema)
-  const termos = palavras ? [palavras.busca_pt, palavras.busca_en] : [tema]
+  const termos: [string, 'pt' | 'en'][] = palavras ? [[palavras.busca_pt, 'pt'], [palavras.busca_en, 'en']] : [[tema, 'pt']]
   for (const [fonte, buscar] of [['pexels', deps.buscarPexels], ['pixabay', deps.buscarPixabay]] as const) {
     const usados = new Set(await deps.idsUsados(fonte))
     let novas: Externa[] = []
-    for (const termo of termos) {
-      novas = (await buscar(termo)).filter((f) => !usados.has(f.id))
+    for (const [termo, idioma] of termos) {
+      novas = (await buscar(termo, idioma)).filter((f) => !usados.has(f.id))
       if (novas.length) break
     }
     if (!novas.length) continue

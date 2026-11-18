@@ -124,6 +124,8 @@ export const MARGEM_MS = 5_000
 export const MIN_CHAMADA_MS = 15_000
 // tempo guardado para escrever o post: os passos antes (descrever foto, escolher imagem) não podem comê-lo
 export const RESERVA_ESCRITA_MS = 45_000
+// tempo guardado para copiar a imagem gerada (copiarExterna leva até 15 s) depois de paga: sem ele o post seria adiado com a imagem já cobrada
+export const RESERVA_COPIA_MS = 15_000
 
 class SemTempo extends Error {}
 // a API respondeu 'ocupado': o post volta para a fila (escreverPost/descreverFoto não pegam esta exceção)
@@ -189,7 +191,7 @@ async function melhorarComPrazo(
   // Imagem gerada: o tempo da chamada é cortado pelo prazo (sem tempo, o post é adiado); o custo é registrado
   // mesmo se o provedor bloqueou o conteúdo.
   const gerar: DepsImagens['gerar'] = deps.gerarImagem ? async (prompt, formato) => {
-    const ms = Math.min(30_000, restante() - RESERVA_ESCRITA_MS - MARGEM_MS)
+    const ms = Math.min(30_000, restante() - RESERVA_ESCRITA_MS - RESERVA_COPIA_MS - MARGEM_MS)
     if (ms < 10_000) throw new SemTempo()
     const g = await deps.gerarImagem!(prompt, formato, ms)
     if (!g) return null

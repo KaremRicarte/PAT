@@ -16,8 +16,12 @@ export function corpoFal(prompt: string, formato: FormatoImagem) {
   }
 }
 
+const TAMANHO = { feed: { largura: 864, altura: 1080 }, vertical: { largura: 576, altura: 1024 } }
+const positivo = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null)
+
 // Lê a resposta do fal.ai. null se não veio uma imagem com URL https.
-export function lerRespostaFal(json: unknown): { url: string, largura: number, altura: number, bloqueada: boolean } | null {
+// Sem largura/altura válidas na resposta, vale o tamanho pedido (o custo é calculado por ele).
+export function lerRespostaFal(json: unknown, formato: FormatoImagem): { url: string, largura: number, altura: number, bloqueada: boolean } | null {
   if (!json || typeof json !== 'object') return null
   const r = json as { images?: unknown, has_nsfw_concepts?: unknown }
   if (!Array.isArray(r.images)) return null
@@ -28,8 +32,8 @@ export function lerRespostaFal(json: unknown): { url: string, largura: number, a
   } catch { return null }
   return {
     url: img.url,
-    largura: Number(img.width) || 0,
-    altura: Number(img.height) || 0,
+    largura: positivo(img.width) ?? TAMANHO[formato].largura,
+    altura: positivo(img.height) ?? TAMANHO[formato].altura,
     bloqueada: Array.isArray(r.has_nsfw_concepts) && r.has_nsfw_concepts[0] === true,
   }
 }
