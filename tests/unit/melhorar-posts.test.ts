@@ -475,9 +475,11 @@ describe('imagem gerada, aproximação e imagem ilustrativa', () => {
   })
 
   test('pouco tempo antes da geração: adiado e não gera', async () => {
-    // sobra RESERVA_ESCRITA_MS + MARGEM_MS + 9_000: dá para as chamadas de IA (15 s mínimas), mas não para gerar (10 s)
-    const m = montar({ ctx: geral(), gerada: GERADA, relogio: { t: 0 } })
-    expect(await melhorarUmPost(m.deps, pg(), 45_000 + 5_000 + 9_000)).toBe('adiado')
+    // prazo 70 s: a chamada de palavras-chave começa com 20 s úteis (>= 15 s) e leva 11 s; a geração vê
+    // 59 s - 45 s (escrita) - 5 s (margem) = 9 s < 10 s e é adiada pela guarda de gerar (não pelo mínimo de chamada da IA)
+    const m = montar({ ctx: geral(), gerada: GERADA, relogio: { t: 0 }, duracaoChamada: 11_000 })
+    expect(await melhorarUmPost(m.deps, pg(), 70_000)).toBe('adiado')
+    expect(m.pedidos.some((p) => p.esquema === ESQUEMA_PALAVRAS)).toBe(true)
     expect(m.geracoes).toEqual([])
     expect(m.marcados).toEqual([{ id: 'p1', estado: 'fila' }])
   })
