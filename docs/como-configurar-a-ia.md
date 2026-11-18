@@ -105,9 +105,9 @@ npx supabase secrets set ANTHROPIC_API_KEY=COLE_AQUI_A_ANTHROPIC PEXELS_API_KEY=
 ## 5. Como testar
 
 1. Abra o PAT (versão de teste) e **gere um mês** de posts. Se já existe um mês, **troque a estratégia do mês** ou **gere o próximo mês**.
-2. Você deve ver a faixa **"✨ Melhorando seus posts…"**. Melhorar um mês inteiro leva **vários minutos**; pode deixar a tela aberta e fazer outra coisa.
+2. Você deve ver a janela **"✨ O PAT está melhorando seus posts"**, com uma régua de andamento. Melhorar um mês inteiro leva **vários minutos**; pode tocar em "Continuar usando o app enquanto isso" e fazer outra coisa. No calendário, cada post mostra **"⏳ Na fila do PAT"**, **"✨ O PAT está melhorando…"** ou **"✨ Melhorado pelo PAT"**, e os dias que ainda esperam ganham um ⏳.
 3. Se a faixa parar de andar, feche e abra o calendário de novo: ela volta a mostrar o andamento.
-4. Quando terminar, os posts escritos pela IA mostram o selo **"✨ Escrito para você"**.
+4. Quando terminar, a janela some e os posts melhorados mostram o selo **"✨ Melhorado pelo PAT"**.
 
 Se as chaves não estiverem configuradas, **tudo continua funcionando**: os posts saem com os textos-modelo de sempre (os "templates"), só sem o selo.
 

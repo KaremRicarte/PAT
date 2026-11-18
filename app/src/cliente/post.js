@@ -70,6 +70,9 @@ export function telaPost(ctx, post, aoVoltar) {
     cabecalho.replaceChildren(...filhosValidos([
       el('p', { class: 'rede', texto: `${t(`rede.${post.rede}`)} · ${t(`formato.${chaveFormato(post)}`)}` }),
       post.origem === 'ia' ? el('span', { class: 'selo bom', texto: t('post.ia.selo') }) : null,
+      // ainda na fila do PAT: o cliente pode mexer, e a versão dele vence
+      post.origem !== 'ia' && ['fila', 'trabalhando'].includes(post.ia_estado)
+        ? el('p', { class: 'aviso-fila-ia', texto: t('post.ia.fila') }) : null,
       el('h1', { tabindex: '-1', texto: post.titulo }),
       el('p', { class: 'quando' },
         el('span', { texto: t('post.quando', { dia: diaPorExtenso(post.data), hora: post.horario }) }),

@@ -5,7 +5,7 @@ import { el, logo, mostrar, botaoSair, carregando, aviso, filhosValidos } from '
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { carregarFotosInfo } from './negocio.js'
-import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto, progressoIA } from './situacao.js'
+import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto, progressoIA, estadoIA, diaEsperandoPAT } from './situacao.js'
 import { miniatura } from '../artes/imagens.js'
 import { telaQuizMes, mesMostrado, preferirMes } from './mes.js'
 import { aplicarAcao } from './acoesPost.js'
@@ -63,6 +63,10 @@ function adiarAvisoFotos() {
 
 let relogioIA = null // um só: recarrega os posts enquanto a IA trabalha
 function pararRelogioIA() { if (relogioIA) { clearInterval(relogioIA); relogioIA = null } }
+// o cliente tocou "Continuar usando o app": a janela da régua não volta até essa rodada do PAT terminar
+let janelaIADispensada = false
+// sem nenhum post novo pronto por este tempo, o app para de conferir e fecha a janela (a fila pode ter parado)
+const SEM_AVANCO_MS = 10 * 60 * 1000
 
 let vezDoDesenho = 0 // só a última chamada desenha (troca rápida de mês)
 
@@ -141,11 +145,13 @@ export async function telaCalendario(ctx, diaEscolhido) {
   const pintarDia = (data, b) => {
     const doDia = porDia.get(data) ?? []
     const cor = corDoDia(doDia)
-    b.setAttribute('aria-label', rotuloDoDia(data, doDia))
+    const esperando = diaEsperandoPAT(doDia, hoje)
+    b.setAttribute('aria-label', esperando ? `${rotuloDoDia(data, doDia)}, ${t('cal.ia.dia')}` : rotuloDoDia(data, doDia))
     b.setAttribute('aria-pressed', String(data === escolhido))
     b.classList.toggle('sem-post', !cor)
     b.replaceChildren(...filhosValidos([el('span', { class: 'num', texto: String(Number(data.slice(8))) }),
-      cor ? el('span', { class: `bolinha ${cor}`, 'aria-hidden': 'true', texto: ICONE[cor] }) : null])) // o nativo escreveria "null"
+      cor ? el('span', { class: `bolinha ${cor}`, 'aria-hidden': 'true', texto: ICONE[cor] }) : null, // o nativo escreveria "null"
+      esperando ? el('span', { class: 'ampulheta', 'aria-hidden': 'true', texto: '⏳' }) : null]))
   }
   const pintarGrade = () => botoesDia.forEach((b, data) => pintarDia(data, b))
 
@@ -202,14 +208,16 @@ export async function telaCalendario(ctx, diaEscolhido) {
       mini.append(el('span', { class: 'icone', texto: '💬' }), el('span', { texto: t('cal.sotexto') }))
     } else carregarMiniatura(post, mini)
 
+    const ia = estadoIA(post, hoje)
     const abrir = el('button', { type: 'button', class: 'abrir', 'data-post': post.id, onclick: () => abrirPost(post) },
       mini,
       el('span', { class: 'info' },
         el('span', { class: 'rede', texto: `${t(`rede.${post.rede}`)} · ${t(`formato.${chaveFormato(post)}`)}` }),
         el('strong', { class: 'titulo-post', texto: post.titulo }),
-        el('span', { class: 'linha' },
+        el('span', { class: 'linha' }, ...filhosValidos([
           el('span', { class: 'hora', texto: post.horario }),
-          el('span', { class: `situacao ${sit}`, texto: t(`cal.situacao.${sit}`) }))))
+          el('span', { class: `situacao ${sit}`, texto: t(`cal.situacao.${sit}`) }),
+          ia ? el('span', { class: `selo-ia ${ia}`, texto: t(`cal.ia.${ia}`) }) : null]))))
     const postei = sit === 'aprovado'
       ? el('button', { type: 'button', class: 'postei', texto: t('cal.postei'), onclick: () => marcarPostado(post) })
       : null
@@ -248,20 +256,43 @@ export async function telaCalendario(ctx, diaEscolhido) {
 
   // ---------- faixa "Melhorando…": enquanto a fila da IA anda, recarrega os posts a cada 15 s ----------
   const faixaIA = el('p', { class: 'faixa-ia', role: 'status' })
+  // janela na frente, com a régua, e o calendário escurecido atrás; o link a fecha e fica só a faixa
+  const reguaIA = el('progress', { class: 'regua-ia', 'aria-labelledby': 'janela-ia-titulo' })
+  const contaIA = el('p', { class: 'conta-ia', role: 'status' })
+  const janelaIA = el('dialog', { class: 'dialogo janela-ia', 'aria-labelledby': 'janela-ia-titulo' },
+    el('h2', { id: 'janela-ia-titulo', texto: t('cal.ia.janela.titulo') }),
+    reguaIA, contaIA,
+    el('p', { class: 'muted', texto: t('cal.ia.janela.texto') }),
+    el('button', { type: 'button', class: 'link', texto: t('cal.ia.janela.continuar'), onclick: () => janelaIA.close() }))
+  janelaIA.addEventListener('close', () => { if (progressoIA(posts, hoje).ativo) janelaIADispensada = true })
   const desenharFaixaIA = () => {
     const prog = progressoIA(posts, hoje)
     faixaIA.hidden = !prog.ativo
-    if (prog.ativo) faixaIA.textContent = t('cal.ia.faixa', { feitos: prog.feitos, total: prog.total })
-    return prog.ativo
+    if (prog.ativo) {
+      faixaIA.textContent = t('cal.ia.faixa', { feitos: prog.feitos, total: prog.total })
+      reguaIA.max = prog.total
+      reguaIA.value = prog.feitos
+      contaIA.textContent = t('cal.ia.janela.progresso', { feitos: prog.feitos, total: prog.total })
+    } else {
+      janelaIADispensada = false // a próxima rodada do PAT abre a janela de novo
+      if (janelaIA.open) janelaIA.close()
+    }
+    return prog
   }
-  const iaAtiva = desenharFaixaIA()
+  const iaAtiva = desenharFaixaIA().ativo
   if (iaAtiva) {
-    const LIMITE = Date.now() + 10 * 60 * 1000 // não consulta para sempre
+    let ultimosFeitos = progressoIA(posts, hoje).feitos
+    let ultimoAvanco = Date.now()
     const mudou = (a, b) => !b || a.titulo !== b.titulo || a.legenda !== b.legenda || a.foto_path !== b.foto_path
     let consultando = false
     relogioIA = setInterval(async () => {
       if (consultando) return
-      if (vez !== vezDoDesenho || !faixaIA.isConnected || Date.now() > LIMITE) return pararRelogioIA() // saiu da tela
+      if (vez !== vezDoDesenho || !faixaIA.isConnected) return pararRelogioIA() // saiu da tela
+      if (Date.now() - ultimoAvanco > SEM_AVANCO_MS) { // a fila parou de andar: não consulta para sempre nem prende a tela
+        pararRelogioIA()
+        if (janelaIA.open) janelaIA.close()
+        return
+      }
       consultando = true
       try {
         const { data, error } = await supabase.from('posts').select(COLUNAS)
@@ -273,7 +304,9 @@ export async function telaCalendario(ctx, diaEscolhido) {
         for (const p of data) if (mudou(p, antes.get(p.id))) for (const k of [...ctx.miniaturas.keys()]) if (k.startsWith(`${p.id}|`)) ctx.miniaturas.delete(k)
         ctx.posts = posts = data
         porDia = agruparPorDia(posts)
-        const ativo = desenharFaixaIA()
+        const prog = desenharFaixaIA()
+        if (prog.feitos !== ultimosFeitos) { ultimosFeitos = prog.feitos; ultimoAvanco = Date.now() }
+        const ativo = prog.ativo
         if (!ativo) { pararRelogioIA(); ctx.fotosInfo = await carregarFotosInfo(supabase, ctx.cliente.id) } // a última rodada de análises
         if (vez !== vezDoDesenho || !faixaIA.isConnected) return
         desenharResumo()
@@ -310,6 +343,8 @@ export async function telaCalendario(ctx, diaEscolhido) {
     avisoLembrete,
     grade,
     lista,
+    janelaIA,
   )
+  if (iaAtiva && !janelaIADispensada) janelaIA.showModal()
   montarLembretes({ supabase, sino, area: avisoLembrete }).catch((e) => console.error(e)) // sem lembretes, o calendário segue igual
 }

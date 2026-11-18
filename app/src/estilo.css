@@ -262,6 +262,22 @@ button.botao-sino { display: inline-flex; align-items: center; gap: 6px; min-hei
 .lembrete-area:empty { display: none; }
 .lembrete-aviso { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; margin: 0 0 20px; }
 .faixa-ia { background: var(--ok-soft); color: var(--ok); border-radius: 16px; padding: 12px 20px; margin: 0 0 20px; font-weight: 700; }
+
+/* O PAT melhorando os posts: janela com a régua, selo em cada post e ⏳ nos dias que esperam */
+dialog.janela-ia { text-align: center; }
+dialog.janela-ia h2 { margin-top: 4px; }
+.regua-ia { width: 100%; height: 14px; accent-color: var(--pri); margin: 8px 0 4px; }
+.conta-ia { margin: 0 0 12px; font-weight: 700; font-size: 18px; }
+dialog.janela-ia button.link { margin-top: 8px; }
+.selo-ia { font-weight: 700; }
+.selo-ia.pronto { color: var(--ok); }
+.selo-ia.fila { color: var(--muted); }
+.selo-ia.trabalhando { color: var(--pri); animation: pisca-ia 1.6s ease-in-out infinite; }
+@keyframes pisca-ia { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .selo-ia.trabalhando { animation: none; } }
+button.dia-btn { position: relative; }
+.ampulheta { position: absolute; top: 2px; right: 3px; font-size: 11px; line-height: 1; }
+.aviso-fila-ia { background: var(--sunk); border-radius: 12px; padding: 10px 14px; margin: 8px 0; font-size: 14px; }
 .aviso-foto { flex: 1 0 100%; margin: 0; font-size: 13px; color: var(--bad); }
 .lembrete-aviso p { margin: 0 0 12px; font-weight: 700; }
 .lembrete-aviso button { min-height: 48px; }

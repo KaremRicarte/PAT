@@ -71,6 +71,16 @@ export function progressoIA(posts, hoje) {
   }
 }
 
+// Selo do post no calendário: 'pronto' (melhorado pelo PAT), 'fila', 'trabalhando' (o PAT está melhorando) ou null.
+export function estadoIA(post, hoje) {
+  if (post.origem === 'ia') return 'pronto'
+  if (post.data >= hoje && (post.ia_estado === 'fila' || post.ia_estado === 'trabalhando')) return post.ia_estado
+  return null
+}
+
+// O dia ainda tem post esperando o PAT (na fila ou sendo melhorado)?
+export const diaEsperandoPAT = (posts, hoje) => posts.some((p) => ['fila', 'trabalhando'].includes(estadoIA(p, hoje)))
+
 // Todas as fotos de todos os itens, na ordem dos itens e sem repetir.
 export const todasAsFotos = (produtos, fotosInfo) => [...new Set(produtos.flatMap((p) => fotosDoProduto(p, fotosInfo)))]
 
