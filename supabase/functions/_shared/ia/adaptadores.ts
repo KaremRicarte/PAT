@@ -15,9 +15,34 @@ export const TEMPO_TROCA_MS = 30_000
 
 type Bloco = Anthropic.Beta.Messages.BetaTextBlockParam | Anthropic.Beta.Messages.BetaImageBlockParam
 
-const bloco = (c: ConteudoIA): Bloco => (c.tipo === 'texto'
-  ? { type: 'text', text: c.texto }
-  : { type: 'image', source: { type: 'url', url: c.url } })
+// Bytes -> base64 em pedaços (String.fromCharCode com o arquivo inteiro estoura a pilha).
+function emBase64(bytes: Uint8Array): string {
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(s)
+}
+
+// Imagem de banco externo (Pexels/Pixabay/fal.ai): o robots.txt desses sites não deixa a Anthropic baixar pela URL
+// ("This URL is disallowed by the website's robots.txt file"), então baixamos aqui e mandamos o arquivo.
+// Fotos do Storage (URL assinada do Supabase) continuam indo pela URL. Sem conseguir baixar: vira um aviso em texto.
+async function bloco(c: ConteudoIA): Promise<Bloco> {
+  if (c.tipo === 'texto') return { type: 'text', text: c.texto }
+  let url: URL | null = null
+  try { url = new URL(c.url) } catch { /* URL inválida: segue pela URL e a API responde */ }
+  if (!url || !hostPermitido(url.hostname)) return { type: 'image', source: { type: 'url', url: c.url } }
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+    const tipo = (r.headers.get('content-type') ?? '').split(';')[0].trim()
+    const bytes = new Uint8Array(await r.arrayBuffer())
+    if (r.ok && TIPOS_DE_IMAGEM.includes(tipo) && bytes.length && bytes.length <= MAX_BYTES) {
+      return { type: 'image', source: { type: 'base64', media_type: tipo as 'image/jpeg', data: emBase64(bytes) } }
+    }
+    console.error('IA: não consegui baixar a imagem externa', url.hostname, r.status, tipo)
+  } catch (e) {
+    console.error('IA: não consegui baixar a imagem externa', url.hostname, e instanceof Error ? e.name : 'erro')
+  }
+  return { type: 'text', text: '(Imagem indisponível: não considere esta candidata.)' }
+}
 
 // ChamarIA com o Claude Opus 5.5. Sem chave: sempre { ok:false, motivo:'erro' } (o app segue com os modelos).
 // Sem novas tentativas escondidas no SDK (maxRetries: 0): cada chamada à API passa por comLimiteEUso,
@@ -40,7 +65,7 @@ export function criarChamarIA(apiKey: string | undefined, opcoes: { timeoutMs: n
           format: { type: 'json_schema', schema: pedido.esquema as { [k: string]: unknown } },
         },
         system: pedido.sistema,
-        messages: [{ role: 'user', content: pedido.conteudo.map(bloco) }],
+        messages: [{ role: 'user', content: await Promise.all(pedido.conteudo.map(bloco)) }],
       }, {
         // uma tentativa só; o signal garante o corte mesmo se o timeout do SDK não pegar
         timeout: opcoes.timeoutMs,

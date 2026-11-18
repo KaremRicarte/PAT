@@ -61,7 +61,7 @@ Isso evita surpresas na fatura.
 Usada só quando nenhuma foto serve para o post: aí a IA cria uma imagem nova.
 
 1. Abra **https://fal.ai** e crie uma conta (e-mail, Google ou GitHub).
-2. Procure **"Billing"** (Cobrança) no menu e adicione um crédito pequeno, por exemplo **US$ 5**.
+2. Procure **"Billing"** (Cobrança) no menu e em **"Add credits"** escolha o menor valor (hoje **US$ 10**, compra única) e clique em **"Buy credits"**. Não precisa ligar o "Auto top-up" nem escolher plano mensal.
 3. No menu, abra **"API Keys"** e clique em criar uma chave (**"Add key"** / **"Create key"**). Dê um nome, por exemplo `PAT teste`.
 4. **Copie a chave agora**, pois ela pode não aparecer de novo. Cole no Bloco de Notas com o rótulo `FAL`.
 
