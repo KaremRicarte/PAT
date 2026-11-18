@@ -245,3 +245,19 @@ test('API ocupada → null (quem chama na hora segue com o modelo)', async () =>
   expect(await escreverPost(chamar, entrada())).toBeNull()
   expect(pedidos).toHaveLength(1)
 })
+
+test('foto ilustrativa avisa o redator que não é do negócio', async () => {
+  const { chamar, pedidos } = falsa(ok(resposta()))
+  await escreverPost(chamar, entrada({ foto: { url: 'https://exemplo/b.jpg', descricao: 'mesa posta', ilustrativa: true } }))
+  const texto = textoDo(pedidos[0])
+  expect(texto).toContain('imagem ilustrativa, não é do negócio')
+  expect(texto).toContain('mesa posta')
+})
+
+test('foto sem ilustrativa segue como foto anexada do cliente', async () => {
+  const { chamar, pedidos } = falsa(ok(resposta()))
+  await escreverPost(chamar, entrada({ foto: { url: 'https://exemplo/b.jpg', descricao: 'mesa posta' } }))
+  const texto = textoDo(pedidos[0])
+  expect(texto).toContain('Foto do post (anexada): mesa posta')
+  expect(texto).not.toContain('ilustrativa')
+})

@@ -30,7 +30,7 @@ export type EntradaPost = {
     preco_de: number | null, preco_por: number | null,
   },
   produto: { nome: string, descricao: string | null } | null,
-  foto: { url: string, descricao: string } | null,
+  foto: { url: string, descricao: string, ilustrativa?: boolean } | null,
   textoModelo: string,
   textosDoCliente: string[],
 }
@@ -106,7 +106,7 @@ function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
       ? `Serviço ou produto do post: ${e.produto.nome}${e.produto.descricao ? `. Descrição do cliente: ${e.produto.descricao}` : ''}.`
       : 'Post de tema geral, sem um serviço específico.',
     e.foto
-      ? `Foto do post (anexada): ${e.foto.descricao}`
+      ? `Foto do post (anexada${e.foto.ilustrativa ? '; imagem ilustrativa, não é do negócio: não diga que é o espaço, a equipe, o produto ou o trabalho do cliente' : ''}): ${e.foto.descricao}`
       : 'Este post não tem foto: escreva sem mencionar imagem.',
   ]
   if (preco) {

@@ -17,6 +17,9 @@ export const daPastaDoCliente = (clienteId: string) => (p: string) => p.startsWi
 // ({uid}/posts/{id}.jpg), então a descrição guardada em fotos_ia pode ser da foto anterior.
 export const fotoEnviadaParaOPost = (clienteId: string, path: string) => path.startsWith(`${clienteId}/posts/`)
 
+// Imagem de banco, ilustrativa ou gerada ({uid}/banco/...): não é do negócio, o redator não pode apresentá-la como dele.
+export const fotoIlustrativa = (clienteId: string, path: string) => path.startsWith(`${clienteId}/banco/`)
+
 // numeric do Postgres pode chegar como texto
 export const numero = (v: number | string | null | undefined): number | null => {
   if (v == null || v === '') return null
@@ -42,7 +45,7 @@ export type LugarDoPost = {
 }
 
 export function montarEntradaPost(
-  c: DadosDoCliente, post: LugarDoPost, foto: { url: string, descricao: string } | null,
+  c: DadosDoCliente, post: LugarDoPost, foto: { url: string, descricao: string, ilustrativa?: boolean } | null,
 ): EntradaPost {
   const produto = post.produto_id ? c.produtos.find((p) => p.id === post.produto_id) ?? null : null
   return {

@@ -3,7 +3,7 @@
 // quem chama segue sem a IA, nunca com erro por causa dela.
 import { escreverPost, type CamposDaIA, type ChamarIA } from './escrever.ts'
 import { comLimiteEUso, type RegistroUso } from './uso.ts'
-import { montarEntradaPost, SEM_DESCRICAO, type DadosDoCliente, type LugarDoPost } from './entrada.ts'
+import { fotoIlustrativa, montarEntradaPost, SEM_DESCRICAO, type DadosDoCliente, type LugarDoPost } from './entrada.ts'
 
 // O cliente está esperando: todas as chamadas juntas (inclusive a nova tentativa de escreverPost) cabem neste tempo.
 // (Cada chamada também é cortada em TEMPO_TROCA_MS pelo adaptador.)
@@ -44,7 +44,7 @@ export async function escreverNaHora(deps: DepsNaHora, a: {
   }
   try {
     const url = a.foto ? await deps.urlAssinada(a.foto.path) : null
-    const foto = a.foto && url ? { url, descricao: a.foto.descricao || SEM_DESCRICAO } : null
+    const foto = a.foto && url ? { url, descricao: a.foto.descricao || SEM_DESCRICAO, ilustrativa: fotoIlustrativa(a.clienteId, a.foto.path) } : null
     const escrito = await escreverPost(chamar, montarEntradaPost(a.dados, a.post, foto))
     return escrito ? { campos: escrito.post, fotoPath: foto ? a.foto!.path : null } : null
   } catch (e) {
