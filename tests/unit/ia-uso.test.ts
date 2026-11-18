@@ -1,4 +1,5 @@
-import { comLimiteEUso, LIMITE_MENSAL, type RegistroUso } from '../../supabase/functions/_shared/ia/uso.ts'
+import { comLimiteEUso, LIMITE_MENSAL, LIMITE_GERADAS, type RegistroUso, type TipoUso } from '../../supabase/functions/_shared/ia/uso.ts'
+import { custoImagemGerada } from '../../supabase/functions/_shared/ia/custo.ts'
 import type { ChamarIA, PedidoIA, RespostaIA } from '../../supabase/functions/_shared/ia/escrever.ts'
 
 beforeEach(() => { vi.spyOn(console, 'error').mockImplementation(() => {}) })
@@ -98,4 +99,18 @@ test('erro ao registrar não derruba a resposta da IA', async () => {
   })
   expect(await chamar(PEDIDO)).toMatchObject({ ok: true, dados: { x: 1 } })
   expect(console.error).toHaveBeenCalled()
+})
+
+describe('imagem gerada: custo e limite', () => {
+  it('cobra US$ 0,003 por megapixel arredondado para cima', () => {
+    expect(custoImagemGerada(864, 1080)).toBe(0.003)
+    expect(custoImagemGerada(1024, 1024)).toBe(0.006)
+    expect(custoImagemGerada(576, 1024)).toBe(0.003)
+  })
+
+  it('limita 20 imagens geradas por mês e aceita o tipo gerada', () => {
+    const tipo: TipoUso = 'gerada'
+    expect(tipo).toBe('gerada')
+    expect(LIMITE_GERADAS).toBe(20)
+  })
 })

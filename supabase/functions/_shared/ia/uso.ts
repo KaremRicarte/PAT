@@ -5,8 +5,10 @@ import type { ChamarIA, RespostaIA } from './escrever.ts'
 import { custoUsd } from './custo.ts'
 
 export const LIMITE_MENSAL = 400
+// imagens geradas (fal.ai) por cliente no mês: contadas à parte das chamadas de IA (uso_ia_geradas_no_mes)
+export const LIMITE_GERADAS = 20
 
-export type TipoUso = 'foto' | 'post' | 'troca' | 'imagem'
+export type TipoUso = 'foto' | 'post' | 'troca' | 'imagem' | 'gerada'
 export type RegistroUso = {
   clienteId: string | null, tipo: TipoUso, tokensEntrada: number, tokensSaida: number, custoUsd: number,
 }
