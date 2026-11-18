@@ -4,6 +4,7 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@1.4.0'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { motivoDoErroHttp, type ChamarIA, type ConteudoIA, type Esforco, type RespostaIA } from './escrever.ts'
+import { corpoFal, hostPermitido, lerRespostaFal } from './fal.ts'
 import type { Externa } from './imagens.ts'
 import type { RegistroUso } from './uso.ts'
 
@@ -94,17 +95,15 @@ export async function urlAssinada(db: SupabaseClient, bucket: string, path: stri
 
 const TIPOS_DE_IMAGEM = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_BYTES = 5 * 1024 * 1024
-// só baixamos dos servidores de imagem do Pexels e do Pixabay
-const HOSTS_EXTERNOS = ['images.pexels.com', 'pixabay.com', 'cdn.pixabay.com']
 
-// Copia uma foto do Pexels/Pixabay para a pasta do cliente no bucket marcas e devolve o CAMINHO no Storage
+// Copia uma foto do Pexels/Pixabay/fal.ai (só dos servidores permitidos, ver hostPermitido) para a pasta do cliente no bucket marcas e devolve o CAMINHO no Storage
 // ({uid}/banco/{origem}-{id}.jpg) — nunca a URL externa, que não pode virar foto_path. null se não deu.
 export async function copiarExterna(
   db: SupabaseClient, clienteId: string, origem: 'pexels' | 'pixabay' | 'gerada', externa: Pick<Externa, 'id' | 'url'>,
 ): Promise<string | null> {
   try {
     const url = new URL(externa.url)
-    if (url.protocol !== 'https:' || !HOSTS_EXTERNOS.includes(url.hostname)) return null
+    if (url.protocol !== 'https:' || !hostPermitido(url.hostname)) return null
     if (!/^[\w-]+$/.test(externa.id)) return null
     const r = await fetch(url, { signal: AbortSignal.timeout(15_000) })
     const tipo = (r.headers.get('content-type') ?? '').split(';')[0].trim()
@@ -203,6 +202,29 @@ export function criarBuscarPixabay(apiKey: string | undefined, porPagina = POR_P
       // a URL leva a chave: não registrar a URL
       console.error('Pixabay', e instanceof Error ? e.name : 'erro')
       return []
+    }
+  }
+}
+
+// ---------- fal.ai (imagem gerada) ----------
+// Gera uma imagem com o FLUX schnell. Sem chave: null (nada é gerado). Nunca lança erro: a fila não captura,
+// e uma exceção faria o post desistir. A chave nunca vai para o log.
+export function criarGerarImagem(apiKey: string | undefined) {
+  if (!apiKey) return null
+  return async (prompt: string, formato: 'feed' | 'vertical', timeoutMs: number) => {
+    try {
+      const r = await fetch('https://fal.run/fal-ai/flux/schnell', {
+        method: 'POST',
+        headers: { Authorization: `Key ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(corpoFal(prompt, formato)),
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+      if (!r.ok) { console.error('fal.ai', r.status); return null }
+      const g = lerRespostaFal(await r.json())
+      return g ? { id: crypto.randomUUID(), ...g } : null
+    } catch (e) {
+      console.error('fal.ai', e instanceof Error ? e.name : 'erro')
+      return null
     }
   }
 }

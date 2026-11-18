@@ -5,7 +5,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { hojeEmSaoPaulo } from '../_shared/modelos/calendario.ts'
 import {
-  contarUsoNoMes, copiarDoBanco, copiarExterna, criarBuscarPexels, criarBuscarPixabay, criarChamarIA,
+  contarUsoNoMes, copiarDoBanco, copiarExterna, criarBuscarPexels, criarBuscarPixabay, criarChamarIA, criarGerarImagem,
   registrarUso, TEMPO_FILA_MS, urlAssinada,
 } from '../_shared/ia/adaptadores.ts'
 import { melhorarUmPost, processarFila, type Contexto, type DepsMelhorar, type PostDaFila } from './acoes.ts'
@@ -21,6 +21,7 @@ const SEGREDO = Deno.env.get('MELHORAR_POSTS_SECRET') ?? ''
 const CHAVE_IA = Deno.env.get('ANTHROPIC_API_KEY')
 const CHAVE_PEXELS = Deno.env.get('PEXELS_API_KEY')
 const CHAVE_PIXABAY = Deno.env.get('PIXABAY_API_KEY')
+const CHAVE_FAL = Deno.env.get('FAL_KEY')
 
 // consultas .in(...) em pedaços, para a URL não ficar longa demais
 const PEDACO = 40
@@ -98,8 +99,8 @@ function criarDeps(): { deps: DepsMelhorar, pegar: (n: number) => Promise<PostDa
         if ((linhas ?? []).length < PAGINA) return ids
       }
     },
-    // a imagem gerada (fal.ai) entra na Etapa seguinte; sem adaptador, nada é gerado
-    gerarImagem: null,
+    // imagem gerada pelo fal.ai; sem FAL_KEY o adaptador é null e nada é gerado
+    gerarImagem: criarGerarImagem(CHAVE_FAL),
     async geradasNoMes(clienteId) {
       const n = await ler<number>(db.rpc('uso_ia_geradas_no_mes', { p_cliente: clienteId }))
       return Number(n ?? 0)
