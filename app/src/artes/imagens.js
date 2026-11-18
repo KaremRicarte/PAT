@@ -3,6 +3,7 @@ import { pecasDaArte, fotoDoPost, fotosDoPost } from '../cliente/situacao.js'
 import { lookDoRamo, fontesDoLook } from './looks.js'
 import { medidaDaArte, assinaturaDaArte } from './texto.js'
 import { desenharArte } from './desenho.js'
+import { escolherArte } from './familia.js'
 import { montarVideoDeFotos, editarVideo, desenharQuadroDeFotos, W_VIDEO, H_VIDEO } from './video.js'
 
 // Cache das imagens por path, com no máximo LIMITE bitmaps (o usado há mais tempo sai primeiro).
@@ -96,7 +97,7 @@ async function esperarFontes(look) {
 }
 
 // Tudo o que desenharArte precisa para um post (menos o ctx e a página).
-async function prepararArte(supabase, post, { negocio, produtos, ramo, fotosInfo }) {
+async function prepararArte(supabase, post, { negocio, produtos, ramo, fotosInfo, posts }) {
   const medida = medidaDaArte(post)
   if (!medida) return null
   const look = lookDoRamo(ramo?.id)
@@ -110,12 +111,14 @@ async function prepararArte(supabase, post, { negocio, produtos, ramo, fotosInfo
     esperarFontes(look),
   ])
   pecas.assinatura = assinaturaDaArte(pecas.assinatura, Boolean(logo), negocio.nome)
+  // a arte da família deste post, entre os posts do mês (sem repetir as vizinhas)
+  const arte = escolherArte(post, posts ?? []).id
   return {
     ...medida,
     soltar,
     opcoes: {
       pecas, look, cores: { cor1: negocio.cor1, cor2: negocio.cor2 }, foto, logo,
-      W: medida.W, H: medida.H, paginas: medida.paginas, capaDeVideo: post.tipo === 'video',
+      W: medida.W, H: medida.H, paginas: medida.paginas, capaDeVideo: post.tipo === 'video', arte,
     },
   }
 }

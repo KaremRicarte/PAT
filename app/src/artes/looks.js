@@ -1,3 +1,5 @@
+import { fontesDaFamilia } from './familia.js'
+
 // Estilo da arte de cada ramo (tabela LOOKS do v1, bancada/index.html).
 // fd = fonte do título, fb = fonte do texto, dw = peso do título, hs = escala do título,
 // center = texto centralizado, box = título com tarja colorida.
@@ -21,5 +23,7 @@ export function lookDoRamo(ramoId) {
 
 // Fontes que precisam estar carregadas antes de desenhar com o estilo.
 export function fontesDoLook(look) {
-  return [`${look.dw} 40px ${look.fd}`, `800 40px ${look.fb}`, `700 40px ${look.fb}`]
+  const base = [`${look.dw} 40px ${look.fd}`, `800 40px ${look.fb}`, `700 40px ${look.fb}`]
+  const estilo = Object.keys(LOOKS).find((k) => LOOKS[k] === look) ?? 'varejo'
+  return [...base, ...fontesDaFamilia(estilo)] // e as da família de artes (familia.js)
 }

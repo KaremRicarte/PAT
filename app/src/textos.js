@@ -464,6 +464,8 @@ const pt = {
 
   // artes
   'arte.arraste': 'Arraste para o lado →',
+  'arte.fam.salve': 'salve para ver de novo depois',
+  'arte.fam.siga': 'siga para não perder os próximos',
 }
 
 const textos = { pt }

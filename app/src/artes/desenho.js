@@ -3,6 +3,7 @@
 import { LOOKS } from './looks.js'
 import { corTexto, contrasteBom, quebrarLinhas, encaixarTexto } from './texto.js'
 import { t } from '../textos.js'
+import { desenharDaFamilia } from './familia.js'
 
 // ---------- peças básicas ----------
 
@@ -382,7 +383,12 @@ function paginaDoCarrossel(f, { pecas, foto, logo, pagina }) {
 // `paginas` > 1 = carrossel, e `pagina` vai de 1 a `paginas`; senão, arte única.
 // `capaDeVideo`: na capa do vídeo a frase de cima é o título.
 // `pecas.assinatura` já deve vir pronta (assinaturaDaArte).
-export function desenharArte(ctx, { pecas, look, cores, foto = null, logo = null, W, H, pagina = 1, paginas = 1, capaDeVideo = false }) {
+// `arte`: id da família de artes (familia.js). Posts com preço seguem a composição de antes (o selo de preço mora nela).
+export function desenharArte(ctx, { pecas, look, cores, foto = null, logo = null, W, H, pagina = 1, paginas = 1, capaDeVideo = false, arte = null }) {
+  if (arte && !pecas.preco) {
+    const tipo = paginas > 1 ? 'car' : capaDeVideo ? 'capa' : H > W ? 'stories' : 'feed'
+    return desenharDaFamilia(ctx, { arte, estilo: nomeDoEstilo(look), pecas, cores, foto, logo, W, H, tipo, pagina })
+  }
   const f = folha(ctx, { look, cores, W, H })
   ctx.save()
   ctx.clearRect(0, 0, W, H)
