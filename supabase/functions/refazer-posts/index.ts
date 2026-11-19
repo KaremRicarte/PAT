@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     hoje: () => hojeEmSaoPaulo(),
     async postsQueFaltam(hoje) {
       const linhas = (await ler<LinhaPost[]>(db.from('posts')
-        .select('id, data, rede, tipo, formato, horario, ordem, estado, postado_em, meses!inner(ano_mes, estrategia, cliente_id)')
+        .select('id, data, rede, tipo, formato, horario, ordem, estado, postado_em, produto_id, pilar, ocasiao, foto_path, sem_foto, meses!inner(ano_mes, estrategia, cliente_id)')
         .eq('meses.cliente_id', quem.id).gte('data', hoje).is('postado_em', null))) ?? []
       return linhas.map(({ meses, ...p }) => ({ ...p, ano_mes: meses.ano_mes, estrategia: meses.estrategia }))
     },

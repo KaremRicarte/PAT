@@ -100,3 +100,45 @@ describe('refazerPostsDoCliente', () => {
     expect(deps.gravar).not.toHaveBeenCalled()
   })
 })
+
+describe('Refazer este post (só um)', () => {
+  // o mês atual, gerado com Gramado em promoção para o Natal; o cliente corrige o preço promocional
+  const ATUAIS: Pacote['produtos'] = [
+    { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, promo_data: '2026-12-25' },
+    { id: 'p3', nome: 'Portugal', descricao: null, preco: 10299, preco_promo: null },
+  ]
+  const CORRIGIDOS = ATUAIS.map((p) => (p.id === 'p2' ? { ...p, preco_promo: 1599 } : p))
+  const mes = gerarMes(pacote(ATUAIS))
+  const noBanco: PostQueFalta[] = mes.map((p, i) => ({ id: `x${i}`, data: p.data, rede: p.rede, tipo: p.tipo, formato: p.formato,
+    horario: '08:00', ordem: p.ordem, estado: 'aprovado', postado_em: null, ano_mes: '2026-12', estrategia: 'vender',
+    produto_id: p.produto_id, pilar: p.pilar, ocasiao: p.ocasiao, foto_path: p.produto_id ? 'c1/produtos/p2/a.jpg' : null, sem_foto: false }))
+  const deps = (extra: Partial<DepsRefazer> = {}): DepsRefazer => ({
+    cliente: async () => ({ id: 'c1', situacao: 'ativo', senha_provisoria: false, ramo: 'turismo' }),
+    negocio: async () => NEGOCIO, produtos: async () => CORRIGIDOS, hoje: () => '2026-12-01',
+    postsQueFaltam: async () => noBanco, gravar: vi.fn(async () => {}), ...extra,
+  })
+
+  test('refaz só o post escolhido, com o preço corrigido, o mesmo item e a mesma fase da data', async () => {
+    const i = mes.findIndex((p) => p.rede === 'instagram' && p.tipo === 'feed' && p.ocasiao?.fase === 'aquecimento')
+    const d = deps()
+    expect(await refazerPostsDoCliente({ post_id: '00000000-0000-4000-8000-00000000000' + 'a' }, d)).toMatchObject({ status: 404 })
+    const id = '11111111-1111-4111-8111-111111111111'
+    const d2 = deps({ postsQueFaltam: async () => noBanco.map((p, j) => (j === i ? { ...p, id } : p)) })
+    expect(await refazerPostsDoCliente({ post_id: id }, d2)).toEqual({ status: 200, corpo: { refeitos: 1 } })
+    const [[mudancas]] = (d2.gravar as ReturnType<typeof vi.fn>).mock.calls
+    expect(mudancas).toHaveLength(1)
+    expect(mudancas[0].id).toBe(id)
+    expect(mudancas[0].campos).toMatchObject({ produto_id: 'p2', preco_de: 2199, preco_por: 1599, ocasiao: { nome: 'Natal', fase: 'aquecimento' },
+      estado: 'gerado', origem: 'modelo', ia_estado: 'fila', foto_path: 'c1/produtos/p2/a.jpg' })
+    expect(mudancas[0].campos.legenda).toContain('de R$ 2.199 por R$ 1.599')
+  })
+  test('post que já foi postado ou de dia passado (fora dos que faltam) → 404, nada gravado', async () => {
+    const d = deps({ postsQueFaltam: async () => [] })
+    const r = await refazerPostsDoCliente({ post_id: '11111111-1111-4111-8111-111111111111' }, d)
+    expect(r.status).toBe(404)
+    expect(d.gravar).not.toHaveBeenCalled()
+  })
+  test('id inválido → 404', async () => {
+    expect((await refazerPostsDoCliente({ post_id: 'abc' }, deps())).status).toBe(404)
+  })
+})

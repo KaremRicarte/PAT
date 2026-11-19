@@ -10,6 +10,8 @@ import { desenharPaginas, gerarImagens, gerarVideoDeFotos, previaDaMontagem, par
 import { codigoDoErro } from '../artes/video.js'
 import { abrirTrocaDeFoto, gravarEscolhaDeFoto } from './trocarFoto.js'
 import { criarEnvioDeVideo } from './enviarVideo.js'
+import { telaRefazerPost } from './refazerPost.js'
+import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 
 const movimentoReduzido = () => Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
 
@@ -339,6 +341,11 @@ export function telaPost(ctx, post, aoVoltar) {
   }
   const trocarImagem = () => abrirTrocaDeFoto({ supabase, post, produtos: ctx.produtos, ramo: ctx.ramo, fotosInfo: ctx.fotosInfo, aoEscolher: escolherFoto })
   const enviarVideo = () => envioDeVideo?.abrir() // direto no toque: o som e a galeria pedem o gesto
+  // Refazer este post: corrige o item e o PAT refaz só este post; depois, o calendário recarrega no mesmo dia
+  const refazerEste = () => telaRefazerPost(ctx, post, {
+    aoCancelar: () => telaPost(ctx, post, aoVoltar),
+    aoRefeito: () => { ctx.mesDosPosts = null; aoVoltar() },
+  })
 
   function desenharAcoes() {
     const naTela = (no) => acoes.contains(no) || extras.contains(no)
@@ -376,6 +383,8 @@ export function telaPost(ctx, post, aoVoltar) {
     const outras = sit === 'reprovado' ? [] : [
       medida ? botao('trocarimagem', t('post.trocarimagem'), trocarImagem, { class: 'secundario' }) : null,
       post.formato === 'gravar' ? botao('enviarvideo', t('post.enviarvideo'), enviarVideo, { class: 'secundario' }) : null,
+      // só posts que faltam (não postados, de hoje em diante): os outros a função não refaz
+      sit !== 'postado' && post.data >= hojeEmSaoPaulo() ? botao('refazer1', t('post.refazer1'), refazerEste, { class: 'secundario' }) : null,
     ].filter(Boolean)
     const mais = outras.length
       ? el('details', { class: 'mais' }, el('summary', { texto: t('post.mais') }), el('div', { class: 'mais-lista' }, outras))

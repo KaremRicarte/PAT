@@ -94,7 +94,7 @@ export function nomesDasRedes(redes) {
 
 // "Promoção só para uma data especial": marca e escolhe a data (das próximas datas boas ou outro dia).
 // item.promoData: null = sem data; '' = marcada, falta escolher o dia; 'AAAA-MM-DD' = o dia.
-function caixaDaData(item, datas) {
+export function caixaDaData(item, datas) {
   const id = `promo-data-${item.id}`
   const marcar = el('input', { type: 'checkbox', id, checked: item.promoData != null })
   const OUTRO = 'outro'
