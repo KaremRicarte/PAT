@@ -2,7 +2,7 @@ import { vi } from 'vitest'
 import { itensMudaram, contarParaRefazer, depoisDeSalvar } from '../../app/src/cliente/refazer.js'
 import { carregarNegocio } from '../../app/src/cliente/negocio.js'
 
-vi.mock('../../app/src/comum.js', () => ({ el: vi.fn(), logo: vi.fn(), mostrar: vi.fn(), aviso: vi.fn() }))
+vi.mock('../../app/src/comum.js', () => ({ el: vi.fn(), logo: vi.fn(), mostrar: vi.fn(), aviso: vi.fn(), invocar: (sb, nome, o) => sb.functions.invoke(nome, o) }))
 vi.mock('../../app/src/cliente/negocio.js', () => ({ carregarNegocio: vi.fn() }))
 
 const A = { id: 'a', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, fotos: ['u/a.jpg'], foto_path: 'u/a.jpg' }

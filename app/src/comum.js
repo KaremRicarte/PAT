@@ -162,7 +162,7 @@ function telaEsqueci(supabase, emailDigitado = '') {
 }
 
 export const botaoSair = (supabase) =>
-  el('button', { type: 'button', class: 'secundario', texto: t('comum.sair'), onclick: () => supabase.auth.signOut() })
+  el('button', { type: 'button', class: 'secundario', texto: t('comum.sair'), onclick: () => supabase.auth.signOut({ scope: 'local' }) }) // sai só deste aparelho
 
 // Aviso curto fixo no rodapé ("Aprovado ✓"). Some em 3 s, ou em 6 s quando tem Desfazer.
 // A região role=status fica sempre na página (nunca hidden): vazia, só some da vista (CSS :empty),
@@ -190,4 +190,15 @@ export function aviso(texto, { desfazer } = {}) {
   clearTimeout(prazoDoAviso)
   if (nova) prazoDoAviso = setTimeout(encher, 100) // região recém-criada: dá tempo de entrar na árvore de acessibilidade
   else encher()
+}
+
+// Chama uma função do servidor. Se ela recusar o login (401: a sessão acabou, por exemplo porque saiu em outro
+// aparelho), renova o login e tenta de novo; se não der, sai só deste aparelho e o app volta para a tela de entrar.
+export async function invocar(supabase, nome, opcoes) {
+  let r = await supabase.functions.invoke(nome, opcoes)
+  if (r.error?.context?.status !== 401) return r
+  const { error } = await supabase.auth.refreshSession()
+  if (!error) r = await supabase.functions.invoke(nome, opcoes)
+  if (r.error?.context?.status === 401) await supabase.auth.signOut({ scope: 'local' })
+  return r
 }

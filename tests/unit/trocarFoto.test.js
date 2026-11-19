@@ -4,7 +4,7 @@ import { aviso } from '../../app/src/comum.js'
 import { reduzirFoto } from '../../app/src/cliente/negocio.js'
 import { esquecerImagem } from '../../app/src/artes/imagens.js'
 
-vi.mock('../../app/src/comum.js', () => ({ aviso: vi.fn(), el: vi.fn() }))
+vi.mock('../../app/src/comum.js', () => ({ aviso: vi.fn(), el: vi.fn(), invocar: (sb, nome, o) => sb.functions.invoke(nome, o) }))
 vi.mock('../../app/src/cliente/negocio.js', () => ({ reduzirFoto: vi.fn(), FOTO_MAX: 1600 }))
 vi.mock('../../app/src/artes/imagens.js', () => ({ esquecerImagem: vi.fn(), carregarImagem: vi.fn(), prenderImagens: vi.fn() }))
 import { RAMOS } from '../../supabase/functions/_shared/modelos/ramos/index.ts'

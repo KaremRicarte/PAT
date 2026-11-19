@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-vi.mock('../../app/src/comum.js', () => ({ aviso: vi.fn() }))
+vi.mock('../../app/src/comum.js', () => ({ aviso: vi.fn(), invocar: (sb, nome, o) => sb.functions.invoke(nome, o) }))
 const { aplicarAcao } = await import('../../app/src/cliente/acoesPost.js')
 const { aviso } = await import('../../app/src/comum.js')
 

@@ -2,7 +2,7 @@
 // a gravação da escolha (foto nova: reduz, envia ao Storage e grava o caminho) e, depois, a legenda reescrita
 // pela IA para a foto nova (função reescrever-post).
 import { t } from '../textos.js'
-import { el, aviso } from '../comum.js'
+import { el, aviso, invocar } from '../comum.js'
 import { fotoDoPost, fotosDoProduto, todasAsFotos } from './situacao.js'
 import { reduzirFoto, FOTO_MAX } from './negocio.js'
 import { gravarMudanca, postOcupado } from './acoesPost.js'
@@ -118,7 +118,7 @@ export async function reescreverLegenda({ supabase, post, aoEscrevendo, aoMudarT
   const legendaAntes = post.legenda
   aoEscrevendo?.(true)
   try {
-    const { data, error } = await supabase.functions.invoke('reescrever-post', { body: { post_id: post.id } })
+    const { data, error } = await invocar(supabase, 'reescrever-post', { body: { post_id: post.id } })
     if (error) { console.error(error); return false }
     // o texto mudou no aparelho enquanto a IA escrevia (ex.: Gerar outro): o mais novo fica
     if (!data?.post || post.legenda !== legendaAntes) return false
@@ -146,7 +146,7 @@ async function esquecerAnalise(supabase, caminho, fotosInfo) {
 }
 function pedirAnalise(supabase, caminho) {
   if (!supabase.functions?.invoke) return
-  Promise.resolve(supabase.functions.invoke('descrever-fotos', { body: { paths: [caminho] } }))
+  Promise.resolve(invocar(supabase, 'descrever-fotos', { body: { paths: [caminho] } }))
     .catch((e) => console.error(e))
 }
 

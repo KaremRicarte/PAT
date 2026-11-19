@@ -1,6 +1,6 @@
 // Lembretes por notificação (web push): estado, ativar, desligar, o aviso e o sino do calendário.
 import { t } from '../textos.js'
-import { el, aviso } from '../comum.js'
+import { el, aviso, invocar } from '../comum.js'
 import { ehIphone } from '../aparelho.js'
 
 export { ehIphone }
@@ -103,7 +103,7 @@ async function ativarLembretes(supabase, registro = null) {
   const { error } = await supabase.rpc('inscrever_push', { p_endpoint: endpoint, p_p256dh: keys.p256dh, p_auth: keys.auth })
   if (error) throw error
 
-  const teste = await supabase.functions.invoke('lembrete-teste', { body: {} })
+  const teste = await invocar(supabase, 'lembrete-teste', { body: {} })
   if (teste.error) console.error(teste.error) // os lembretes já estão ativos; só a notificação de teste falhou
   return 'ativo'
 }

@@ -1,6 +1,6 @@
 // Ações do post que gravam no banco (aprovar, descartar, Postei, os desfazer e a foto).
 import { t } from '../textos.js'
-import { aviso } from '../comum.js'
+import { aviso, invocar } from '../comum.js'
 import { ehIphone } from '../aparelho.js'
 import { proximoEstado, chaveFormato } from './situacao.js'
 
@@ -55,7 +55,7 @@ export async function gerarOutro({ supabase, post }) {
   if (emAndamento.has(post.id)) return { erro: t('post.aguarde') }
   emAndamento.add(post.id)
   try {
-    const { data, error } = await supabase.functions.invoke('trocar-post', { body: { post_id: post.id } })
+    const { data, error } = await invocar(supabase, 'trocar-post', { body: { post_id: post.id } })
     if (!error && data?.post) return { post: data.post }
     console.error(error)
     if (error?.name === 'FunctionsFetchError' || !error?.context?.json) return { erro: t('erro.conexao') }

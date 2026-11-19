@@ -1,6 +1,7 @@
 // Dados do negócio do cliente: leitura, gravação e preparo das fotos.
 // O cliente do Supabase vem por parâmetro, para as funções puras poderem ser testadas sem rede.
 import { esquecerImagem } from '../artes/imagens.js'
+import { invocar } from '../comum.js'
 import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
 
 export const MAX_ITENS = 20
@@ -202,7 +203,7 @@ async function limpadorDeStorage(supabase, marcas) {
 function descreverEmSegundoPlano(supabase, uid, paths, opcoes) {
   const todas = [...new Set(paths)].slice(0, 30)
   if (todas.length && supabase.functions?.invoke) {
-    Promise.resolve(supabase.functions.invoke('descrever-fotos', { body: { paths: todas } }))
+    Promise.resolve(invocar(supabase, 'descrever-fotos', { body: { paths: todas } }))
       .then(() => new Promise((ok) => setTimeout(ok, 4000))) // dá tempo de as análises chegarem ao banco
       .then(() => carregarFotosInfo(supabase, uid))
       .then((info) => opcoes.aoFotosInfo?.(info))

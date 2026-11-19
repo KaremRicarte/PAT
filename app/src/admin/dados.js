@@ -1,4 +1,5 @@
 import supabase from '../supabase.js'
+import { invocar } from '../comum.js'
 import { t } from '../textos.js'
 
 export async function listarClientes() {
@@ -11,7 +12,7 @@ export async function listarClientes() {
 
 // Chama a função admin-clientes; quando o status não é 2xx, devolve { erro } com a mensagem do corpo.
 async function chamarFuncao(body) {
-  const { data, error } = await supabase.functions.invoke('admin-clientes', { body })
+  const { data, error } = await invocar(supabase, 'admin-clientes', { body })
   if (!error) return data
   try {
     const corpo = await error.context.json()
@@ -65,7 +66,7 @@ export async function enviarParaBanco(ramo, blob) {
 // A função aceita até 30 fotos por chamada.
 export async function descreverBanco(paths, ramo) {
   for (let i = 0; i < paths.length; i += 30) {
-    try { await supabase.functions.invoke('descrever-fotos', { body: { paths: paths.slice(i, i + 30), ramo } }) } catch { /* segue sem descrição */ }
+    try { await invocar(supabase, 'descrever-fotos', { body: { paths: paths.slice(i, i + 30), ramo } }) } catch { /* segue sem descrição */ }
   }
 }
 

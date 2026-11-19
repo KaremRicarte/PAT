@@ -1,6 +1,6 @@
 // Quiz do mês (serviços e estratégia) e geração. O calendário fica em calendario.js.
 import { t } from '../textos.js'
-import { el, logo, mostrar, botaoSair } from '../comum.js'
+import { el, logo, mostrar, botaoSair, invocar } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { datasDoMes, diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
@@ -172,7 +172,7 @@ async function telaGerando({ supabase, atualizar, aposGerar = atualizar, estrate
   let i = 0
   const tique = setInterval(() => { if (i < passos.length) passos[i++].classList.add('feito') }, 700)
 
-  const { data, error } = await supabase.functions.invoke('gerar-mes', { body: { estrategia } })
+  const { data, error } = await invocar(supabase, 'gerar-mes', { body: { estrategia } })
   clearInterval(tique)
   if (!error) {
     mesPreferido = data?.anoMes ?? null // mostra o mês que acabou de ser gerado

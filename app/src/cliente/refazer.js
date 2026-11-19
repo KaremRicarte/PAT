@@ -1,7 +1,7 @@
 // Depois de salvar "Editar meu negócio": se os itens mudaram e há posts que faltam,
 // pergunta se o cliente quer refazê-los com os itens novos (função refazer-posts).
 import { t } from '../textos.js'
-import { el, logo, mostrar, aviso } from '../comum.js'
+import { el, logo, mostrar, aviso, invocar } from '../comum.js'
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { carregarNegocio } from './negocio.js'
 
@@ -75,7 +75,7 @@ function telaRefazer({ supabase, conta, atualizar }) {
 // Chama uma função de refazer posts: { refeitos } ou { erro } com a mensagem pronta para mostrar.
 export async function chamarFuncao(supabase, nome, body) {
   try {
-    const { data, error } = await supabase.functions.invoke(nome, { body })
+    const { data, error } = await invocar(supabase, nome, { body })
     if (!error) return { refeitos: data?.refeitos ?? 0 }
     console.error(error)
     if (error?.name === 'FunctionsFetchError' || !error?.context?.json) return { erro: t('erro.conexao') }
