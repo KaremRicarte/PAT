@@ -1,6 +1,7 @@
 import { t } from '../textos.js'
 import { el, logo, campo, mostrar, aoEnviar, botaoSair } from '../comum.js'
-import { listarClientes, criarCliente, redefinirSenha, definirSituacao, definirRamo, definirRedes } from './dados.js'
+import { listarClientes, criarCliente, redefinirSenha, definirSituacao, definirRamo, definirRedes, definirFrequencia } from './dados.js'
+import { FREQUENCIAS } from '../../../supabase/functions/_shared/modelos/tipos.ts'
 import { listaRamos } from './ramo.js'
 import { areaBanco } from './banco.js'
 
@@ -95,7 +96,7 @@ function formNovo(aviso, recarregar) {
 }
 
 function tabela(clientes, aviso, recarregar) {
-  const cab = [t('admin.nome'), t('admin.email'), t('admin.telefone'), t('admin.ramo'), t('admin.redes'), t('admin.idioma'), t('admin.situacao'), '']
+  const cab = [t('admin.nome'), t('admin.email'), t('admin.telefone'), t('admin.ramo'), t('admin.redes'), t('admin.frequencia'), t('admin.idioma'), t('admin.situacao'), '']
   return el('table', { class: 'clientes' },
     el('thead', {}, el('tr', {}, cab.map(c => el('th', { scope: 'col', texto: c })))),
     el('tbody', {}, clientes.map(c => linha(c, aviso, recarregar))))
@@ -162,6 +163,20 @@ function linha(c, aviso, recarregar) {
     return el('label', { class: 'rede-caixa' }, caixa, ' ', t('rede.' + rede))
   })
 
+  // dias de post (plano do cliente)
+  const freqAtual = c.frequencia ?? 'seg_sex'
+  const frequencia = el('select', { class: 'pequeno', 'aria-label': t('admin.frequencia') + ': ' + c.nome },
+    FREQUENCIAS.map((f) => el('option', { value: f, texto: t('freq.' + f), selected: f === freqAtual })))
+  frequencia.addEventListener('change', async () => {
+    if (!confirm(t('admin.frequencia.confirma'))) { frequencia.value = freqAtual; return }
+    frequencia.disabled = true
+    const r = await definirFrequencia(c.id, frequencia.value)
+    frequencia.disabled = false
+    if (r.erro) { frequencia.value = freqAtual; return aviso.replaceChildren(el('p', { class: 'erro', role: 'alert', texto: r.erro })) }
+    aviso.replaceChildren()
+    await recarregar()
+  })
+
   const celula = (rotulo, ...filhos) => el('td', { 'data-rotulo': rotulo }, ...filhos)
   return el('tr', {},
     celula(t('admin.nome'), el('strong', { texto: c.nome })),
@@ -170,6 +185,7 @@ function linha(c, aviso, recarregar) {
     celula(t('admin.ramo'), ramo,
       c.ramo ? null : el('span', { class: 'selo ruim', texto: t('admin.semramo') })),
     celula(t('admin.redes'), el('div', { class: 'redes-admin' }, caixas)),
+    celula(t('admin.frequencia'), frequencia),
     celula(t('admin.idioma'), c.idioma === 'es' ? t('admin.idioma.es') : t('admin.idioma.pt')),
     celula(t('admin.situacao'),
       el('span', { class: bloqueado ? 'selo ruim' : 'selo bom', texto: bloqueado ? t('admin.bloqueado') : t('admin.ativo') }),

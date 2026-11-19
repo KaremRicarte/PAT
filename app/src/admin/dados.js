@@ -4,7 +4,7 @@ import { t } from '../textos.js'
 
 export async function listarClientes() {
   const { data, error } = await supabase.from('clientes')
-    .select('id, nome, email, telefone, idioma, ramo, redes, situacao, senha_provisoria')
+    .select('id, nome, email, telefone, idioma, ramo, redes, frequencia, situacao, senha_provisoria')
     .order('nome')
   if (error) throw error
   return data
@@ -33,6 +33,12 @@ export async function definirSituacao(id, situacao) {
 
 export async function definirRamo(id, ramo) {
   const { error } = await supabase.from('clientes').update({ ramo }).eq('id', id)
+  return error ? { erro: t('erro.geral') } : {}
+}
+
+// Dias de post do cliente (plano): todos, seg_sab, uteis ou seg_sex.
+export async function definirFrequencia(id, frequencia) {
+  const { error } = await supabase.from('clientes').update({ frequencia }).eq('id', id)
   return error ? { erro: t('erro.geral') } : {}
 }
 

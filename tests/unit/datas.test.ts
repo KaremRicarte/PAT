@@ -57,7 +57,8 @@ describe('promoção com data (vale só perto da data)', () => {
     expect(dia.titulo.startsWith('Oferta de Natal: ')).toBe(true)
     expect(dia.legenda).toContain('Oferta de Natal, só hoje (25/12): de R$ 2.199 por R$ 1.799.')
     const aquec = feedIG(posts).filter((x) => x.ocasiao?.fase === 'aquecimento')
-    expect(aquec.map((x) => x.data)).toEqual(['2026-12-21', '2026-12-23'])
+    // com post todo dia útil, o aquecimento fica nos 2 dias de post antes da data
+    expect(aquec.map((x) => x.data)).toEqual(['2026-12-23', '2026-12-24'])
     for (const a of aquec) {
       expect(a.titulo.startsWith('Vem aí a oferta de Natal: ')).toBe(true)
       expect(a.legenda).toContain('Oferta de Natal, só no dia 25/12: de R$ 2.199 por R$ 1.799.')

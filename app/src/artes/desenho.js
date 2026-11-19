@@ -312,7 +312,8 @@ function arteUnica(f, { pecas, foto, logo, capaDeVideo }) {
   const topo = 17 * u, fundo = H - 20 * u
   rotulo(f, pecas.rotulo, 9 * u, tinta)
   if (H > W) {
-    const frase = capaDeVideo ? pecas.titulo : (pecas.gancho || pecas.titulo)
+    // story em enquete: a pergunta (título) em destaque
+    const frase = capaDeVideo || pecas.enquete ? pecas.titulo : (pecas.gancho || pecas.titulo)
     // Com selo: o título fica no alto e o selo logo abaixo dele (acima da assinatura).
     const reserva = pecas.preco ? medirSelo(f, pecas.preco).h + 4 * u : 0
     const tit = montarTitulo(f, frase, 9.5 * u, fundo - topo - reserva)

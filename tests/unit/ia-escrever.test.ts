@@ -283,3 +283,13 @@ test('foto sem ilustrativa segue como foto anexada do cliente', async () => {
   expect(texto).toContain('Foto do post (anexada): mesa posta')
   expect(texto).not.toContain('ilustrativa')
 })
+
+test('story: a IA escreve uma enquete (pergunta + duas opções curtas); fora desse formato, tenta de novo', async () => {
+  const enquete = { titulo: 'Você já viu as piscinas naturais?', gancho: 'Você já viu as piscinas naturais?', meio: 'Enquete: Já vi / Quero ver', convite: '', hashtags: [], roteiro: null }
+  const { chamar, pedidos } = falsa(ok(resposta({ titulo: 'Piscinas naturais', meio: 'Um texto longo qualquer.' })), ok(resposta(enquete)))
+  const r = await escreverPost(chamar, entrada({}, { tipo: 'stories', formato: 'arte', pilar: 'demo' }))
+  expect(r!.tentativas).toBe(2)
+  expect(textoDo(pedidos[0])).toMatch(/ENQUETE/)
+  expect(textoDo(pedidos[1])).toMatch(/não é uma pergunta curta/)
+  expect(r!.post.legenda).toBe('Você já viu as piscinas naturais?\n\nEnquete: Já vi / Quero ver')
+})

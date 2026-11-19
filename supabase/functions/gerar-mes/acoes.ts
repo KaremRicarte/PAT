@@ -2,13 +2,14 @@
 // Etapa 2: só modelos prontos. Etapa 3: a IA entra antes, e os modelos viram a reserva.
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import { REDES, type Estrategia, type Rede, type Tom } from '../_shared/modelos/tipos.ts'
+import { lerFrequencia } from '../_shared/modelos/tipos.ts'
 import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import { mesAlvo } from '../_shared/modelos/calendario.ts'
 import { agendaDoPacote, gerarMes, type Pacote, type PostGerado } from '../_shared/modelos/gerar.ts'
 import { temPromocao, validarMes, validarPost } from '../_shared/modelos/validar.ts'
 
 export type DepsMes = {
-  cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null, redes?: string[] | null } | null>,
+  cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null, redes?: string[] | null, frequencia?: string | null } | null>,
   negocio: () => Promise<{ nome: string, insta: string | null, tom: Tom, horario: string } | null>,
   produtos: () => Promise<Pacote['produtos']>,
   mesesGerados: () => Promise<string[]>,
@@ -57,9 +58,10 @@ export async function gerarMesDoCliente(entrada: unknown, deps: DepsMes): Promis
 
   const est = estrategia as Estrategia
   const doCliente = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
-  const posts = gerarMes({ ramo: cliente.ramo, estrategia: est, ...alvo, negocio, produtos, redes })
+  const frequencia = lerFrequencia(cliente.frequencia)
+  const posts = gerarMes({ ramo: cliente.ramo, estrategia: est, ...alvo, negocio, produtos, redes, frequencia })
   const problemas = [
-    ...validarMes(posts, agendaDoPacote({ ramo: cliente.ramo, estrategia: est, ...alvo, produtos }), redes),
+    ...validarMes(posts, agendaDoPacote({ ramo: cliente.ramo, estrategia: est, ...alvo, produtos, frequencia }), redes),
     ...posts.flatMap((p) => validarPost(p, ramo, doCliente).map((x) => `${p.data} ${p.rede}/${p.tipo}: ${x}`)),
   ]
   if (problemas.length) {

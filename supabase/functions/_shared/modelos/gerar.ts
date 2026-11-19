@@ -1,6 +1,6 @@
 // Monta o mês inteiro com os modelos prontos (sem IA). Determinística: o mesmo pacote dá o mesmo mês.
 // Baseada na geração do PAT atual (bancada/index.html, generate/buildDemo/buildNeed/buildAprox/caption).
-import type { Aprox, Estrategia, Item, Pilar, Ramo, Rede, Tom } from './tipos.ts'
+import type { Aprox, Estrategia, Frequencia, Item, Pilar, Ramo, Rede, Tom } from './tipos.ts'
 import { ENGAJA_CTA, RAMOS, itemDoProduto } from './ramos/index.ts'
 import { agendaDoMes } from './calendario.ts'
 import { datasDoMes, diaMes } from './datas.ts'
@@ -15,6 +15,8 @@ export type Pacote = {
   deslocamento?: number,
   // Redes escolhidas no quiz do mês; ausente = todas.
   redes?: readonly Rede[],
+  // Dias de post do cliente (painel do admin); ausente = segunda a sexta.
+  frequencia?: Frequencia,
 }
 export type PostGerado = {
   data: string, rede: Rede,
@@ -36,8 +38,6 @@ const MIX: Record<Estrategia, Record<Pilar, number>> = {
   crescer: { demo: 0.2, aprox: 0.45, need: 0.35 },
   credibilidade: { demo: 0.25, aprox: 0.5, need: 0.25 },
 }
-// Quantos vídeos do mês são montagem com fotos; o resto é roteiro para gravar.
-const MONTAGENS: Record<Estrategia, number> = { vender: 2, tempo: 3, crescer: 2, credibilidade: 2 }
 const TEMAS_CONFIANCA = /bastidores|equipe|hist[oó]ria|cliente feliz|trajet[oó]ria/i
 const ORDEM_REDE = { instagram: 0, facebook: 1, tiktok: 2, whatsapp: 3 }
 const ORDEM_TIPO = { feed: 0, stories: 1, video: 2, status: 3, lista: 4 }
@@ -95,8 +95,8 @@ export function especiaisDoMes(p: Pick<Pacote, 'ramo' | 'anoMes' | 'inicio' | 'p
 }
 
 // A agenda que gerarMes usa (a normal mais os dias especiais): a validação do mês confere com ela.
-export const agendaDoPacote = (p: Pick<Pacote, 'ramo' | 'anoMes' | 'inicio' | 'produtos' | 'estrategia'>) =>
-  agendaDoMes(p.anoMes, p.inicio, p.estrategia, especiaisDoMes(p).extras)
+export const agendaDoPacote = (p: Pick<Pacote, 'ramo' | 'anoMes' | 'inicio' | 'produtos' | 'estrategia' | 'frequencia'>) =>
+  agendaDoMes(p.anoMes, p.inicio, p.estrategia, especiaisDoMes(p).extras, p.frequencia ?? 'seg_sex')
 
 // Os dias do feed que levam post de preço, e o item de cada um (spec §5 e §9b).
 // Promoções antes das vitrines, na ordem da lista; sextas e sábados primeiro; nunca mais que as vagas de demo.
@@ -143,7 +143,10 @@ type Partes = {
   pilar: Pilar, titulo: string, formato: 'arte' | 'carrossel', gancho: string, meio: string,
   roteiro: string, produto_id: string | null, descricao: string | null, conviteProprio: string | null,
   preco: string, preco_de: number | null, preco_por: number | null,
+  // a enquete do story do dia (pergunta curta e duas opções para o adesivo de enquete)
+  enquete: Enquete,
 }
+type Enquete = { pergunta: string, opcoes: [string, string] }
 const SEM_PRECO = { preco: '', preco_de: null, preco_por: null }
 
 export function gerarMes(p: Pacote): PostGerado[] {
@@ -173,13 +176,9 @@ export function gerarMes(p: Pacote): PostGerado[] {
   const aproxFeed = girar(p.estrategia === 'credibilidade'
     ? [...ramo.aprox.filter((a) => TEMAS_CONFIANCA.test(a.tema)), ...ramo.aprox.filter((a) => !TEMAS_CONFIANCA.test(a.tema))]
     : ramo.aprox, desl)
-  const aproxStories = girar(ramo.aprox.filter((a) => a.fmt === 'Stories'), desl)
-  const aproxGravar = girar([...ramo.aprox.filter((a) => a.fmt === 'Reels'),
-    ...ramo.aprox.filter((a) => a.fmt === 'Post' || a.fmt === 'Carrossel')], desl)
 
   const out: Omit<PostGerado, 'ordem' | 'horario'>[] = []
 
-  // ---- Feed (Instagram + Facebook) e Stories, nos mesmos dias ----
   const usados: Record<Pilar, number> = { demo: 0, aprox: 0, need: 0 }
   const idx: Record<Pilar, number> = { demo: 0, aprox: 0, need: 0 }
   let anterior: Pilar | null = null, tituloAnterior = ''
@@ -189,7 +188,14 @@ export function gerarMes(p: Pacote): PostGerado[] {
     pilar: 'demo', titulo: limitar(titulo), formato: ramo.textOnly && !preco.preco ? 'carrossel' : 'arte',
     gancho: unq(it.gancho), meio: unq(it.beneficio), roteiro: `Como montar: ${it.demo}`,
     produto_id: pr.id, descricao: pr.descricao, conviteProprio: null, ...preco,
+    enquete: { pergunta: `Você já conhece ${nomeItem(it)}?`, opcoes: ['Já conheço', 'Quero conhecer'] },
   })
+  // a enquete de um tema de aproximação: a do próprio tema (se tiver 2 opções) ou "faz sentido?"
+  const enqueteDoTema = (a: Aprox, it: Item): Enquete => {
+    const abre = campo(a, 0, it), titulo = limitar(trocar(a.t, it), 70)
+    const pergunta = abre.trim().endsWith('?') ? abre : `${titulo}: faz sentido para você?`
+    return a.poll && a.poll.length >= 2 ? { pergunta, opcoes: [a.poll[0], a.poll[1]] } : { pergunta, opcoes: ['Faz sentido', 'Quero saber mais'] }
+  }
   const montar = (pilar: Pilar): Partes => {
     if (pilar === 'demo') return demo(itens[idx.demo % L], ramo.titulo(itens[idx.demo % L].it), SEM_PRECO)
     if (pilar === 'need') {
@@ -199,6 +205,7 @@ export function gerarMes(p: Pacote): PostGerado[] {
         pilar, titulo: limitar(it.dor), formato: 'carrossel',
         gancho: unq(it.dorG), meio: unq(it.dorT), roteiro: `Como montar: ${it.sol}`,
         produto_id: pr.id, descricao: pr.descricao, conviteProprio: null, ...SEM_PRECO,
+        enquete: { pergunta: unq(it.dorG), opcoes: ['Já aconteceu', 'Nunca'] },
       }
     }
     const a = aproxFeed[idx.aprox % aproxFeed.length], { it } = itens[idx.aprox % L]
@@ -206,6 +213,7 @@ export function gerarMes(p: Pacote): PostGerado[] {
       pilar, titulo: limitar(trocar(a.t, it)), formato: 'carrossel',
       gancho: campo(a, 0, it), meio: campo(a, 2, it), roteiro: `Como montar: ${campo(a, 1, it)}`,
       produto_id: null, descricao: null, conviteProprio: campo(a, 3, it), ...SEM_PRECO,
+      enquete: enqueteDoTema(a, it),
     }
   }
 
@@ -228,7 +236,16 @@ export function gerarMes(p: Pacote): PostGerado[] {
     return demo(x, titulo, { preco: texto, ...campos })
   }
 
-  // Dia de preço: post de demonstração do item, com o preço (vale para o Instagram e o Facebook do dia).
+  // A enquete do story do dia: a da oferta da data, a da data comemorativa ou a da pauta.
+  const enqueteDoDia = (partes: Partes, ocasiao: Ocasiao | null): Enquete => {
+    if (ocasiao?.fase === 'aquecimento') return { pergunta: `${tituloDaOferta(ocasiao)}. Quer ser avisado no dia?`, opcoes: ['Quero!', 'Agora não'] }
+    if (ocasiao?.fase === 'dia') return { pergunta: `${nomeDaOferta(ocasiao)}: é só hoje. Vai aproveitar?`, opcoes: ['Vou!', 'Quero detalhes'] }
+    const tema = ocasiao?.fase === 'tema' ? temas.get(ocasiao.data) : null
+    if (tema?.promo) return { pergunta: `${tema.nome}: você vai comemorar?`, opcoes: ['Vou sim', 'Ainda não sei'] }
+    return partes.enquete
+  }
+
+  // Dia de preço: post de demonstração do item, com o preço (vale para todos os posts do dia).
   const livres = agenda.feed.filter((d) => !vagas.has(d) && !temas.has(d))
   const precoDoDia = diasDePreco(livres, itens, p.estrategia, ramo)
   const montarPreco = (x: ItemComPreco): Partes => {
@@ -237,6 +254,10 @@ export function gerarMes(p: Pacote): PostGerado[] {
     return demo(x, titulo, { preco: texto, ...campos })
   }
 
+  // ---- Um conteúdo por dia de post (a pauta), adaptado para cada rede ----
+  // Instagram post, Facebook, story (em enquete) e status em todo dia; a lista do WhatsApp 1x por semana;
+  // o vídeo 2x por semana (agenda). Preço, promoção com data e a data especial valem para todos os posts do dia.
+  const listas = new Set(agenda.lista), videos = new Set(agenda.videos)
   agenda.feed.forEach((data, i) => {
     const mix = MIX[p.estrategia]
     const ordem = (['demo', 'aprox', 'need'] as Pilar[])
@@ -255,66 +276,38 @@ export function gerarMes(p: Pacote): PostGerado[] {
     anterior = partes.pilar; tituloAnterior = partes.titulo
 
     const conv = crescer || !partes.conviteProprio ? convite() : partes.conviteProprio
-    const base = {
-      data, formato: partes.formato, pilar: partes.pilar, titulo: partes.titulo, produto_id: partes.produto_id,
-      roteiro: partes.roteiro, preco_de: partes.preco_de, preco_por: partes.preco_por, ocasiao,
-    }
+    const precos = { preco_de: partes.preco_de, preco_por: partes.preco_por }
+    const comum = { data, pilar: partes.pilar, produto_id: partes.produto_id, ...precos, ocasiao }
+    const base = { ...comum, formato: partes.formato, titulo: partes.titulo, roteiro: partes.roteiro }
     out.push({ ...base, rede: 'instagram', tipo: 'feed', hashtags: tagsIG(partes.pilar),
       legenda: paragrafos(partes.gancho, partes.meio, partes.preco, conv, siga) })
     out.push({ ...base, rede: 'facebook', tipo: 'feed', hashtags: tagsFB,
       legenda: paragrafos(partes.gancho, partes.meio, partes.descricao, partes.preco, conv, siga,
         `${nome}${insta ? ` · Instagram ${insta}` : ''}`) })
 
-    const s = aproxStories[i % aproxStories.length], { it } = itens[i % L]
-    const enquete = s.poll?.length
-      ? (s.poll.length === 1 ? `Caixinha: ${s.poll[0]}` : `Enquete: ${s.poll.join(' / ')}`)
-      : campo(s, 3, it)
-    out.push({ data, rede: 'instagram', tipo: 'stories', formato: 'arte', pilar: 'aprox',
-      titulo: limitar(trocar(s.t, it)), legenda: paragrafos(campo(s, 0, it), enquete),
-      hashtags: [], roteiro: `Como montar: ${campo(s, 1, it)}`, produto_id: null, preco_de: null, preco_por: null, ocasiao: null })
-  })
+    // story: a pauta do dia virada enquete (a pergunta na arte; as duas opções para o adesivo de enquete)
+    const q = enqueteDoDia(partes, ocasiao)
+    out.push({ ...comum, rede: 'instagram', tipo: 'stories', formato: 'arte', titulo: limitar(q.pergunta),
+      legenda: paragrafos(q.pergunta, partes.preco, `Enquete: ${q.opcoes[0]} / ${q.opcoes[1]}`),
+      hashtags: [], roteiro: `Como montar: a pergunta na arte e o adesivo de enquete com "${q.opcoes[0]}" e "${q.opcoes[1]}".` })
 
-  // ---- Vídeos (TikTok / Reels): primeiro as montagens com fotos, depois os roteiros para gravar ----
-  agenda.videos.forEach((data, i) => {
-    const conv = convite()
-    if (i < MONTAGENS[p.estrategia]) {
-      const { pr, it } = itens[i % L]
-      const gancho = unq(it.gancho)
-      out.push({ data, rede: 'tiktok', tipo: 'video', formato: 'montagem', pilar: 'demo',
-        titulo: limitar(ramo.titulo(it)), legenda: paragrafos(gancho, conv), hashtags: tagsIG('demo'),
-        roteiro: [`1. Abertura (texto na tela): ${gancho}`, `2. Fotos de ${pr.nome}: ${it.demo}`, `3. Fechamento: ${conv}`].join('\n'),
-        produto_id: pr.id, preco_de: null, preco_por: null, ocasiao: null })
-    } else {
-      const j = i - MONTAGENS[p.estrategia]
-      const a = aproxGravar[j % aproxGravar.length], { it } = itens[j % L]
-      out.push({ data, rede: 'tiktok', tipo: 'video', formato: 'gravar', pilar: 'aprox',
-        titulo: limitar(trocar(a.t, it)), legenda: paragrafos(campo(a, 0, it), conv), hashtags: tagsIG('aprox'),
-        roteiro: a.f.map(([k], n) => `${n + 1}. ${k}: ${campo(a, n, it)}`).join('\n'), produto_id: null,
-        preco_de: null, preco_por: null, ocasiao: null })
+    out.push({ ...comum, rede: 'whatsapp', tipo: 'status', formato: 'texto', titulo: partes.titulo,
+      legenda: paragrafos(partes.gancho, partes.preco, conv), hashtags: [], roteiro: null })
+
+    if (listas.has(data)) {
+      out.push({ ...comum, rede: 'whatsapp', tipo: 'lista', formato: 'texto', titulo: limitar(`Mensagem para a lista: ${partes.titulo}`),
+        legenda: paragrafos(`Oi! Aqui é ${nome}.`, partes.gancho, partes.meio, partes.preco, conv), hashtags: [], roteiro: null })
     }
-  })
 
-  // ---- WhatsApp: Status (alterna problema e demonstração) e mensagens para a lista ----
-  agenda.status.forEach((data, i) => {
-    const { pr, it } = itens[Math.floor(i / 2) % L]
-    const need = i % 2 === 0
-    out.push({ data, rede: 'whatsapp', tipo: 'status', formato: 'texto', pilar: need ? 'need' : 'demo',
-      titulo: limitar(need ? it.dor : ramo.titulo(it)),
-      legenda: paragrafos(unq(need ? it.dorG : it.gancho), convite()),
-      hashtags: [], roteiro: null, produto_id: pr.id, preco_de: null, preco_por: null, ocasiao: null })
-  })
-  // A lista mostra o preço do item só em "Vender mais" (spec §9b). Promoção com data: só perto da data.
-  agenda.lista.forEach((data, i) => {
-    const { pr, it } = itens[i % L]
-    const trat = p.estrategia === 'vender' ? tratamentoDoItem(pr, ramo, data) : null
-    // perto da data marcada, a mensagem é da oferta da data (com o preço que o item tiver)
-    const ocasiao: Ocasiao | null = p.estrategia === 'vender' && !ramo.noPromo && pr.promo_data && pertoDaData(data, pr.promo_data)
-      ? { nome: nomeDoDia(pr.promo_data), data: pr.promo_data, fase: pr.promo_data === data ? 'dia' : 'aquecimento' } : null
-    const { texto, ...campos } = trat ? precoDoItem({ pr, it, trat }, ocasiao) : { texto: '', preco_de: null, preco_por: null }
-    out.push({ data, rede: 'whatsapp', tipo: 'lista', formato: 'texto', pilar: 'demo',
-      titulo: limitar(`Mensagem para a lista: ${pr.nome}`),
-      legenda: paragrafos(`Oi! Aqui é ${nome}.`, unq(it.beneficio), texto, convite()),
-      hashtags: [], roteiro: null, produto_id: pr.id, ...campos, ocasiao })
+    if (videos.has(data)) {
+      // com item: montagem com as fotos dele; assunto geral: roteiro para gravar
+      const item = partes.produto_id ? itens.find((x) => x.pr.id === partes.produto_id) : null
+      out.push({ ...comum, rede: 'tiktok', tipo: 'video', formato: item ? 'montagem' : 'gravar', titulo: partes.titulo,
+        legenda: paragrafos(partes.gancho, partes.preco, conv), hashtags: tagsIG(partes.pilar),
+        roteiro: (item
+          ? [`1. Abertura (texto na tela): ${partes.gancho}`, `2. Fotos de ${item.pr.nome}: ${item.it.demo}`, `3. Fechamento: ${conv}`]
+          : [`1. Abertura: ${partes.gancho}`, `2. Conteúdo: ${partes.meio}`, `3. Fechamento: ${conv}`]).join('\n') })
+    }
   })
 
   return out

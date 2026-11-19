@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
   }
 
   const deps: DepsTroca = {
-    cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo').eq('id', quem.id).maybeSingle()),
+    cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo, frequencia').eq('id', quem.id).maybeSingle()),
     async post(id) {
       const linha = await ler<LinhaPost>(db.from('posts')
         .select('id, mes_id, data, rede, tipo, formato, horario, ordem, trocas, legenda, produto_id, foto_path, sem_foto, meses!inner(cliente_id, ano_mes, estrategia)')

@@ -106,6 +106,7 @@ test('pecasDaArte: legenda de 5 parágrafos', () => {
     rotulo: 'LOJA DA ANA', titulo: 'T', gancho: 'g', meio: 'm', convite: 'conv',
     blocos: { gancho: 'g', meios: ['m', 'x', 'conv'], convite: 'fim' },
     ocasiao: null,
+    enquete: false,
     preco: null, assinatura: { texto: '@ana', logo: true },
   })
 })
@@ -195,4 +196,10 @@ describe('fotos reprovadas pela análise', () => {
     expect(fotoDoPost({ foto_path: 'x.jpg' }, produtos, { textOnly: false }, info)).toBe('x.jpg')
     expect(fotoDoPost({ foto_path: 'x.jpg', produto_id: 1, ordem: 0 }, produtos, { textOnly: false }, info)).toBe('x.jpg')
   })
+})
+
+test('pecasDaArte: story em enquete mostra a pergunta e chama para o adesivo', () => {
+  const post = { tipo: 'stories', titulo: 'Você já conhece Gramado no Natal?', legenda: 'Você já conhece Gramado no Natal?\n\nEnquete: Já conheço / Quero conhecer' }
+  const p = pecasDaArte(post, { nome: 'Malibu' }, { noPromo: false })
+  expect(p).toMatchObject({ titulo: 'Você já conhece Gramado no Natal?', gancho: 'Vote na enquete aqui embaixo', enquete: true })
 })

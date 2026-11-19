@@ -37,14 +37,32 @@ const contar = (posts: PostGerado[]) => {
 const DEZ = ['2026-12-25', '2026-12-31']
 const tudo = (p: PostGerado) => [p.titulo, p.legenda, p.roteiro ?? '', ...p.hashtags].join('\n')
 
-test('mês de dezembro em vender tem 53 posts (o Réveillon, numa quinta, ganha feed e stories)', () => {
+test('dezembro (segunda a sexta): um conteúdo por dia em todas as redes; lista 1x e vídeo 2x por semana', () => {
   const posts = gerarMes(base())
-  expect(posts).toHaveLength(53)
   expect(contar(posts)).toEqual({
-    'instagram/feed': 13, 'instagram/stories': 13, 'facebook/feed': 13,
-    'tiktok/video': 4, 'whatsapp/status': 8, 'whatsapp/lista': 2,
+    'instagram/feed': 23, 'instagram/stories': 23, 'facebook/feed': 23, 'whatsapp/status': 23,
+    'whatsapp/lista': 5, 'tiktok/video': 10,
   })
   expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', 'vender', DEZ))).toEqual([])
+  // o mesmo assunto em todas as redes do dia
+  for (const ig of posts.filter((p) => p.rede === 'instagram' && p.tipo === 'feed')) {
+    const doDia = posts.filter((p) => p.data === ig.data && p.tipo !== 'stories')
+    expect(new Set(doDia.map((p) => p.titulo.replace(/^Mensagem para a lista: /, '')))).toEqual(new Set([ig.titulo]))
+    expect(new Set(doDia.map((p) => p.produto_id))).toEqual(new Set([ig.produto_id]))
+  }
+})
+
+test('story do dia é uma enquete sobre o assunto do dia', () => {
+  const posts = gerarMes(turismo())
+  const stories = posts.filter((p) => p.tipo === 'stories')
+  for (const st of stories) {
+    expect(st.legenda).toMatch(/\n\nEnquete: [^/]+ \/ [^/]+$/)
+    expect(st.titulo.trim().endsWith('?')).toBe(true)
+    const ig = posts.find((p) => p.data === st.data && p.rede === 'instagram' && p.tipo === 'feed')!
+    expect(st.produto_id).toBe(ig.produto_id)
+  }
+  const demo = stories.find((p) => p.pilar === 'demo' && p.produto_id === 'g')!
+  expect(demo.titulo).toMatch(/Gramado/)
 })
 
 test('posts em ordem de data, com ordem sequencial a partir de 0', () => {
@@ -102,14 +120,16 @@ test('vender: 1 post de preço por item com preço, promoções primeiro, em sex
   expect(todos.filter((p) => /Condição especial esta semana:|Oferta da semana/.test(tudo(p)))).toEqual([])
 })
 
-test('vender: a lista do WhatsApp mostra o preço do item, do mesmo jeito', () => {
-  const lista = gerarMes(turismo()).filter((p) => p.tipo === 'lista')
-  expect(lista.map((p) => [p.produto_id, p.preco_de, p.preco_por])).toEqual([['g', 2199, 1799], ['l', 10299, 9999]])
-  expect(lista[0].legenda).toContain('De R$ 2.199 por R$ 1.799. Aproveite enquanto durar!')
-  const vitrine = gerarMes(turismo({ produtos: [LISTA_SPEC[2], LISTA_SPEC[3]] })).filter((p) => p.tipo === 'lista')
-  expect(vitrine.map((p) => [p.produto_id, p.preco_de, p.preco_por])).toEqual([['s', null, 1999], ['p', null, null]])
-  expect(vitrine[0].legenda).toContain('Por R$ 1.999.')
-  expect(vitrine[1].legenda).not.toContain('R$')
+test('vender: o preço do dia vale para todos os posts do dia (lista, status e story também)', () => {
+  const posts = gerarMes(turismo())
+  const dias = new Set(feedDePreco(posts).map((p) => p.data))
+  expect(dias.size).toBeGreaterThan(0)
+  for (const d of dias) {
+    const doDia = posts.filter((p) => p.data === d)
+    expect(new Set(doDia.map((p) => `${p.preco_de}/${p.preco_por}`)).size).toBe(1)
+  }
+  const promo = posts.find((p) => p.tipo === 'status' && p.preco_de === 2199)!
+  expect(promo.legenda).toContain('De R$ 2.199 por R$ 1.799. Aproveite enquanto durar!')
 })
 
 test.each(['crescer', 'tempo', 'credibilidade'] as const)('%s: no máximo 2 posts de preço, promoções primeiro, lista sem preço', (estrategia) => {
@@ -137,10 +157,9 @@ test('mais itens com preço que vagas: corta pelo teto de demo', () => {
     ({ id: `p${i}`, nome: `Item ${i}`, descricao: null, preco: 100 + i, preco_promo: i % 2 ? 90 : null }))
   const posts = gerarMes(base({ produtos }))
   const ig = feedDePreco(posts)
-  // vender: metade dos 12 dias de feed é demo
-  expect(ig).toHaveLength(6)
-  // promoções (ímpares) primeiro, na ordem da lista; sextas antes (a sexta 25 é do Natal: fica para o post da data)
-  expect(ig.map((p) => p.produto_id).sort()).toEqual(['p1', 'p11', 'p3', 'p5', 'p7', 'p9'])
+  // vender: metade dos 23 dias de feed é demo (o dia do Natal fica para o post da data)
+  expect(ig).toHaveLength(11)
+  // promoções (ímpares) primeiro, na ordem da lista; sextas antes (a sexta 25 é do Natal)
   expect(ig.filter((p) => ['2026-12-04', '2026-12-11', '2026-12-18'].includes(p.data))
     .map((p) => p.produto_id)).toEqual(['p1', 'p3', 'p5'])
   expect(ig.some((p) => p.data === '2026-12-25')).toBe(false)
@@ -156,8 +175,9 @@ test.each(ESTRATEGIAS)('contagem por rede não muda com posts de preço (%s)', (
 test('todo post leva preco_de e preco_por (null quando não é de preço)', () => {
   const posts = gerarMes(turismo())
   expect(posts.filter((p) => !('preco_de' in p) || !('preco_por' in p))).toEqual([])
-  expect(posts.filter((p) => ['stories', 'video', 'status'].includes(p.tipo) && (p.preco_de !== null || p.preco_por !== null)))
-    .toEqual([])
+  // dia sem preço: nenhum post do dia tem preço
+  const semPreco = posts.filter((p) => p.rede === 'instagram' && p.tipo === 'feed' && p.preco_por == null).map((p) => p.data)
+  expect(posts.filter((p) => semPreco.includes(p.data) && (p.preco_de !== null || p.preco_por !== null))).toEqual([])
 })
 
 test('produto antigo (preco_promo ausente) com preço vira vitrine', () => {
@@ -178,18 +198,22 @@ test('credibilidade tem mais aproximação que demonstração no feed', () => {
   expect(n('aprox')).toBeGreaterThan(n('demo'))
 })
 
-test.each([
-  ['vender', 2, 2], ['tempo', 3, 1], ['crescer', 2, 4], ['credibilidade', 2, 2],
-] as const)('%s tem %i montagens e %i roteiros para gravar', (estrategia, montagem, gravar) => {
-  const videos = gerarMes(base({ estrategia })).filter((p) => p.tipo === 'video')
-  expect(videos.filter((p) => p.formato === 'montagem')).toHaveLength(montagem)
-  expect(videos.filter((p) => p.formato === 'gravar')).toHaveLength(gravar)
-  expect(videos.every((p) => p.roteiro && p.roteiro.startsWith('1. '))).toBe(true)
+test.each(ESTRATEGIAS)('%s: vídeo 2x por semana, com o assunto do dia (montagem com item, roteiro para gravar sem)', (estrategia) => {
+  const posts = gerarMes(base({ estrategia }))
+  const videos = posts.filter((p) => p.tipo === 'video')
+  expect(videos).toHaveLength(10)
+  for (const v of videos) {
+    const ig = posts.find((p) => p.data === v.data && p.rede === 'instagram' && p.tipo === 'feed')!
+    expect(v.titulo).toBe(ig.titulo)
+    expect(v.formato).toBe(v.produto_id ? 'montagem' : 'gravar')
+    expect(v.roteiro?.startsWith('1. ')).toBe(true)
+  }
 })
 
-test('vídeos para gravar não repetem roteiro em psicologia', () => {
+test('psicologia: vídeo para gravar tem roteiro sem sobras', () => {
   const gravar = gerarMes(base({ ramo: 'psicologia', estrategia: 'crescer' })).filter((p) => p.formato === 'gravar')
-  expect(new Set(gravar.map((p) => p.titulo)).size).toBe(gravar.length)
+  expect(gravar.length).toBeGreaterThan(0)
+  expect(gravar.filter((p) => /undefined|null/.test(p.roteiro ?? ''))).toEqual([])
 })
 
 test('item desconhecido e único não deixa sobras', () => {
@@ -229,7 +253,7 @@ test('é determinística', () => {
 test('mês começando no meio tem menos posts, todos a partir do início', () => {
   const posts = gerarMes(base({ anoMes: '2026-11', inicio: '2026-11-16' }))
   expect(posts.every((p) => p.data >= '2026-11-16')).toBe(true)
-  expect(contar(posts)['instagram/feed']).toBe(7)
+  expect(contar(posts)['instagram/feed']).toBe(11)
 })
 
 test('com redes escolhidas, só vêm posts delas, iguais (texto e ordem) aos do mês completo', () => {

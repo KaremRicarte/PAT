@@ -3,6 +3,7 @@
 // Com { post_id }: refaz só aquele post ("Refazer este post"), com a estratégia do mês dele.
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import type { Estrategia, Rede, Tom } from '../_shared/modelos/tipos.ts'
+import { lerFrequencia } from '../_shared/modelos/tipos.ts'
 import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import type { Ocasiao, Pacote, PostGerado } from '../_shared/modelos/gerar.ts'
 import { refazerPosts, refazerUmPost } from '../_shared/modelos/refazer.ts'
@@ -19,7 +20,7 @@ export type CamposRefeitos = Pick<PostGerado, 'titulo' | 'legenda' | 'hashtags' 
   { estado: 'gerado', foto_path: string | null, sem_foto: boolean, origem: 'modelo', ia_estado: 'fila' }
 
 export type DepsRefazer = {
-  cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null } | null>,
+  cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null, frequencia?: string | null } | null>,
   negocio: () => Promise<{ nome: string, insta: string | null, tom: Tom, horario: string } | null>,
   produtos: () => Promise<Pacote['produtos']>,
   hoje: () => string,
@@ -61,7 +62,7 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
     // só um post: dos que faltam (não postado, de hoje em diante) e deste cliente (postsQueFaltam já filtra)
     const post = (await deps.postsQueFaltam(hoje)).find((p) => p.id === postId)
     if (!post) return r(404, 'Este post não pode mais ser refeito: já foi postado ou o dia passou.')
-    const pacote: Pacote = { ramo: cliente.ramo, estrategia: post.estrategia as Estrategia, anoMes: post.ano_mes, inicio: `${post.ano_mes}-01`, negocio, produtos }
+    const pacote: Pacote = { ramo: cliente.ramo, estrategia: post.estrategia as Estrategia, anoMes: post.ano_mes, inicio: `${post.ano_mes}-01`, negocio, produtos, frequencia: lerFrequencia(cliente.frequencia) }
     const novo = refazerUmPost(pacote, { ...post, produto_id: post.produto_id ?? null, pilar: post.pilar ?? 'demo', ocasiao: post.ocasiao ?? null })
     if (!novo) return r(422, 'Não encontrei como refazer este post.')
     const problemas = validarPost(novo, ramo, doCliente)
@@ -88,7 +89,7 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
 
   const mudancas: { id: string, campos: CamposRefeitos }[] = []
   for (const [anoMes, posts] of porMes) {
-    const pacote: Pacote = { ramo: cliente.ramo, estrategia: posts[0].estrategia as Estrategia, anoMes, inicio: `${anoMes}-01`, negocio, produtos }
+    const pacote: Pacote = { ramo: cliente.ramo, estrategia: posts[0].estrategia as Estrategia, anoMes, inicio: `${anoMes}-01`, negocio, produtos, frequencia: lerFrequencia(cliente.frequencia) }
     refazerPosts(pacote, posts).forEach((novo, i) => {
       const post = posts[i]
       if (!novo) return

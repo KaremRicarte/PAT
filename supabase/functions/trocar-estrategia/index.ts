@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   }
 
   const deps: DepsTrocaEstrategia = {
-    cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo').eq('id', quem.id).maybeSingle()),
+    cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo, frequencia').eq('id', quem.id).maybeSingle()),
     mes: (id) => ler(db.from('meses').select('id, cliente_id, ano_mes, estrategia, redes').eq('id', id).maybeSingle()),
     negocio: () => ler(db.from('negocios').select('nome, insta, tom, horario').eq('cliente_id', quem.id).maybeSingle()),
     produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data')

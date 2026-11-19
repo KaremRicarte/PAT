@@ -1,10 +1,11 @@
 // Agenda do mês (quais dias recebem post em cada rede) e escolha do mês a gerar.
 // Datas sempre como texto AAAA-MM-DD, calculadas em UTC para não depender do fuso.
-import type { Estrategia } from './tipos.ts'
+import type { Estrategia, Frequencia } from './tipos.ts'
+import { feriados } from './datas.ts'
 
 export type Agenda = { feed: string[], videos: string[], status: string[], lista: string[] }
 
-const SEG = 1, TER = 2, QUA = 3, QUI = 4, SEX = 5
+const SEG = 1, SEX = 5
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto',
   'setembro', 'outubro', 'novembro', 'dezembro']
 
@@ -23,19 +24,35 @@ function diasDoMes(anoMes: string, inicio: string) {
   return dias
 }
 
-// extras: dias que também recebem post no feed (datas especiais e promoções com data), se forem do mês e de `inicio` em diante.
-export function agendaDoMes(anoMes: string, inicio: string, estrategia: Estrategia, extras: readonly string[] = []): Agenda {
+// Um conteúdo por dia de post, adaptado para todas as redes do cliente (spec 2026-11-19-dia-unico-todas-as-redes):
+// feed (Instagram + Facebook), stories e status em todo dia de post; a lista do WhatsApp no 1º dia de post de cada
+// semana; o vídeo em 2 dias de post por semana (o 1º e o 3º; o 2º se a semana tiver só 2).
+// Dias de post: os da frequência do cliente, mais os `extras` (datas especiais e promoções com data, mesmo fora dela).
+// A estratégia não muda os dias (o parâmetro fica para quem já chama assim).
+export function agendaDoMes(anoMes: string, inicio: string, _estrategia: Estrategia, extras: readonly string[] = [],
+  frequencia: Frequencia = 'seg_sex'): Agenda {
   const dias = diasDoMes(anoMes, inicio)
-  const em = (semanas: number[], max: number) =>
-    dias.filter((d) => semanas.includes(d.semana)).slice(0, max).map((d) => d.data)
-  const crescer = estrategia === 'crescer'
-  const primeiraQuinta = (de: number, ate: number) =>
-    dias.find((d) => d.semana === QUI && d.dia >= de && d.dia <= ate)?.data
+  const folgas = new Set(frequencia === 'uteis' ? feriados(Number(anoMes.slice(0, 4))) : [])
+  const vale = (d: { data: string, semana: number }) =>
+    frequencia === 'todos' ? true
+      : frequencia === 'seg_sab' ? d.semana !== 0
+        : d.semana >= SEG && d.semana <= SEX && !folgas.has(d.data)
+  const feed = [...new Set([...dias.filter(vale).map((d) => d.data),
+    ...extras.filter((d) => d.startsWith(anoMes) && d >= inicio)])].sort()
+  // semanas de segunda a domingo
+  const semanaDe = (data: string) => {
+    const d = new Date(`${data}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7)
+    return d.toISOString().slice(0, 10)
+  }
+  const porSemana = new Map<string, string[]>()
+  for (const d of feed) porSemana.set(semanaDe(d), [...(porSemana.get(semanaDe(d)) ?? []), d])
+  const semanas = [...porSemana.values()]
   return {
-    feed: [...new Set([...em([SEG, QUA, SEX], 12), ...extras.filter((d) => d.startsWith(anoMes) && d >= inicio)])].sort(),
-    videos: crescer ? em([TER, QUI], 6) : em([TER], 4),
-    status: em([TER, QUI], 8),
-    lista: [primeiraQuinta(1, 15), primeiraQuinta(16, 31)].filter((d): d is string => !!d),
+    feed,
+    status: feed,
+    lista: semanas.map((s) => s[0]),
+    videos: semanas.flatMap((s) => (s.length >= 3 ? [s[0], s[2]] : s.slice(0, 2))),
   }
 }
 

@@ -2,6 +2,7 @@
 // Troca a estratégia de um mês já gerado: refaz os posts ainda não postados de hoje em diante.
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import type { Estrategia, Rede, Tom } from '../_shared/modelos/tipos.ts'
+import { lerFrequencia } from '../_shared/modelos/tipos.ts'
 import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import { agendaDoPacote, gerarMes, type Pacote, type PostGerado } from '../_shared/modelos/gerar.ts'
 import { validarMes, validarPost } from '../_shared/modelos/validar.ts'
@@ -10,7 +11,7 @@ import { lerRedes } from '../gerar-mes/acoes.ts'
 export type MesParaTrocar = { id: string, cliente_id: string, ano_mes: string, estrategia: string, redes: string[] | null }
 
 export type DepsTrocaEstrategia = {
-  cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null } | null>,
+  cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null, frequencia?: string | null } | null>,
   mes: (id: string) => Promise<MesParaTrocar | null>,
   negocio: () => Promise<{ nome: string, insta: string | null, tom: Tom, horario: string } | null>,
   produtos: () => Promise<Pacote['produtos']>,
@@ -50,9 +51,10 @@ export async function trocarEstrategiaDoMes(entrada: unknown, deps: DepsTrocaEst
   const est = estrategia as Estrategia
   const ramo = RAMOS[cliente.ramo]
   const doCliente = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
-  const posts = gerarMes({ ramo: cliente.ramo, estrategia: est, anoMes: mes.ano_mes, inicio: desde, negocio, produtos, redes })
+  const frequencia = lerFrequencia(cliente.frequencia)
+  const posts = gerarMes({ ramo: cliente.ramo, estrategia: est, anoMes: mes.ano_mes, inicio: desde, negocio, produtos, redes, frequencia })
   const problemas = [
-    ...validarMes(posts, agendaDoPacote({ ramo: cliente.ramo, estrategia: est, anoMes: mes.ano_mes, inicio: desde, produtos }), redes),
+    ...validarMes(posts, agendaDoPacote({ ramo: cliente.ramo, estrategia: est, anoMes: mes.ano_mes, inicio: desde, produtos, frequencia }), redes),
     ...posts.flatMap((p) => validarPost(p, ramo, doCliente).map((x) => `${p.data} ${p.rede}/${p.tipo}: ${x}`)),
   ]
   if (problemas.length) {

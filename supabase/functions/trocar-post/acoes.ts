@@ -2,6 +2,7 @@
 // Escolhe o novo lugar com os modelos (gerarTroca) e pede o texto à IA na hora (spec §3.5); sem a IA, fica o modelo.
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import type { Estrategia, Tom } from '../_shared/modelos/tipos.ts'
+import { lerFrequencia } from '../_shared/modelos/tipos.ts'
 import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import type { Pacote, PostGerado } from '../_shared/modelos/gerar.ts'
 import { gerarTroca } from '../_shared/modelos/troca.ts'
@@ -24,7 +25,7 @@ export type CamposTroca = Pick<PostGerado, 'titulo' | 'legenda' | 'hashtags' | '
 export type ProdutoTroca = Pacote['produtos'][number] & { fotos?: string[] | null, foto_path?: string | null }
 
 export type DepsTroca = DepsNaHora & {
-  cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null } | null>,
+  cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null, frequencia?: string | null } | null>,
   post: (id: string) => Promise<PostDoMes | null>,
   trocasDoMes: (mesId: string) => Promise<number>,
   negocio: () => Promise<{ nome: string, insta: string | null, tom: Tom, horario: string } | null>,
@@ -60,7 +61,7 @@ export async function trocarPostDoCliente(entrada: unknown, deps: DepsTroca): Pr
   // O pacote usa o mês inteiro; gerarTroca acha o lugar do post mesmo se o mês foi gerado a partir do meio.
   const pacote: Pacote = {
     ramo: cliente.ramo, estrategia: post.estrategia as Estrategia, anoMes: post.ano_mes, inicio: `${post.ano_mes}-01`,
-    negocio, produtos,
+    negocio, produtos, frequencia: lerFrequencia(cliente.frequencia),
   }
   const alvo = {
     data: post.data, rede: post.rede, tipo: post.tipo, formato: post.formato, horario: post.horario,

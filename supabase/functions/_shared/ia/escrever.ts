@@ -141,6 +141,9 @@ function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
     linhas.push('Este ramo tem conselho profissional: sem preço, promoção, desconto ou oferta, e sem promessa de resultado.')
   }
   if (l.rede === 'facebook') linhas.push('O app acrescenta a assinatura do negócio no fim da legenda.')
+  if (l.tipo === 'stories') {
+    linhas.push('Este story é uma ENQUETE sobre o assunto do dia (o mesmo dos outros posts do dia): o título e o gancho são a mesma pergunta, curta (até 80 caracteres) e terminando com "?"; o meio é exatamente "Enquete: opção 1 / opção 2", com duas opções curtas (até 20 caracteres cada) que respondem à pergunta; o convite fica vazio.')
+  }
   linhas.push('', '# Texto de modelo que estava neste lugar (só referência de tema; não copie)', e.textoModelo)
   return linhas.filter((x) => x !== null).join('\n')
 }
@@ -187,6 +190,11 @@ function montar(e: EntradaPost, p: Partes, noPromo: boolean): { post: CamposDaIA
     preco_de: preco?.preco_de ?? null, preco_por: preco?.preco_por ?? null,
   }
   const problemas = validarPost(completo, ramo, e.textosDoCliente)
+  // story: enquete (pergunta + duas opções curtas para o adesivo do Instagram)
+  if (e.lugar.tipo === 'stories') {
+    if (!p.titulo.trim().endsWith('?') || p.titulo.length > 90) problemas.push('o título do story não é uma pergunta curta')
+    if (!/^Enquete: [^/\n]{1,24} \/ [^/\n]{1,24}$/.test(p.meio.trim())) problemas.push('o meio do story não é "Enquete: opção 1 / opção 2" com opções curtas')
+  }
   // Fora dos posts de preço, nada de promoção/desconto/oferta (o validarPost só barra o R$ nesses ramos).
   // O que o cliente escreveu (nome do negócio, do serviço, descrição) não conta, como no validarPost.
   if (!preco && !ramo.noPromo && !ofertaDaData(e.lugar)) {

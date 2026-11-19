@@ -89,5 +89,16 @@ export function datasParaPromocao(hoje: string, ramo: { id: string, noPromo: boo
   return meses.flatMap((m) => datasDoMes(m, ramo)).filter((d) => d.promo && d.data >= hoje && d.data <= ate)
 }
 
+// Feriados nacionais do ano (o plano "dias úteis" não posta neles, a não ser numa data especial):
+// Ano Novo, Carnaval (segunda e terça), Sexta-feira Santa, Tiradentes, Dia do Trabalho, Corpus Christi,
+// Independência, Aparecida, Finados, Proclamação da República, Consciência Negra e Natal.
+export function feriados(ano: number): string[] {
+  const p = pascoa(ano)
+  return [
+    iso(ano, 1, 1), somarDias(p, -48), somarDias(p, -47), somarDias(p, -2), iso(ano, 4, 21), iso(ano, 5, 1),
+    somarDias(p, 60), iso(ano, 9, 7), iso(ano, 10, 12), iso(ano, 11, 2), iso(ano, 11, 15), iso(ano, 11, 20), iso(ano, 12, 25),
+  ].sort()
+}
+
 // '2026-12-25' -> '25/12'
 export const diaMes = (data: string) => `${data.slice(8, 10)}/${data.slice(5, 7)}`

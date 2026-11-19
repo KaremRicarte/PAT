@@ -5,6 +5,11 @@ export type Estrategia = 'vender' | 'crescer' | 'credibilidade' | 'tempo'
 export type Tom = 'proximo' | 'tecnico' | 'promo'
 export type Pilar = 'demo' | 'aprox' | 'need'
 export type Rede = 'instagram' | 'facebook' | 'tiktok' | 'whatsapp'
+// Dias de post do cliente (plano escolhido no painel do admin): todos os dias, segunda a sábado,
+// dias úteis (segunda a sexta sem feriados nacionais) ou segunda a sexta (com feriados).
+export type Frequencia = 'todos' | 'seg_sab' | 'uteis' | 'seg_sex'
+export const FREQUENCIAS: readonly Frequencia[] = ['todos', 'seg_sab', 'uteis', 'seg_sex']
+export const lerFrequencia = (v: unknown): Frequencia => ((FREQUENCIAS as readonly unknown[]).includes(v) ? v as Frequencia : 'seg_sex')
 export const REDES: readonly Rede[] = ['instagram', 'facebook', 'tiktok', 'whatsapp']
 
 // Um produto, serviço ou tema do ramo, com os textos de cada pilar.

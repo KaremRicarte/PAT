@@ -157,11 +157,14 @@ export function pecasDaArte(post, negocio, ramo) {
   const par = (post.legenda ?? '').split(/\n\n+/).map((x) => x.trim()).filter(Boolean)
   const convite = par.length < 2 ? '' : par.length <= 3 ? par[par.length - 1] : par[par.length - 2]
   const modo = negocio.assinatura
+  // story em enquete: a pergunta é o título; a frase de apoio chama para o adesivo de enquete
+  const enquete = post.tipo === 'stories' && /^Enquete: /m.test(post.legenda ?? '')
   const insta = (negocio.insta ?? '').trim()
   return {
     rotulo: (negocio.nome ?? '').toUpperCase(),
     titulo: post.titulo,
-    gancho: par[0] ?? '',
+    gancho: enquete ? t('arte.enquete') : par[0] ?? '',
+    enquete,
     meio: par.length >= 3 ? par[1] : '',
     convite,
     // carrossel: o texto da legenda dividido em páginas (artes/texto.js)

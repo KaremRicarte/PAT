@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   }
 
   const deps: DepsMes = {
-    cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo, redes').eq('id', quem.id).maybeSingle()),
+    cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo, redes, frequencia').eq('id', quem.id).maybeSingle()),
     negocio: () => ler(db.from('negocios').select('nome, insta, tom, horario').eq('cliente_id', quem.id).maybeSingle()),
     produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data')
       .eq('cliente_id', quem.id).order('ordem'))) ?? [],
