@@ -76,16 +76,57 @@ export function datasDaEstrategia(alvo, ramo, produtos) {
     .map((x) => ({ ...x, itens: comPromo.filter((p) => p.promo_data === x.data).map((p) => p.nome) }))
 }
 
-export function listaDeDatas(alvo, ramo, produtos) {
+// Itens que podem ter promoção com data: preço promocional menor que o normal (e ramo que fala de preço).
+export const itensEmPromocao = (produtos, ramo) => (ramo.noPromo ? [] : (produtos ?? []).filter((p) =>
+  p.preco != null && p.preco_promo != null && Number(p.preco_promo) < Number(p.preco)))
+
+// Mudanças de data das promoções: [{ id, promo_data }] só dos itens que mudaram.
+export const mudancasDeDatas = (produtos, marcadas) =>
+  (produtos ?? []).filter((p) => marcadas.has(p.id) && (marcadas.get(p.id) ?? null) !== (p.promo_data ?? null))
+    .map((p) => ({ id: p.id, promo_data: marcadas.get(p.id) ?? null }))
+
+// Datas do mês na tela da estratégia, com as caixinhas para marcar em cada data os itens em promoção
+// (a promoção do item passa a valer só perto da data). Devolve { corpo, mudancas() }.
+export function escolhaDeDatas(alvo, ramo, produtos) {
   const datas = datasDaEstrategia(alvo, ramo, produtos)
-  if (!datas.length) return null
+  const promos = itensEmPromocao(produtos, ramo)
+  const marcadas = new Map(promos.map((p) => [p.id, p.promo_data ?? null]))
+  const mudancas = () => mudancasDeDatas(produtos, marcadas)
+  if (!datas.length) return { corpo: null, mudancas }
   const semana = (d) => SEMANA_CURTA[new Date(`${d}T00:00:00Z`).getUTCDay()]
-  return [el('h2', { texto: t('mesq.datas.titulo', { mes: nomeDoMes(alvo.anoMes) }) }),
-    el('ul', { class: 'datas-mes' }, datas.map((x) => el('li', {},
-      el('strong', { texto: `${semana(x.data)}, ${diaMes(x.data)} · ${x.nome}` }),
-      el('small', { texto: x.itens.length ? t('mesq.datas.promo', { itens: x.itens.join(', ') })
-        : x.especial?.soPromo ? t('mesq.datas.so')
-          : x.especial?.promo ? `${t('mesq.datas.post')} ${t('mesq.datas.dica')}` : t('mesq.datas.post') }))))]
+  const lista = el('ul', { class: 'datas-mes' })
+  const aceitaPromo = (x) => !ramo.noPromo && (x.especial === null || x.especial.promo)
+  function linha(x) {
+    const doDia = promos.filter((p) => marcadas.get(p.id) === x.data)
+    const dica = doDia.length ? t('mesq.datas.promo', { itens: doDia.map((p) => p.nome).join(', ') })
+      : x.especial?.soPromo ? t('mesq.datas.so')
+        : aceitaPromo(x) && !promos.length ? `${t('mesq.datas.post')} ${t('mesq.datas.sempromo')}`
+          : t('mesq.datas.post')
+    const caixas = aceitaPromo(x) ? promos.map((p) => {
+      const id = `data-${x.data}-${p.id}`
+      const caixa = el('input', { type: 'checkbox', id, checked: marcadas.get(p.id) === x.data })
+      caixa.addEventListener('change', () => { marcadas.set(p.id, caixa.checked ? x.data : null); desenhar(); document.getElementById(id)?.focus() })
+      return el('label', { class: 'caixinha', for: id }, caixa, el('span', { texto: t('mesq.datas.marcar', { nome: p.nome }) }))
+    }) : []
+    return el('li', {}, el('strong', { texto: `${semana(x.data)}, ${diaMes(x.data)} · ${x.nome}` }), el('small', { texto: dica }), ...caixas)
+  }
+  function desenhar() { lista.replaceChildren(...datas.map(linha)) }
+  desenhar()
+  return {
+    corpo: [el('h2', { texto: t('mesq.datas.titulo', { mes: nomeDoMes(alvo.anoMes) }) }),
+      promos.length && datas.some(aceitaPromo) ? el('p', { class: 'muted', texto: t('mesq.datas.explica') }) : null, lista],
+    mudancas,
+  }
+}
+
+// Grava as datas das promoções marcadas na tela da estratégia e atualiza os itens em memória.
+export async function gravarDatasDasPromocoes(supabase, produtos, mudancas) {
+  for (const m of mudancas) {
+    const { error } = await supabase.from('produtos').update({ promo_data: m.promo_data }).eq('id', m.id)
+    if (error) throw error
+    const p = produtos.find((x) => x.id === m.id)
+    if (p) p.promo_data = m.promo_data
+  }
 }
 
 function telaEstrategia({ ctx, ramo, alvo, antes, voltar: aoVoltar }) {
@@ -94,14 +135,27 @@ function telaEstrategia({ ctx, ramo, alvo, antes, voltar: aoVoltar }) {
   const sugerida = escolhida
   const gerar = el('button', { type: 'submit', texto: t('mesq.gerar', { mes: nomeDoMes(alvo.anoMes) }) })
   const voltar = el('button', { type: 'button', class: 'secundario', texto: t('quiz.voltar'), onclick: aoVoltar })
+  const datas = escolhaDeDatas(alvo, ramo, ctx.produtos)
+  const erro = el('p', { class: 'erro', role: 'alert', hidden: true })
   const form = el('form', { novalidate: true, class: 'quiz' },
     el('h1', { texto: t('mesq.titulo') }),
     el('p', { class: 'muted', texto: t('mesq.dica', { mes: nomeDoMes(alvo.anoMes) }) }),
     cartoesEstrategia(ramo, escolhida, (v) => { escolhida = v }, sugerida),
-    listaDeDatas(alvo, ramo, ctx.produtos),
+    datas.corpo, erro,
     el('div', { class: 'acoes' }, gerar, voltar, botaoSair(supabase)))
-  form.addEventListener('submit', (ev) => {
+  form.addEventListener('submit', async (ev) => {
     ev.preventDefault()
+    // as datas marcadas nas promoções vão para o banco antes de gerar (o gerar-mes lê os itens de lá)
+    try {
+      gerar.disabled = true
+      await gravarDatasDasPromocoes(supabase, ctx.produtos, datas.mudancas())
+    } catch (e) {
+      console.error(e)
+      erro.textContent = t('erro.geral')
+      erro.hidden = false
+      gerar.disabled = false
+      return
+    }
     // Com meses anteriores, mudou serviço? Oferece refazer os posts que faltam (só dos meses de antes).
     const aposGerar = meses.length ? () => depoisDeSalvar({ supabase, cliente, produtos: antes, meses, atualizar }) : atualizar
     telaGerando({ supabase, atualizar, aposGerar, estrategia: escolhida, voltar: () => telaEstrategia({ ctx, ramo, alvo, antes, voltar: aoVoltar }) })

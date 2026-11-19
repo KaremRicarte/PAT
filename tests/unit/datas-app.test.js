@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 vi.mock('../../app/src/artes/imagens.js', () => ({ esquecerImagem: vi.fn() }))
-import { datasDaEstrategia } from '../../app/src/cliente/mes.js'
+import { datasDaEstrategia, itensEmPromocao, mudancasDeDatas } from '../../app/src/cliente/mes.js'
 import { rotuloOcasiao } from '../../app/src/cliente/situacao.js'
 import { validarItens, itensParaSalvar } from '../../app/src/cliente/negocio.js'
 import { estadoDoNegocio } from '../../app/src/cliente/perguntas.js'
@@ -47,6 +47,21 @@ describe('datas na tela da estratégia', () => {
   test('mês gerado do meio: datas que já passaram ficam de fora', () => {
     expect(datasDaEstrategia({ anoMes: '2026-12', inicio: '2026-12-26' }, turismo, produtos).map((x) => x.nome)).toEqual(['Réveillon'])
   })
+})
+
+test('tela da estratégia: só itens com preço promocional menor podem ser marcados; grava só o que mudou', () => {
+  const produtos = [
+    { id: 'g', nome: 'Gramado', preco: '2199.00', preco_promo: '1799.00', promo_data: null },
+    { id: 'p', nome: 'Portugal', preco: 10299, preco_promo: 9999, promo_data: '2026-12-12' },
+    { id: 's', nome: 'Porto Seguro', preco: 1999, preco_promo: 1999, promo_data: null },
+    { id: 'c', nome: 'Cruzeiro', preco: null, preco_promo: null, promo_data: null },
+  ]
+  expect(itensEmPromocao(produtos, turismo).map((p) => p.id)).toEqual(['g', 'p'])
+  expect(itensEmPromocao(produtos, RAMOS.psicologia)).toEqual([])
+  const marcadas = new Map([['g', '2026-11-27'], ['p', '2026-12-12']])
+  expect(mudancasDeDatas(produtos, marcadas)).toEqual([{ id: 'g', promo_data: '2026-11-27' }])
+  marcadas.set('p', null)
+  expect(mudancasDeDatas(produtos, marcadas)).toEqual([{ id: 'g', promo_data: '2026-11-27' }, { id: 'p', promo_data: null }])
 })
 
 test('marca da data no post', () => {
