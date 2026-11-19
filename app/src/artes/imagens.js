@@ -4,6 +4,7 @@ import { lookDoRamo, fontesDoLook } from './looks.js'
 import { medidaDaArte, assinaturaDaArte } from './texto.js'
 import { desenharArte } from './desenho.js'
 import { escolherArte } from './familia.js'
+import { coresDaData } from './temas.js'
 import { montarVideoDeFotos, editarVideo, desenharQuadroDeFotos, W_VIDEO, H_VIDEO } from './video.js'
 
 // Cache das imagens por path, com no máximo LIMITE bitmaps (o usado há mais tempo sai primeiro).
@@ -117,7 +118,7 @@ async function prepararArte(supabase, post, { negocio, produtos, ramo, fotosInfo
     ...medida,
     soltar,
     opcoes: {
-      pecas, look, cores: { cor1: negocio.cor1, cor2: negocio.cor2 }, foto, logo,
+      pecas, look, cores: coresDaData({ cor1: negocio.cor1, cor2: negocio.cor2 }, post.ocasiao), foto, logo,
       W: medida.W, H: medida.H, paginas: medida.paginas, capaDeVideo: post.tipo === 'video', arte,
     },
   }
@@ -194,7 +195,7 @@ async function prepararVideo(supabase, post, { negocio, produtos, ramo, fotosInf
     ...paths.map((p) => carregarImagem(supabase, p)),
   ])
   pecas.assinatura = assinaturaDaArte(pecas.assinatura, Boolean(logo), negocio.nome)
-  return { soltar, opcoes: { pecas, look, cores: { cor1: negocio.cor1, cor2: negocio.cor2 }, logo, fotos: fotos.filter(Boolean) } }
+  return { soltar, opcoes: { pecas, look, cores: coresDaData({ cor1: negocio.cor1, cor2: negocio.cor2 }, post.ocasiao), logo, fotos: fotos.filter(Boolean) } }
 }
 
 // Montagem de 12 s com as fotos do post (sem fotoPaths, a foto do post).

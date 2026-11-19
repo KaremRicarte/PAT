@@ -285,6 +285,8 @@ button.dia-btn { position: relative; }
 .promo-data .caixinha, .datas-mes .caixinha { display: flex; gap: 8px; align-items: center; font-weight: 600; color: var(--ink); margin: 16px 0 0; }
 .promo-data .caixinha input, .datas-mes .caixinha input { width: auto; margin: 0; }
 .datas-mes .caixinha { margin: 8px 0 0; font-weight: 600; font-size: 15px; }
+.datas-mes .itens-data { margin-top: 8px; }
+.datas-mes .itens-data summary { cursor: pointer; font-weight: 700; color: var(--pri); font-size: 14px; }
 .promo-data-detalhes { margin: 8px 0 0 28px; }
 .promo-data-detalhes select { width: 100%; }
 .aviso-fila-ia { background: var(--sunk); border-radius: 12px; padding: 10px 14px; margin: 8px 0; font-size: 14px; }

@@ -4,6 +4,7 @@ import { LOOKS } from './looks.js'
 import { corTexto, contrasteBom, quebrarLinhas, encaixarTexto } from './texto.js'
 import { t } from '../textos.js'
 import { desenharDaFamilia } from './familia.js'
+import { faixaDaData } from './temas.js'
 
 // ---------- peças básicas ----------
 
@@ -387,12 +388,17 @@ function paginaDoCarrossel(f, { pecas, foto, logo, pagina }) {
 export function desenharArte(ctx, { pecas, look, cores, foto = null, logo = null, W, H, pagina = 1, paginas = 1, capaDeVideo = false, arte = null }) {
   if (arte && !pecas.preco) {
     const tipo = paginas > 1 ? 'car' : capaDeVideo ? 'capa' : H > W ? 'stories' : 'feed'
-    return desenharDaFamilia(ctx, { arte, estilo: nomeDoEstilo(look), pecas, cores, foto, logo, W, H, tipo, pagina, paginas })
+    desenharDaFamilia(ctx, { arte, estilo: nomeDoEstilo(look), pecas, cores, foto, logo, W, H, tipo, pagina, paginas })
+  } else {
+    // as artes de preço podem ter cores próprias da data (Black Friday: tarjas e selo pretos)
+    const f = folha(ctx, { look, cores: cores.precos ?? cores, W, H })
+    ctx.save()
+    ctx.clearRect(0, 0, W, H)
+    if (paginas > 1) paginaDoCarrossel(f, { pecas, foto, logo, pagina })
+    else arteUnica(f, { pecas, foto, logo, capaDeVideo })
+    ctx.restore()
   }
-  const f = folha(ctx, { look, cores, W, H })
-  ctx.save()
-  ctx.clearRect(0, 0, W, H)
-  if (paginas > 1) paginaDoCarrossel(f, { pecas, foto, logo, pagina })
-  else arteUnica(f, { pecas, foto, logo, capaDeVideo })
-  ctx.restore()
+  // post de uma data especial: a faixa da data no alto do feed (só arte única: o carrossel tem a numeração no alto,
+  // e nos stories o Instagram cobre o alto)
+  if (pecas.ocasiao && paginas === 1 && !capaDeVideo && H <= W * 1.3) faixaDaData(ctx, { W, ocasiao: pecas.ocasiao, cores })
 }

@@ -166,6 +166,8 @@ export function pecasDaArte(post, negocio, ramo) {
     convite,
     // carrossel: o texto da legenda dividido em páginas (artes/texto.js)
     blocos: blocosDoCarrossel(post.legenda),
+    // data especial do post: as cores e a faixa da data na arte (artes/temas.js)
+    ocasiao: post.ocasiao ?? null,
     preco: precoDaArte(post, ramo),
     assinatura: {
       texto: modo !== 'logo' && insta ? insta : null,

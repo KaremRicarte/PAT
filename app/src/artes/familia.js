@@ -240,7 +240,8 @@ function fotoDeFundo(f, escurecer = 0.55) {
 // ---------- a folha: tudo o que as artes precisam ----------
 
 function folha(ctx, { pecas, cores, logo, foto, estilo, W, H, tipo, pagina, paginas = 1 }) {
-  const { c1, c2 } = paletaDaArte(cores.cor1, cores.cor2), voz = vozDe(estilo)
+  // cores de uma data especial (temas.js) já vêm nos papéis certos; as do cliente passam pela paleta
+  const { c1, c2 } = cores.fixas ? { c1: cores.cor1, c2: cores.cor2 } : paletaDaArte(cores.cor1, cores.cor2), voz = vozDe(estilo)
   const fonte = (peso) => (s, it) => `${it && voz.italico ? 'italic ' : ''}${peso} ${s}px ${voz.fd}`
   return {
     ctx, W, H, u: W / 100, tipo, pagina, total: paginas, logo, foto, voz,
@@ -250,9 +251,9 @@ function folha(ctx, { pecas, cores, logo, foto, estilo, W, H, tipo, pagina, pagi
     frase: (s) => `${voz.italico ? 'italic ' : ''}${voz.leve} ${s}px ${voz.fd}`,
     corrido: (peso) => (s) => `${peso} ${s}px ${voz.fb}`,
     c1, c2,
-    papel: misturar(c1, '#ffffff', 0.62), tinta: misturar(c2, '#000000', 0.25), claro: misturar(c1, '#ffffff', 0.7),
+    papel: cores.papel ?? misturar(c1, '#ffffff', 0.62), tinta: cores.tinta ?? misturar(c2, '#000000', 0.25), claro: cores.claro ?? misturar(c1, '#ffffff', 0.7),
     // sem itálico, o destaque do fim do título fica só na cor: mais forte
-    destaque: voz.italico ? misturar(c2, c1, 0.15) : misturar(c2, c1, 0.45),
+    destaque: cores.destaque ?? (voz.italico ? misturar(c2, c1, 0.15) : misturar(c2, c1, 0.45)),
     titulo: pecas.titulo ?? '',
     // stories: o título grande e o começo da legenda embaixo; capa de vídeo: só o título; carrossel: "Arraste"
     apoio: tipo === 'capa' ? '' : tipo === 'car' ? t('arte.arraste') : (pecas.gancho ?? ''),

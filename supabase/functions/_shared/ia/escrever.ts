@@ -4,7 +4,7 @@ import type { Estrategia, Pilar, Rede, Tom } from '../modelos/tipos.ts'
 import { RAMOS } from '../modelos/ramos/index.ts'
 import { brl, daData, paragrafos, textoDoPreco, type Ocasiao, type PostGerado } from '../modelos/gerar.ts'
 import { diaMes } from '../modelos/datas.ts'
-import { MAX_HASHTAGS, semTextoDoCliente, temPromocao, validarPost } from '../modelos/validar.ts'
+import { MAX_HASHTAGS, ofertaDaData, semTextoDoCliente, temPromocao, validarPost } from '../modelos/validar.ts'
 import { INSTRUCOES_POST } from './instrucoes.ts'
 
 export type ConteudoIA = { tipo: 'texto', texto: string } | { tipo: 'imagem', url: string }
@@ -120,7 +120,10 @@ function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
       ? `Post de promoção: de ${brl(preco.preco_de)} por ${brl(preco.preco_por)}. O app coloca, entre o meio e o convite, exatamente este parágrafo: "${preco.texto}"`
       : `Post de vitrine com valor: ${brl(preco.preco_por)}. O app coloca, entre o meio e o convite, exatamente este parágrafo: "${preco.texto}"`)
   }
-  if (preco?.preco_de != null) {
+  if (ofertaDaData(l) && !preco) {
+    linhas.push('O cliente não informou preço para esta oferta: não cite valores; fale da oferta da data e chame para pedir as condições.')
+  }
+  if (preco?.preco_de != null || ofertaDaData(l)) {
     linhas.push('A oferta precisa ficar evidente: o título e o gancho falam da oferta (oferta, promoção ou valor especial). Não esconda a promoção no fim do texto.')
   }
   const o = l.ocasiao
@@ -186,7 +189,7 @@ function montar(e: EntradaPost, p: Partes, noPromo: boolean): { post: CamposDaIA
   const problemas = validarPost(completo, ramo, e.textosDoCliente)
   // Fora dos posts de preço, nada de promoção/desconto/oferta (o validarPost só barra o R$ nesses ramos).
   // O que o cliente escreveu (nome do negócio, do serviço, descrição) não conta, como no validarPost.
-  if (!preco && !ramo.noPromo) {
+  if (!preco && !ramo.noPromo && !ofertaDaData(e.lugar)) {
     const doCliente = [...new Set(e.textosDoCliente.map((c) => c.trim()).filter(Boolean))].sort((a, b) => b.length - a.length)
     const daIA = [p.titulo, p.gancho, p.meio, p.convite, p.roteiro ?? '', ...p.hashtags]
     if (daIA.some((t) => temPromocao(semTextoDoCliente(t, doCliente)))) {
@@ -194,7 +197,7 @@ function montar(e: EntradaPost, p: Partes, noPromo: boolean): { post: CamposDaIA
     }
   }
   // Promoção: a oferta aparece no título (a de hoje não parecia promoção: o título só descrevia a foto).
-  if (preco?.preco_de != null && !temPromocao(p.titulo) && !/especial|vem a[ií]|s[oó] hoje/i.test(p.titulo)) {
+  if ((preco?.preco_de != null || ofertaDaData(e.lugar)) && !temPromocao(p.titulo) && !/especial|vem a[ií]|s[oó] hoje/i.test(p.titulo)) {
     problemas.push('título de promoção sem falar da oferta')
   }
   // Em post de preço o R$ é permitido, mas só com os valores informados.

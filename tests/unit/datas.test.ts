@@ -105,6 +105,30 @@ describe('promoção com data (vale só perto da data)', () => {
     expect(textoDoPreco(100, 80, { nome: 'Dia das Mães', data: '2027-05-09', fase: 'aquecimento' }))
       .toBe('Oferta do Dia das Mães, só no dia 09/05: de R$ 100 por R$ 80.')
     expect(textoDoPreco(100, 80)).toBe('De R$ 100 por R$ 80. Aproveite enquanto durar!')
-    expect(textoDoPreco(null, 80, { nome: 'Natal', data: '2026-12-25', fase: 'dia' })).toBe('Por R$ 80.')
+    // só o preço normal: a oferta da data diz o prazo com o valor que houver
+    expect(textoDoPreco(null, 80, { nome: 'Natal', data: '2026-12-25', fase: 'dia' })).toBe('Oferta de Natal, só hoje (25/12): por R$ 80.')
+    expect(textoDoPreco(null, 80)).toBe('Por R$ 80.')
+  })
+})
+
+describe('promoção com data sem preço (ou só com o preço normal)', () => {
+  const itens = (extra: Partial<Pacote['produtos'][number]>) => LISTA.map((p) => (p.id === 'c' ? { ...p, promo_data: '2026-11-27', ...extra } : p))
+  const nov = { anoMes: '2026-11', inicio: '2026-11-01' }
+  test('sem preço: aquecimento e o dia da Black Friday saem sem valor nenhum', () => {
+    const p = pacote({ ...nov, produtos: itens({}) })
+    const posts = gerarMes(p)
+    const daData = feedIG(posts).filter((x) => x.produto_id === 'c' && x.ocasiao)
+    expect(daData.map((x) => x.ocasiao!.fase)).toEqual(['aquecimento', 'aquecimento', 'dia'])
+    expect(daData.every((x) => x.preco_por == null && !x.legenda.includes('R$'))).toBe(true)
+    expect(daData.at(-1)!.titulo.startsWith('Oferta de Black Friday: ')).toBe(true)
+    valido(p, posts)
+  })
+  test('só o preço normal: "por R$ X" com o prazo, e passa nas checagens mesmo falando de Black Friday', () => {
+    const p = pacote({ ...nov, produtos: itens({ preco: 4999 }) })
+    const posts = gerarMes(p)
+    const dia = feedIG(posts).find((x) => x.data === '2026-11-27')!
+    expect(dia).toMatchObject({ produto_id: 'c', preco_de: null, preco_por: 4999 })
+    expect(dia.legenda).toContain('Oferta de Black Friday, só hoje (27/11): por R$ 4.999.')
+    valido(p, posts)
   })
 })

@@ -66,8 +66,8 @@ const SEMANA_CURTA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 // As datas do mês a gerar (de alvo.inicio em diante), com as promoções marcadas nos itens.
 // Cada uma: { data, nome, especial (da lista de datas ou null = "outro dia" de uma promoção), itens }.
 export function datasDaEstrategia(alvo, ramo, produtos) {
-  const comPromo = (produtos ?? []).filter((p) => p.promo_data && p.promo_data.startsWith(alvo.anoMes) &&
-    p.promo_data >= alvo.inicio && p.preco != null && p.preco_promo != null && Number(p.preco_promo) < Number(p.preco))
+  const comPromo = ramo.noPromo ? [] : (produtos ?? []).filter((p) => p.promo_data && p.promo_data.startsWith(alvo.anoMes) &&
+    p.promo_data >= alvo.inicio)
   const especiais = datasDoMes(alvo.anoMes, ramo).filter((d) => d.data >= alvo.inicio)
   const outros = [...new Set(comPromo.map((p) => p.promo_data))].filter((d) => !especiais.some((x) => x.data === d))
   return [...especiais.map((d) => ({ data: d.data, nome: d.nome, especial: d })),
@@ -76,9 +76,9 @@ export function datasDaEstrategia(alvo, ramo, produtos) {
     .map((x) => ({ ...x, itens: comPromo.filter((p) => p.promo_data === x.data).map((p) => p.nome) }))
 }
 
-// Itens que podem ter promoção com data: preço promocional menor que o normal (e ramo que fala de preço).
-export const itensEmPromocao = (produtos, ramo) => (ramo.noPromo ? [] : (produtos ?? []).filter((p) =>
-  p.preco != null && p.preco_promo != null && Number(p.preco_promo) < Number(p.preco)))
+// Itens que podem ter promoção com data: todos, com ou sem preço (sem preço, o post da data sai sem valor).
+// Ramos com conselho não fazem promoção.
+export const itensEmPromocao = (produtos, ramo) => (ramo.noPromo ? [] : [...(produtos ?? [])])
 
 // Mudanças de data das promoções: [{ id, promo_data }] só dos itens que mudaram.
 export const mudancasDeDatas = (produtos, marcadas) =>
@@ -100,15 +100,17 @@ export function escolhaDeDatas(alvo, ramo, produtos) {
     const doDia = promos.filter((p) => marcadas.get(p.id) === x.data)
     const dica = doDia.length ? t('mesq.datas.promo', { itens: doDia.map((p) => p.nome).join(', ') })
       : x.especial?.soPromo ? t('mesq.datas.so')
-        : aceitaPromo(x) && !promos.length ? `${t('mesq.datas.post')} ${t('mesq.datas.sempromo')}`
-          : t('mesq.datas.post')
+        : t('mesq.datas.post')
     const caixas = aceitaPromo(x) ? promos.map((p) => {
       const id = `data-${x.data}-${p.id}`
       const caixa = el('input', { type: 'checkbox', id, checked: marcadas.get(p.id) === x.data })
       caixa.addEventListener('change', () => { marcadas.set(p.id, caixa.checked ? x.data : null); desenhar(); document.getElementById(id)?.focus() })
       return el('label', { class: 'caixinha', for: id }, caixa, el('span', { texto: t('mesq.datas.marcar', { nome: p.nome }) }))
     }) : []
-    return el('li', {}, el('strong', { texto: `${semana(x.data)}, ${diaMes(x.data)} · ${x.nome}` }), el('small', { texto: dica }), ...caixas)
+    // a lista de itens fica recolhida (o cliente pode ter muitos itens); aberta se já há item marcado
+    const itensDaData = caixas.length ? el('details', { class: 'itens-data', open: doDia.length > 0 || undefined },
+      el('summary', { texto: doDia.length ? t('mesq.datas.escolher.n', { n: doDia.length }) : t('mesq.datas.escolher') }), ...caixas) : null
+    return el('li', {}, el('strong', { texto: `${semana(x.data)}, ${diaMes(x.data)} · ${x.nome}` }), el('small', { texto: dica }), itensDaData)
   }
   function desenhar() { lista.replaceChildren(...datas.map(linha)) }
   desenhar()

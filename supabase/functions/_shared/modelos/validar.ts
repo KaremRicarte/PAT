@@ -6,6 +6,8 @@ import type { PostGerado } from './gerar.ts'
 // Preço ou promoção, como palavra inteira: "promoção" e "50% off" contam; "promover" e "100% online" não.
 const PROIBIDAS = /R\$|(?<!\p{L})(promo(ção|ções|cional|cionais|s)?|descontos?|ofertas?|off)(?!\p{L})|black friday/iu
 export const temPromocao = (s: string) => PROIBIDAS.test(s)
+// post de oferta de uma data marcada pelo cliente (aquecimento ou o dia)
+export const ofertaDaData = (p: { ocasiao?: { fase: string } | null }) => p.ocasiao?.fase === 'aquecimento' || p.ocasiao?.fase === 'dia'
 // Na vitrine de preço (só "por"), o R$ pode; promoção, desconto, off e black friday não. "Oferta" segue livre.
 const PROMOCAO = /(?<!\p{L})(promo(ção|ções|cional|cionais|s)?|descontos?|off)(?!\p{L})|black friday/iu
 const SOBRAS = /undefined|\{prod\}|\{loja\}/
@@ -31,7 +33,8 @@ export function validarPost(post: PostGerado, ramo: Ramo, textosDoCliente: strin
   const dosModelos = textos.map((t) => semTextoDoCliente(t, doCliente))
   if (ramo.noPromo && textos.some(temPromocao)) erros.push('preço ou promoção num ramo que não permite')
   else if (post.preco_por == null && dosModelos.some((t) => t.includes('R$'))) erros.push('preço num post sem preço')
-  else if (post.preco_por != null && post.preco_de == null && dosModelos.some((t) => PROMOCAO.test(t))) {
+  // o post da oferta de uma data (aquecimento/dia) pode falar de promoção mesmo sem desconto ou sem preço
+  else if (post.preco_por != null && post.preco_de == null && !ofertaDaData(post) && dosModelos.some((t) => PROMOCAO.test(t))) {
     erros.push('palavra de promoção num post de vitrine')
   }
   return erros

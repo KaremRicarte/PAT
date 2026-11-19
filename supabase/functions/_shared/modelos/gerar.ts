@@ -81,13 +81,14 @@ export function tratamentoDoItem(pr: Pick<Produto, 'preco' | 'preco_promo' | 'pr
   return data && pertoDaData(data, pr.promo_data) ? 'promo' : 'vitrine'
 }
 
-// As datas especiais do mês (de `inicio` em diante) e os itens com promoção marcada para um dia do mês.
+// As datas especiais do mês (de `inicio` em diante) e os itens marcados para um dia do mês (com ou sem preço:
+// sem preço, os posts da data saem sem valor).
 // `extras`: os dias que entram no feed além da agenda normal (datas de tema e dias de promoção).
 export function especiaisDoMes(p: Pick<Pacote, 'ramo' | 'anoMes' | 'inicio' | 'produtos'>) {
   const ramo = RAMOS[p.ramo]
   const datas = ramo ? datasDoMes(p.anoMes, ramo).filter((d) => d.data >= p.inicio) : []
-  const comPromo = ramo ? p.produtos.filter((pr) => pr.promo_data && pr.promo_data.startsWith(p.anoMes) &&
-    pr.promo_data >= p.inicio && tratamentoDoItem(pr, ramo, pr.promo_data) === 'promo') : []
+  const comPromo = ramo && !ramo.noPromo ? p.produtos.filter((pr) => pr.promo_data && pr.promo_data.startsWith(p.anoMes) &&
+    pr.promo_data >= p.inicio) : []
   const temas = datas.filter((d) => !d.soPromo)
   const extras = [...new Set([...temas.map((d) => d.data), ...comPromo.map((pr) => pr.promo_data!)])]
   return { datas, temas, comPromo, extras }
@@ -115,10 +116,10 @@ export const daData = (nome: string) => (/^Dia\b/.test(nome) ? `do ${nome}` : `d
 const nomeDaOferta = (o: Ocasiao) => (o.nome ? `Oferta ${daData(o.nome)}` : `Oferta do dia ${diaMes(o.data)}`)
 
 // O parágrafo de valor que os posts de preço levam (promoção: de/por; vitrine: só por). Também usado pela IA.
-// Promoção com data diz o prazo: no aquecimento, o dia; no próprio dia, "só hoje".
+// Promoção com data diz o prazo: no aquecimento, o dia; no próprio dia, "só hoje" (também com só o preço normal).
 export function textoDoPreco(preco_de: number | null, preco_por: number, ocasiao: Ocasiao | null = null) {
-  if (preco_de == null) return `Por ${brl(preco_por)}.`
-  const valor = `de ${brl(preco_de)} por ${brl(preco_por)}`
+  if (preco_de == null && ocasiao?.fase !== 'dia' && ocasiao?.fase !== 'aquecimento') return `Por ${brl(preco_por)}.`
+  const valor = preco_de == null ? `por ${brl(preco_por)}` : `de ${brl(preco_de)} por ${brl(preco_por)}`
   const oferta = ocasiao?.nome ? nomeDaOferta(ocasiao) : 'Oferta'
   if (ocasiao?.fase === 'dia') return `${oferta}${ocasiao.nome ? ',' : ''} só hoje (${diaMes(ocasiao.data)}): ${valor}.`
   if (ocasiao?.fase === 'aquecimento') return `${oferta}${ocasiao.nome ? ',' : ''} só no dia ${diaMes(ocasiao.data)}: ${valor}.`
@@ -134,7 +135,7 @@ function precoDoItem({ pr, trat }: ItemComPreco, ocasiao: Ocasiao | null = null)
   const preco = pr.preco!
   return trat === 'promo'
     ? { texto: textoDoPreco(preco, pr.preco_promo!, ocasiao), preco_de: preco, preco_por: pr.preco_promo! }
-    : { texto: textoDoPreco(null, preco), preco_de: null, preco_por: preco }
+    : { texto: textoDoPreco(null, preco, ocasiao), preco_de: null, preco_por: preco }
 }
 
 // Partes de um post de feed antes de escolher o convite (o convite só é sorteado quando o post é aceito).
@@ -212,16 +213,19 @@ export function gerarMes(p: Pacote): PostGerado[] {
   // Os dias de tema (datas comemorativas) ficam para o post da data.
   const temas = new Map(especiais.temas.map((d) => [d.data, d]))
   const nomeDoDia = (d: string) => especiais.datas.find((x) => x.data === d)?.nome ?? null
-  const vagas = new Map<string, { x: ItemComPreco, ocasiao: Ocasiao }>()
+  // o preço que o item tiver: promoção (de/por), só o normal (por) ou nenhum (o post da data sai sem valor)
+  const vagas = new Map<string, { x: ItemDoMes & { trat: Tratamento | null }, ocasiao: Ocasiao }>()
   for (const x of itens.filter((x) => especiais.comPromo.includes(x.pr))) {
-    const dia = x.pr.promo_data!, nome = nomeDoDia(dia), item: ItemComPreco = { ...x, trat: 'promo' }
+    const dia = x.pr.promo_data!, nome = nomeDoDia(dia), item = { ...x, trat: tratamentoDoItem(x.pr, ramo, dia) }
     if (!vagas.has(dia)) vagas.set(dia, { x: item, ocasiao: { nome, data: dia, fase: 'dia' } })
     agenda.feed.filter((d) => d < dia && pertoDaData(d, dia) && !vagas.has(d) && !temas.has(d)).slice(-2)
       .forEach((d) => vagas.set(d, { x: item, ocasiao: { nome, data: dia, fase: 'aquecimento' } }))
   }
-  const montarOferta = ({ x, ocasiao }: { x: ItemComPreco, ocasiao: Ocasiao }): Partes => {
-    const { texto, ...campos } = precoDoItem(x, ocasiao)
-    return demo(x, `${tituloDaOferta(ocasiao)}: ${ramo.titulo(x.it)}`, { preco: texto, ...campos })
+  const montarOferta = ({ x, ocasiao }: { x: ItemDoMes & { trat: Tratamento | null }, ocasiao: Ocasiao }): Partes => {
+    const titulo = `${tituloDaOferta(ocasiao)}: ${ramo.titulo(x.it)}`
+    if (!x.trat) return demo(x, titulo, SEM_PRECO)
+    const { texto, ...campos } = precoDoItem({ ...x, trat: x.trat }, ocasiao)
+    return demo(x, titulo, { preco: texto, ...campos })
   }
 
   // Dia de preço: post de demonstração do item, com o preço (vale para o Instagram e o Facebook do dia).
@@ -303,7 +307,8 @@ export function gerarMes(p: Pacote): PostGerado[] {
   agenda.lista.forEach((data, i) => {
     const { pr, it } = itens[i % L]
     const trat = p.estrategia === 'vender' ? tratamentoDoItem(pr, ramo, data) : null
-    const ocasiao: Ocasiao | null = trat === 'promo' && pr.promo_data
+    // perto da data marcada, a mensagem é da oferta da data (com o preço que o item tiver)
+    const ocasiao: Ocasiao | null = p.estrategia === 'vender' && !ramo.noPromo && pr.promo_data && pertoDaData(data, pr.promo_data)
       ? { nome: nomeDoDia(pr.promo_data), data: pr.promo_data, fase: pr.promo_data === data ? 'dia' : 'aquecimento' } : null
     const { texto, ...campos } = trat ? precoDoItem({ pr, it, trat }, ocasiao) : { texto: '', preco_de: null, preco_por: null }
     out.push({ data, rede: 'whatsapp', tipo: 'lista', formato: 'texto', pilar: 'demo',

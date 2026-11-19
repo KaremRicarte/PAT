@@ -105,6 +105,7 @@ test('pecasDaArte: legenda de 5 parágrafos', () => {
   expect(pecasDaArte(p, n, RAMOS.beleza)).toEqual({
     rotulo: 'LOJA DA ANA', titulo: 'T', gancho: 'g', meio: 'm', convite: 'conv',
     blocos: { gancho: 'g', meios: ['m', 'x', 'conv'], convite: 'fim' },
+    ocasiao: null,
     preco: null, assinatura: { texto: '@ana', logo: true },
   })
 })
