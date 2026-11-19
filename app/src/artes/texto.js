@@ -89,7 +89,9 @@ export function assinaturaDaArte(assinatura, temLogo, nome) {
 
 // ---------- carrossel: o texto da legenda dividido em páginas ----------
 
-const MAX_MEIOS = 4 // páginas de texto do meio (capa + gancho + 4 + convite + fecho = 8 páginas no máximo)
+// páginas de texto do meio: cada parágrafo tem a sua (capa + gancho + 8 + convite + fecho = 12 páginas no máximo;
+// o Instagram aceita até 20). Só um texto muito longo junta parágrafos curtos na mesma página.
+const MAX_MEIOS = 8
 const LONGO = 260 // parágrafo maior que isto vira duas páginas (pelas frases)
 const ASSINATURA = /^Siga @|^Siga |· Instagram @/
 

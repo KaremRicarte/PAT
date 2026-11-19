@@ -78,12 +78,17 @@ describe('blocosDoCarrossel (o texto da legenda nas páginas)', () => {
     expect(meios.length).toBeGreaterThan(1)
     expect(meios.join(' ')).toBe(longo)
   })
-  test('no máximo 8 páginas: o excesso do meio se junta, sem perder texto', () => {
-    const meio = Array.from({ length: 9 }, (_, i) => `Item ${i + 1}.`)
+  test('cada parágrafo ganha a sua página (5 parágrafos no meio = 9 páginas)', () => {
+    const meio = Array.from({ length: 5 }, (_, i) => `Parágrafo ${i + 1}.`)
+    expect(blocosDoCarrossel(['G.', ...meio, 'C.'].join('\n\n')).meios).toEqual(meio)
+    expect(paginasDoCarrossel(['G.', ...meio, 'C.'].join('\n\n'))).toBe(9)
+  })
+  test('no máximo 12 páginas: só o excesso do meio se junta, sem perder texto', () => {
+    const meio = Array.from({ length: 11 }, (_, i) => `Item ${i + 1}.`)
     const b = blocosDoCarrossel(['G.', ...meio, 'C.'].join('\n\n'))
-    expect(b.meios.length).toBe(4)
+    expect(b.meios.length).toBe(8)
     expect(b.meios.join('\n').split('\n')).toEqual(meio)
-    expect(paginasDoCarrossel(['G.', ...meio, 'C.'].join('\n\n'))).toBe(8)
+    expect(paginasDoCarrossel(['G.', ...meio, 'C.'].join('\n\n'))).toBe(12)
   })
   test('legenda curta: capa, gancho e fecho', () => {
     expect(paginasDoCarrossel('Só uma frase.')).toBe(3)
