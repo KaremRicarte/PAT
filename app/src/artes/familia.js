@@ -96,7 +96,9 @@ export function fontesDaFamilia(estilo) {
 // Quebra o texto em linhas (as últimas `italicoFinal` palavras em destaque) e encolhe até caber em largura x altura.
 // Se nem no menor tamanho couber, corta com reticências.
 export function montar(ctx, texto, { tam, min = 0.55, largura, altura, lh = 1.12, fonte, italicoFinal = 0 }) {
-  const palavras = String(texto ?? '').split(/\s+/).filter(Boolean).map((p, i, a) => ({ p, it: i >= a.length - italicoFinal }))
+  // \n no texto (item de lista) começa uma linha nova
+  const palavras = String(texto ?? '').split(/\n+/).flatMap((seg, n) => seg.split(/[ \t]+/).filter(Boolean).map((p, j) => ({ p, br: n > 0 && j === 0 })))
+    .map((tok, i, lista) => ({ ...tok, it: i >= lista.length - italicoFinal }))
   const quebrar = (s) => {
     const linhas = [[]]
     let w = 0
@@ -106,7 +108,7 @@ export function montar(ctx, texto, { tam, min = 0.55, largura, altura, lh = 1.12
       ctx.font = fonte(s, tok.it)
       const tw = ctx.measureText(tok.p).width
       const novo = linhas.at(-1).length ? w + esp + tw : tw
-      if (novo > largura && linhas.at(-1).length) { linhas.push([tok]); w = tw } else { linhas.at(-1).push(tok); w = novo }
+      if ((tok.br || novo > largura) && linhas.at(-1).length) { linhas.push([tok]); w = tw } else { linhas.at(-1).push(tok); w = novo }
     }
     return linhas
   }
@@ -211,11 +213,12 @@ function fotoDeFundo(f, escurecer = 0.55) {
 
 // ---------- a folha: tudo o que as artes precisam ----------
 
-function folha(ctx, { pecas, cores, logo, foto, estilo, W, H, tipo, pagina }) {
+function folha(ctx, { pecas, cores, logo, foto, estilo, W, H, tipo, pagina, paginas = 1 }) {
   const c1 = cores.cor1 || '#cccccc', c2 = cores.cor2 || '#333333', voz = vozDe(estilo)
   const fonte = (peso) => (s, it) => `${it && voz.italico ? 'italic ' : ''}${peso} ${s}px ${voz.fd}`
   return {
-    ctx, W, H, u: W / 100, tipo, pagina, logo, foto, voz,
+    ctx, W, H, u: W / 100, tipo, pagina, total: paginas, logo, foto, voz,
+    blocos: pecas.blocos ?? { gancho: pecas.gancho ?? '', meios: pecas.meio ? [pecas.meio] : [], convite: pecas.convite ?? '' },
     leve: fonte(voz.leve), forte: fonte(voz.forte),
     // frase toda em itálico (no varejo, sem itálico)
     frase: (s) => `${voz.italico ? 'italic ' : ''}${voz.leve} ${s}px ${voz.fd}`,
@@ -237,7 +240,7 @@ function folha(ctx, { pecas, cores, logo, foto, estilo, W, H, tipo, pagina }) {
 }
 
 // No alto: o número da página no carrossel; nas outras artes, o nome do negócio.
-const marca = (f) => (f.tipo === 'car' ? `${String(f.pagina).padStart(2, '0')} — 05` : f.nome)
+const marca = (f) => (f.tipo === 'car' ? `${String(f.pagina).padStart(2, '0')} — ${String(f.total).padStart(2, '0')}` : f.nome)
 
 // Assinatura padrão: o @ (ou o nome) à esquerda; à direita, o logo ou o nome pequeno.
 function assinar(f, cor, { centro = false } = {}) {
@@ -291,7 +294,7 @@ function arcoCapa(f) {
     const faixa = ah * 0.42
     fotoNaForma(f, () => arco(ctx, ax, ay, aw, ah - faixa), ax, ay, aw, ah - faixa)
     ctx.fillStyle = f.c1; ctx.fillRect(ax, ay + ah - faixa, aw, faixa)
-    if (f.tipo === 'car') rotulo(f, '1 / 5', W / 2, 4 * u, 2.8 * u, alfa(luz, 0.8), { alinhar: 'center' })
+    if (f.tipo === 'car') rotulo(f, `1 / ${f.total}`, W / 2, 4 * u, 2.8 * u, alfa(luz, 0.8), { alinhar: 'center' })
     const pad = 7 * u, larg = aw - pad * 2
     const a = montar(ctx, f.apoio, { tam: 3.8 * u, largura: larg, altura: faixa * 0.3, fonte: f.corrido(500), lh: 1.4 })
     const b = montar(ctx, f.titulo, { tam: 7.6 * u, largura: larg, altura: faixa - a.h - 12 * u, fonte: f.forte, italicoFinal: 3 })
@@ -302,7 +305,7 @@ function arcoCapa(f) {
   }
   ctx.fillStyle = f.c1; arco(ctx, ax, ay, aw, ah); ctx.fill()
   ctx.fillStyle = luz; circulo(ctx, ax + aw - 9 * u, ay + 9 * u, 6.5 * u); ctx.fill()
-  if (f.tipo === 'car') rotulo(f, '1 / 5', W / 2, 4 * u, 2.8 * u, alfa(luz, 0.8), { alinhar: 'center' })
+  if (f.tipo === 'car') rotulo(f, `1 / ${f.total}`, W / 2, 4 * u, 2.8 * u, alfa(luz, 0.8), { alinhar: 'center' })
   const pad = 9 * u, larg = aw - pad * 2
   // o apoio no pé do arco; o título centrado no espaço entre a curva e o apoio, sem encostar nele
   const a = montar(ctx, f.apoio, { tam: 3.9 * u, largura: aw - 22 * u, altura: 20 * u, fonte: f.corrido(500), lh: 1.45 })
@@ -329,7 +332,7 @@ function bilhete(f) {
   const { ctx, W, H, u } = f, x = 10 * u, mw = W - 20 * u, vertical = H > W * 1.5
   if (f.foto) fotoDeFundo(f, 0.55)
   else fundoEscuroSuave(f)
-  if (f.tipo === 'car') rotulo(f, '1/5', W - x, 8 * u, 2.8 * u, alfa(f.claro, 0.7), { alinhar: 'right' })
+  if (f.tipo === 'car') rotulo(f, `1/${f.total}`, W - x, 8 * u, 2.8 * u, alfa(f.claro, 0.7), { alinhar: 'right' })
   const yA = vertical ? 18 * u : 9 * u
   aspas(f, f.c1, yA)
   const yT = yA + 28 * u
@@ -478,43 +481,71 @@ function janela(f) {
 
 const CAPAS = { papel, arco: arcoCapa, bilhete, cor: corCheia, pergunta, horizonte, ondas, pedra, cartao, janela }
 
-// ---------- páginas de dentro do carrossel (2 a 5): seguem o tom da capa ----------
+// ---------- páginas de dentro do carrossel: o texto da legenda, uma ideia por página ----------
+// Sequência: capa, gancho, um bloco do meio por página, convite e o fecho (artes/texto.js, blocosDoCarrossel).
+// As páginas do meio alternam o visual entre si (k = 0, 1, 2...) para não ficarem iguais.
 
-// Página 3 com foto (todas as famílias): a foto numa janela e o texto do meio embaixo.
-function internaComFoto(f, fundo, cor) {
+function paginaDaVez(f) {
+  const b = f.blocos
+  const tipos = ['gancho', ...b.meios.map(() => 'meio'), ...(b.convite ? ['convite'] : []), 'fecho']
+  const tipo = tipos[f.pagina - 2] ?? 'fecho'
+  const k = f.pagina - 3 // índice da página do meio
+  const texto = tipo === 'gancho' ? (b.gancho || f.titulo) : tipo === 'meio' ? b.meios[k] : tipo === 'convite' ? b.convite : ''
+  return { tipo, texto, k }
+}
+
+// Página do meio com foto (só a primeira): a foto numa janela e o texto embaixo.
+function meioComFoto(f, texto, fundo, cor) {
   const { ctx, W, H, u } = f, x = 9 * u, w = W - 18 * u, y0 = 16 * u, h = H * 0.42
   ctx.fillStyle = fundo; ctx.fillRect(0, 0, W, H)
   rotulo(f, marca(f), x, 8 * u, 2.8 * u, alfa(cor, 0.7))
   fotoNaForma(f, () => retangulo(ctx, x, y0, w, h, 4 * u), x, y0, w, h)
-  const b = montar(ctx, f.meio, { tam: 5.6 * u, largura: w, altura: H - y0 - h - 30 * u, fonte: f.corrido(400), lh: 1.4 })
+  const b = montar(ctx, texto, { tam: 5.6 * u, largura: w, altura: H - y0 - h - 30 * u, fonte: f.corrido(400), lh: 1.4 })
   pintar(ctx, b, x, y0 + h + 6 * u, cor)
   assinar(f, cor)
 }
 
-function internaClara(f) {
-  const { ctx, W, H, u, pagina } = f, x = 9 * u, mw = W - 18 * u
-  if (pagina === 3 && f.foto) return internaComFoto(f, f.papel, f.tinta)
-  if (pagina === 4) {
+// Texto corrido de uma página do meio, centrado na altura entre `topo` e `fundo`.
+function textoDoMeio(f, texto, x, topo, fundo, largura, cor, tam = 6.2) {
+  const b = montar(f.ctx, texto, { tam: tam * f.u, largura, altura: fundo - topo, fonte: f.corrido(400), lh: 1.42 })
+  pintar(f.ctx, b, x, topo + (fundo - topo - b.h) / 2, cor)
+}
+
+function internaClara(f, { tipo, texto, k }) {
+  const { ctx, W, H, u } = f, x = 9 * u, mw = W - 18 * u
+  if (tipo === 'meio' && k === 0 && f.foto) return meioComFoto(f, texto, f.papel, f.tinta)
+  if (tipo === 'convite') {
     ctx.fillStyle = f.c2; ctx.fillRect(0, 0, W, H)
     const claro = misturar(f.c1, '#ffffff', 0.55)
     ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = f.c1; bolha(ctx, W * 0.82, H * 0.2, 30 * u, 11); ctx.fill(); ctx.restore()
     cabecalhoClaro(f, claro)
-    const b = montar(ctx, f.convite, { tam: 8.6 * u, largura: mw, altura: H * 0.46, fonte: f.leve, lh: 1.14, italicoFinal: 3 })
+    const b = montar(ctx, texto, { tam: 8.6 * u, largura: mw, altura: H * 0.46, fonte: f.leve, lh: 1.14, italicoFinal: 3 })
     pintar(ctx, b, x, H * 0.36, claro, { corItalico: f.c1 })
     return assinar(f, claro)
   }
-  ctx.fillStyle = f.papel; ctx.fillRect(0, 0, W, H)
-  const lugar = { 2: [0.1, 0.18, 34], 3: [0.95, 0.55, 30], 5: [0.5, 0.5, 30] }[pagina]
-  ctx.fillStyle = f.c1; bolha(ctx, W * lugar[0], H * lugar[1], lugar[2] * u, 3 + pagina); ctx.fill()
-  ctx.save(); ctx.strokeStyle = alfa(f.tinta, 0.35); ctx.lineWidth = 0.3 * u; bolha(ctx, W * lugar[0] - 4 * u, H * lugar[1] - 3 * u, lugar[2] * u * 0.98, 21); ctx.stroke(); ctx.restore()
+  // fundo: o papel; nas páginas ímpares do meio, um tom mais forte da cor clara (o carrossel respira)
+  const forte = tipo === 'meio' && k % 2 === 1
+  ctx.fillStyle = forte ? misturar(f.c1, '#ffffff', 0.35) : f.papel; ctx.fillRect(0, 0, W, H)
+  // a forma passeia pelas páginas
+  const lugares = [[0.1, 0.18, 34], [0.95, 0.55, 30], [0.08, 0.92, 28], [0.92, 0.12, 26], [0.5, 1.02, 30]]
+  const [lx, ly, lr] = tipo === 'fecho' ? [0.5, 0.5, 30] : lugares[(f.pagina - 2) % lugares.length]
+  if (forte) {
+    ctx.save(); ctx.strokeStyle = alfa(f.tinta, 0.4); ctx.lineWidth = 0.35 * u; bolha(ctx, W * lx, H * ly, lr * u, 3 + f.pagina); ctx.stroke(); ctx.restore()
+  } else {
+    ctx.fillStyle = f.c1; bolha(ctx, W * lx, H * ly, lr * u, 3 + f.pagina); ctx.fill()
+    ctx.save(); ctx.strokeStyle = alfa(f.tinta, 0.35); ctx.lineWidth = 0.3 * u; bolha(ctx, W * lx - 4 * u, H * ly - 3 * u, lr * u * 0.98, 21); ctx.stroke(); ctx.restore()
+  }
   cabecalhoClaro(f, f.tinta)
-  if (pagina === 2) {
-    const b = montar(ctx, f.gancho, { tam: 11 * u, largura: mw, altura: H * 0.5, fonte: f.leve, lh: 1.1, italicoFinal: 2 })
+  if (tipo === 'gancho') {
+    const b = montar(ctx, texto, { tam: 11 * u, largura: mw, altura: H * 0.5, fonte: f.leve, lh: 1.1, italicoFinal: 2 })
     pintar(ctx, b, x, Math.min(H * 0.62 - b.h / 2, H - 22 * u - b.h), f.tinta, { corItalico: f.destaque })
-  } else if (pagina === 3) {
-    ctx.font = `${f.voz.leve} ${16 * u}px ${f.voz.fd}`; ctx.fillStyle = alfa(f.tinta, 0.9); ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('“', x - 1 * u, 18 * u)
-    const b = montar(ctx, f.meio, { tam: 6.4 * u, largura: mw * 0.9, altura: H - 34 * u - 22 * u, fonte: f.corrido(400), lh: 1.4 })
-    pintar(ctx, b, x, 34 * u, f.tinta)
+  } else if (tipo === 'meio') {
+    if (k % 2 === 0) {
+      ctx.font = `${f.voz.leve} ${16 * u}px ${f.voz.fd}`; ctx.fillStyle = alfa(f.tinta, 0.9); ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillText('“', x - 1 * u, 18 * u)
+      textoDoMeio(f, texto, x, 34 * u, H - 22 * u, mw * 0.9, f.tinta)
+    } else {
+      textoDoMeio(f, texto, x, 22 * u, H - 22 * u, mw, f.tinta, 6.6)
+    }
   } else {
     return fechoDoCarrossel(f, f.tinta, f.destaque, t('arte.fam.salve'))
   }
@@ -540,63 +571,72 @@ function fechoDoCarrossel(f, cor, corFrase, frase) {
   rotulo(f, frase, W / 2, y, 3.4 * u, corFrase, { alinhar: 'center', espacamento: 0.02, peso: 600, maxW: W - 18 * u })
 }
 
-function internaEscura(f) {
-  const { ctx, W, H, u, pagina } = f, x = 10 * u, mw = W - 20 * u
+function internaEscura(f, { tipo, texto, k }) {
+  const { ctx, W, H, u } = f, x = 10 * u, mw = W - 20 * u
   const escuro = misturar(f.c2, '#000000', 0.1)
-  if (pagina === 3 && f.foto) return internaComFoto(f, escuro, f.claro)
+  if (tipo === 'meio' && k === 0 && f.foto) return meioComFoto(f, texto, escuro, f.claro)
   const degrade = (a, b) => { const g = ctx.createLinearGradient(0, 0, W * 0.3, H); g.addColorStop(0, a); g.addColorStop(1, b); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H) }
-  const marcar = (cor) => rotulo(f, `${pagina}/5`, W - x, 8 * u, 2.8 * u, alfa(cor, 0.7), { alinhar: 'right' })
+  const marcar = (cor) => rotulo(f, `${f.pagina}/${f.total}`, W - x, 8 * u, 2.8 * u, alfa(cor, 0.7), { alinhar: 'right' })
   const pe = (cor) => { ctx.fillStyle = alfa(cor, 0.35); ctx.fillRect(x, H - 15 * u, 10 * u, 0.25 * u); assinar(f, cor) }
-  if (pagina === 2) {
+  if (tipo === 'gancho') {
     degrade(f.claro, misturar(f.c1, '#ffffff', 0.35)); grao(ctx, 0, 0, W, H, 0.05, 3); aspas(f, f.c2, 12 * u, 26); marcar(escuro)
-    const b = montar(ctx, f.gancho, { tam: 10 * u, largura: mw, altura: H - 40 * u - 24 * u, fonte: f.frase, lh: 1.12 })
+    const b = montar(ctx, texto, { tam: 10 * u, largura: mw, altura: H - 40 * u - 24 * u, fonte: f.frase, lh: 1.12 })
     pintar(ctx, b, x, 40 * u, escuro); return pe(escuro)
   }
-  if (pagina === 3) {
-    fundoEscuroSuave(f); marcar(f.claro)
-    const b = montar(ctx, f.meio, { tam: 6.2 * u, largura: mw, altura: H * 0.6, fonte: f.corrido(400), lh: 1.45 })
-    pintar(ctx, b, x, (H - b.h) / 2 - 4 * u, f.claro); return pe(f.claro)
+  if (tipo === 'meio') {
+    // alterna escuro e claro entre as páginas do meio
+    if (k % 2 === 0) { fundoEscuroSuave(f); marcar(f.claro); textoDoMeio(f, texto, x, 18 * u, H - 22 * u, mw, f.claro); return pe(f.claro) }
+    degrade(misturar(f.c1, '#ffffff', 0.5), f.claro); grao(ctx, 0, 0, W, H, 0.04, 11); marcar(escuro)
+    ctx.fillStyle = f.c2; ctx.fillRect(x, 20 * u, 8 * u, 0.6 * u)
+    textoDoMeio(f, texto, x, 26 * u, H - 22 * u, mw, escuro)
+    return pe(escuro)
   }
-  if (pagina === 4) {
+  if (tipo === 'convite') {
     degrade(f.c1, misturar(f.c1, '#ffffff', 0.3)); grao(ctx, 0, 0, W, H, 0.05, 5); marcar(escuro)
-    const b = montar(ctx, f.convite, { tam: 8.6 * u, largura: mw, altura: H * 0.5, fonte: f.frase, lh: 1.15 })
+    const b = montar(ctx, texto, { tam: 8.6 * u, largura: mw, altura: H * 0.5, fonte: f.frase, lh: 1.15 })
     pintar(ctx, b, x, (H - b.h) / 2 - 4 * u, escuro); return pe(escuro)
   }
   fundoEscuroSuave(f); marcar(f.claro)
   fechoDoCarrossel(f, f.claro, alfa(f.claro, 0.75), t('arte.fam.siga'))
 }
 
-function internaArco(f) {
-  const { ctx, W, H, u, pagina } = f, tintaArco = misturar(f.c2, '#000000', 0.35), luz = misturar(f.c1, '#ffffff', 0.6)
+function internaArco(f, { tipo, texto, k }) {
+  const { ctx, W, H, u } = f, tintaArco = misturar(f.c2, '#000000', 0.35), luz = misturar(f.c1, '#ffffff', 0.6)
   const ax = 12 * u, aw = W - 24 * u, ay = 12 * u, ah = H - 26 * u, pad = 9 * u
   // texto centrado dentro do arco (da curva ao pé), sem passar do pé; o destaque contrasta com o fundo do arco
-  const dentro = (texto, y, h, { tam, fonte, cor, lh = 1.12, italicoFinal = 0, corItalico }) => {
+  const dentro = (txt, y, h, { tam, fonte, cor, lh = 1.12, italicoFinal = 0, corItalico }) => {
     const topo = y + aw * 0.3, fundo = y + h - 8 * u
-    const b = montar(ctx, texto, { tam, largura: aw - pad * 2, altura: fundo - topo, fonte, lh, italicoFinal })
+    const b = montar(ctx, txt, { tam, largura: aw - pad * 2, altura: fundo - topo, fonte, lh, italicoFinal })
     pintar(ctx, b, ax + pad, topo + (fundo - topo - b.h) / 2, cor, { alinhar: 'center', largura: aw - pad * 2, corItalico })
   }
+  const numero = (cor) => rotulo(f, `${f.pagina} / ${f.total}`, W / 2, 5 * u, 2.8 * u, alfa(cor, 0.8), { alinhar: 'center' })
   ctx.fillStyle = f.c2; ctx.fillRect(0, 0, W, H)
-  if (pagina === 4) {
+  if (tipo === 'convite') {
     ctx.fillStyle = f.c1; ctx.fillRect(0, 0, W, H)
     ctx.fillStyle = f.c2; arco(ctx, ax, ay, aw, ah); ctx.fill()
-    dentro(f.convite, ay, ah, { tam: 8 * u, fonte: f.forte, cor: luz, italicoFinal: 3, corItalico: f.c1 })
-    rotulo(f, '4 / 5', W / 2, 5 * u, 2.8 * u, alfa(tintaArco, 0.8), { alinhar: 'center' })
+    dentro(texto, ay, ah, { tam: 8 * u, fonte: f.forte, cor: luz, italicoFinal: 3, corItalico: f.c1 })
+    numero(tintaArco)
     return assinar(f, tintaArco)
   }
-  rotulo(f, `${pagina} / 5`, W / 2, 5 * u, 2.8 * u, alfa(luz, 0.8), { alinhar: 'center' })
-  if (pagina === 2) {
+  numero(luz)
+  if (tipo === 'gancho') {
     ctx.strokeStyle = f.c1; ctx.lineWidth = 0.5 * u; arco(ctx, ax, ay, aw, ah); ctx.stroke()
-    dentro(f.gancho, ay, ah, { tam: 9.5 * u, fonte: f.forte, cor: luz, italicoFinal: 2, corItalico: f.c1 })
-  } else if (pagina === 3) {
-    if (f.foto) {
+    dentro(texto, ay, ah, { tam: 9.5 * u, fonte: f.forte, cor: luz, italicoFinal: 2, corItalico: f.c1 })
+  } else if (tipo === 'meio') {
+    if (k === 0 && f.foto) {
       const hf = (ah - 20 * u) * 0.5
       fotoNaForma(f, () => arco(ctx, ax, ay, aw, hf + aw / 2), ax, ay, aw, hf + aw / 2)
-      const b = montar(ctx, f.meio, { tam: 5.4 * u, largura: aw, altura: H - ay - hf - aw / 2 - 26 * u, fonte: f.corrido(500), lh: 1.4 })
+      const b = montar(ctx, texto, { tam: 5.4 * u, largura: aw, altura: H - ay - hf - aw / 2 - 26 * u, fonte: f.corrido(500), lh: 1.4 })
       pintar(ctx, b, ax, ay + hf + aw / 2 + 5 * u, luz, { alinhar: 'center', largura: aw })
-    } else {
+    } else if (k % 2 === 0) {
       ctx.fillStyle = f.c1; arco(ctx, ax, ay + 20 * u, aw, ah - 20 * u); ctx.fill()
       ctx.fillStyle = luz; circulo(ctx, W / 2, ay + 11 * u, 6 * u); ctx.fill()
-      dentro(f.meio, ay + 20 * u, ah - 20 * u, { tam: 5.6 * u, fonte: f.corrido(500), cor: tintaArco, lh: 1.4 })
+      dentro(texto, ay + 20 * u, ah - 20 * u, { tam: 5.6 * u, fonte: f.corrido(500), cor: tintaArco, lh: 1.4 })
+    } else {
+      // um arco pequeno no alto e o texto claro embaixo
+      const w = 22 * u
+      ctx.fillStyle = f.c1; arco(ctx, (W - w) / 2, 14 * u, w, 26 * u); ctx.fill()
+      textoDoMeio(f, texto, 12 * u, 46 * u, H - 22 * u, W - 24 * u, luz, 5.8)
     }
   } else {
     const w = 44 * u
@@ -611,18 +651,19 @@ function internaArco(f) {
 }
 
 function interna(f, item) {
-  if (item.id === 'arco') return internaArco(f)
-  if (item.id === 'bilhete' || item.tom === 'escuro') return internaEscura(f)
-  return internaClara(f)
+  const vez = paginaDaVez(f)
+  if (item.id === 'arco') return internaArco(f, vez)
+  if (item.id === 'bilhete' || item.tom === 'escuro') return internaEscura(f, vez)
+  return internaClara(f, vez)
 }
 
 // ---------- desenho ----------
 
 // Desenha a arte `arte` (id da FAMILIA) no ctx. tipo: 'feed', 'stories', 'capa' (capa de vídeo) ou 'car' (carrossel).
 // `estilo`: o estilo do ramo (sereno, elegante, sobrio, varejo), que dá as fontes.
-export function desenharDaFamilia(ctx, { arte, estilo, pecas, cores, foto = null, logo = null, W, H, tipo, pagina = 1 }) {
+export function desenharDaFamilia(ctx, { arte, estilo, pecas, cores, foto = null, logo = null, W, H, tipo, pagina = 1, paginas = 1 }) {
   const item = FAMILIA.find((f) => f.id === arte) ?? FAMILIA[0]
-  const f = folha(ctx, { pecas, cores, logo, foto, estilo, W, H, tipo, pagina })
+  const f = folha(ctx, { pecas, cores, logo, foto, estilo, W, H, tipo, pagina, paginas })
   ctx.save()
   ctx.clearRect(0, 0, W, H)
   if (tipo === 'car' && pagina > 1) interna(f, item)

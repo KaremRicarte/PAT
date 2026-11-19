@@ -1,4 +1,5 @@
 // Regras puras do calendário e do post (sem DOM).
+import { blocosDoCarrossel } from '../artes/texto.js'
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
@@ -148,6 +149,8 @@ export function pecasDaArte(post, negocio, ramo) {
     gancho: par[0] ?? '',
     meio: par.length >= 3 ? par[1] : '',
     convite,
+    // carrossel: o texto da legenda dividido em páginas (artes/texto.js)
+    blocos: blocosDoCarrossel(post.legenda),
     preco: precoDaArte(post, ramo),
     assinatura: {
       texto: modo !== 'logo' && insta ? insta : null,

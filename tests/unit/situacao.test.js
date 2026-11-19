@@ -104,6 +104,7 @@ test('pecasDaArte: legenda de 5 parágrafos', () => {
   const n = { nome: 'Loja da Ana', insta: '@ana', assinatura: 'ambos' }
   expect(pecasDaArte(p, n, RAMOS.beleza)).toEqual({
     rotulo: 'LOJA DA ANA', titulo: 'T', gancho: 'g', meio: 'm', convite: 'conv',
+    blocos: { gancho: 'g', meios: ['m', 'x', 'conv'], convite: 'fim' },
     preco: null, assinatura: { texto: '@ana', logo: true },
   })
 })

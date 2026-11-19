@@ -241,3 +241,22 @@ test('sem redes = as 4 redes, igual a antes', () => {
   expect(gerarMes(base())).toEqual(gerarMes(base({ redes: ['instagram', 'facebook', 'tiktok', 'whatsapp'] })))
   expect(new Set(gerarMes(base()).map((p) => p.rede)).size).toBe(4)
 })
+
+describe('formato do feed: carrossel', () => {
+  const pacote = (ramo: string, produtos = [{ id: 'p1', nome: 'Serviço um', descricao: null, preco: 120, preco_promo: 99 }, { id: 'p2', nome: 'Serviço dois', descricao: null, preco: null, preco_promo: null }]) =>
+    ({ ramo, estrategia: 'vender', anoMes: '2026-12', inicio: '2026-12-01', negocio: { nome: 'Negócio Teste', insta: null, tom: 'proximo', horario: '19:00' }, produtos }) as Parameters<typeof gerarMes>[0]
+  test('aproximação e necessidade sempre em carrossel', () => {
+    for (const ramo of ['ferramentas', 'psicologia']) {
+      const feed = gerarMes(pacote(ramo)).filter((p) => p.tipo === 'feed' && p.pilar !== 'demo')
+      expect(feed.length).toBeGreaterThan(0)
+      expect(feed.every((p) => p.formato === 'carrossel')).toBe(true)
+    }
+  })
+  test('demonstração do serviço e oferta com preço ficam em arte única, menos nos ramos só de texto', () => {
+    const demo = gerarMes(pacote('ferramentas')).filter((p) => p.tipo === 'feed' && p.pilar === 'demo')
+    expect(demo.length).toBeGreaterThan(0)
+    expect(demo.every((p) => p.formato === 'arte')).toBe(true)
+    const demoPsi = gerarMes(pacote('psicologia')).filter((p) => p.tipo === 'feed' && p.pilar === 'demo')
+    expect(demoPsi.every((p) => p.formato === (p.preco_por == null ? 'carrossel' : 'arte'))).toBe(true)
+  })
+})

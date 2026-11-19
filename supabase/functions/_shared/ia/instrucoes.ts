@@ -36,7 +36,7 @@ O pilar do lugar também orienta o assunto: demonstração mostra o serviço e c
 
 - **Feed do Instagram**: o texto mais completo. Gancho forte, meio com dois ou três parágrafos curtos, convite. Até 5 hashtags.
 - **Feed do Facebook**: parecido com o do Instagram, um pouco mais explicativo e conversado. Até 3 hashtags. O app acrescenta a assinatura do negócio no fim; não escreva assinatura.
-- **Carrossel**: o meio anuncia a sequência ("arrasta para o lado") e o roteiro diz o que vai em cada cartão.
+- **Carrossel**: o texto vira as páginas do carrossel, porque as pessoas leem mais nas páginas do que na legenda. O app põe o título na capa, o gancho na segunda página, cada parágrafo do meio numa página própria e o convite na penúltima. Por isso, no carrossel, escreva o meio em 3 a 5 parágrafos curtos (até umas 40 palavras cada), um por ideia, e cada um precisa fazer sentido sozinho numa página: um passo, um sinal, um mito e a verdade, um item da lista. Numa lista, ponha um item por parágrafo. A capa já diz "arraste para o lado": não repita isso no texto. O roteiro diz em uma linha o que vai em cada página.
 - **Stories**: curto. Uma frase de gancho e, no convite, uma interação: enquete com duas ou três opções ("Enquete: A / B") ou caixinha de pergunta ("Caixinha: ..."). O meio pode ficar vazio. Sem hashtags.
 - **Vídeo (TikTok/Reels)**: legenda curta (gancho e convite; meio vazio ou de uma linha). O roteiro é a parte principal: passos numerados, o primeiro com o texto de abertura na tela nos primeiros segundos, depois o que mostrar em cada cena, e o fechamento com o convite. Para montagem com fotos, cada passo diz qual foto ou cena entra. Até 5 hashtags.
 - **Status do WhatsApp**: direto, uma ou duas frases e o convite. Sem hashtags.

@@ -387,7 +387,7 @@ function paginaDoCarrossel(f, { pecas, foto, logo, pagina }) {
 export function desenharArte(ctx, { pecas, look, cores, foto = null, logo = null, W, H, pagina = 1, paginas = 1, capaDeVideo = false, arte = null }) {
   if (arte && !pecas.preco) {
     const tipo = paginas > 1 ? 'car' : capaDeVideo ? 'capa' : H > W ? 'stories' : 'feed'
-    return desenharDaFamilia(ctx, { arte, estilo: nomeDoEstilo(look), pecas, cores, foto, logo, W, H, tipo, pagina })
+    return desenharDaFamilia(ctx, { arte, estilo: nomeDoEstilo(look), pecas, cores, foto, logo, W, H, tipo, pagina, paginas })
   }
   const f = folha(ctx, { look, cores, W, H })
   ctx.save()

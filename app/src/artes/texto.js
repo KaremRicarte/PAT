@@ -69,7 +69,8 @@ export function encaixarTexto(texto, { tamanho, minimo, alturaMax, quebra, altur
 // Tamanho e número de páginas da arte de cada post; null = post sem arte (mensagem de lista).
 export function medidaDaArte(post) {
   switch (post.tipo) {
-    case 'feed': return { W: 1080, H: 1350, paginas: post.formato === 'carrossel' ? 5 : 1 }
+    // carrossel: o texto em páginas (o com preço segue a composição antiga, de 5 páginas)
+    case 'feed': return { W: 1080, H: 1350, paginas: post.formato !== 'carrossel' ? 1 : post.preco_por != null ? 5 : paginasDoCarrossel(post.legenda) }
     case 'stories':
     case 'status': return { W: 1080, H: 1920, paginas: 1 }
     case 'video': return { W: 720, H: 1280, paginas: 1 }
@@ -84,4 +85,45 @@ export function assinaturaDaArte(assinatura, temLogo, nome) {
   const logo = Boolean(assinatura?.logo && temLogo)
   const texto = h ? `@${h}` : logo ? null : (nome || null)
   return { texto, logo }
+}
+
+// ---------- carrossel: o texto da legenda dividido em páginas ----------
+
+const MAX_MEIOS = 4 // páginas de texto do meio (capa + gancho + 4 + convite + fecho = 8 páginas no máximo)
+const LONGO = 260 // parágrafo maior que isto vira duas páginas (pelas frases)
+const ASSINATURA = /^Siga @|^Siga |· Instagram @/
+
+function dividirLongo(p) {
+  if (p.length <= LONGO) return [p]
+  const frases = p.includes('\n') ? p.split(/\n+/) : p.split(/(?<=[.!?…])\s+/)
+  const partes = []
+  for (const fr of frases) {
+    const ultima = partes.at(-1)
+    if (ultima && ultima.length + fr.length + 1 <= LONGO * 0.8) partes[partes.length - 1] = `${ultima}${p.includes('\n') ? '\n' : ' '}${fr}`
+    else partes.push(fr)
+  }
+  return partes
+}
+
+// Gancho (2ª página), os blocos do meio (uma página cada, no máximo MAX_MEIOS) e o convite (penúltima).
+// A assinatura no fim da legenda ("Siga @...", "Nome · Instagram @...") não vira página.
+export function blocosDoCarrossel(legenda) {
+  const par = String(legenda ?? '').split(/\n\s*\n+/).map((x) => x.trim()).filter(Boolean)
+  while (par.length > 1 && ASSINATURA.test(par.at(-1))) par.pop()
+  if (!par.length) return { gancho: '', meios: [], convite: '' }
+  const convite = par.length >= 2 ? par.at(-1) : ''
+  let meios = par.slice(1, par.length >= 2 ? -1 : 1).flatMap(dividirLongo)
+  // sobrou página: junta o par vizinho mais curto (o texto não se perde, só divide a página)
+  while (meios.length > MAX_MEIOS) {
+    let i = 0
+    for (let j = 1; j < meios.length - 1; j++) if (meios[j].length + meios[j + 1].length < meios[i].length + meios[i + 1].length) i = j
+    meios = [...meios.slice(0, i), `${meios[i]}\n${meios[i + 1]}`, ...meios.slice(i + 2)]
+  }
+  return { gancho: par[0], meios, convite }
+}
+
+// Páginas do carrossel: capa, gancho, uma por bloco do meio, convite (se houver) e o fecho.
+export function paginasDoCarrossel(legenda) {
+  const b = blocosDoCarrossel(legenda)
+  return 2 + b.meios.length + (b.convite ? 1 : 0) + 1
 }

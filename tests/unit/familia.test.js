@@ -1,4 +1,5 @@
 import { escolherArtes, escolherArte, FAMILIA, ehPergunta, fontesDaFamilia, montar } from '../../app/src/artes/familia.js'
+import { blocosDoCarrossel, paginasDoCarrossel } from '../../app/src/artes/texto.js'
 
 const tom = (id) => FAMILIA.find((f) => f.id === id).tom
 const posts = (n, extra = () => ({})) => Array.from({ length: n }, (_, i) => ({
@@ -59,5 +60,41 @@ describe('fontes e texto', () => {
     const longo = montar(ctx, 'palavra '.repeat(40), { tam: 40, largura: 100, altura: 60, fonte: () => '' })
     expect(longo.h).toBeLessThanOrEqual(60 + 1e-9)
     expect(longo.linhas.at(-1).at(-1).p.endsWith('…')).toBe(true)
+  })
+})
+
+describe('blocosDoCarrossel (o texto da legenda nas páginas)', () => {
+  test('gancho, um bloco por parágrafo do meio e o convite; a assinatura não vira página', () => {
+    const legenda = 'Você dorme e acorda cansada?\n\nPrimeiro sinal.\n\nSegundo sinal.\n\nTerceiro sinal.\n\nMe chama no direct.\n\nSiga @suaPsicologa para mais conteúdo.'
+    expect(blocosDoCarrossel(legenda)).toEqual({ gancho: 'Você dorme e acorda cansada?', meios: ['Primeiro sinal.', 'Segundo sinal.', 'Terceiro sinal.'], convite: 'Me chama no direct.' })
+    expect(paginasDoCarrossel(legenda)).toBe(7) // capa, gancho, 3 do meio, convite, fecho
+  })
+  test('assinatura do Facebook também fica de fora', () => {
+    expect(blocosDoCarrossel('G.\n\nM.\n\nC.\n\nPsi Marcelina · Instagram @suaPsicologa').convite).toBe('C.')
+  })
+  test('parágrafo longo vira duas páginas, pelas frases, sem perder texto', () => {
+    const longo = Array.from({ length: 8 }, (_, i) => `Esta é a frase número ${i + 1} do parágrafo longo.`).join(' ')
+    const { meios } = blocosDoCarrossel(`G.\n\n${longo}\n\nC.`)
+    expect(meios.length).toBeGreaterThan(1)
+    expect(meios.join(' ')).toBe(longo)
+  })
+  test('no máximo 8 páginas: o excesso do meio se junta, sem perder texto', () => {
+    const meio = Array.from({ length: 9 }, (_, i) => `Item ${i + 1}.`)
+    const b = blocosDoCarrossel(['G.', ...meio, 'C.'].join('\n\n'))
+    expect(b.meios.length).toBe(4)
+    expect(b.meios.join('\n').split('\n')).toEqual(meio)
+    expect(paginasDoCarrossel(['G.', ...meio, 'C.'].join('\n\n'))).toBe(8)
+  })
+  test('legenda curta: capa, gancho e fecho', () => {
+    expect(paginasDoCarrossel('Só uma frase.')).toBe(3)
+    expect(paginasDoCarrossel('')).toBe(3)
+  })
+})
+
+describe('montar respeita a quebra de linha (itens de lista)', () => {
+  test('cada \n começa uma linha nova', () => {
+    const ctx = { font: '', measureText: (s) => ({ width: s.length * 10 }) }
+    const b = montar(ctx, '1. Um\n2. Dois', { tam: 40, largura: 10000, altura: 1000, fonte: () => '' })
+    expect(b.linhas.map((l) => l.map((t) => t.p).join(' '))).toEqual(['1. Um', '2. Dois'])
   })
 })

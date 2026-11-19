@@ -38,7 +38,9 @@ test('contrasteBom: cor principal sobre o fundo só com contraste de 3:1', () =>
 
 test('medidaDaArte para cada tipo de post', () => {
   expect(medidaDaArte({ tipo: 'feed', formato: 'arte' })).toEqual({ W: 1080, H: 1350, paginas: 1 })
-  expect(medidaDaArte({ tipo: 'feed', formato: 'carrossel' })).toEqual({ W: 1080, H: 1350, paginas: 5 })
+  // carrossel: capa, gancho, uma página por parágrafo do meio, convite e fecho
+  expect(medidaDaArte({ tipo: 'feed', formato: 'carrossel', legenda: 'Gancho.\n\nUm.\n\nDois.\n\nConvite.' })).toEqual({ W: 1080, H: 1350, paginas: 6 })
+  expect(medidaDaArte({ tipo: 'feed', formato: 'carrossel', preco_por: 99, legenda: 'a' })).toEqual({ W: 1080, H: 1350, paginas: 5 })
   expect(medidaDaArte({ tipo: 'stories', formato: 'arte' })).toEqual({ W: 1080, H: 1920, paginas: 1 })
   expect(medidaDaArte({ tipo: 'status', formato: 'arte' })).toEqual({ W: 1080, H: 1920, paginas: 1 })
   expect(medidaDaArte({ tipo: 'video', formato: 'gravar' })).toEqual({ W: 720, H: 1280, paginas: 1 })

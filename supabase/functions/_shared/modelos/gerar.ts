@@ -137,7 +137,8 @@ export function gerarMes(p: Pacote): PostGerado[] {
   let anterior: Pilar | null = null, tituloAnterior = ''
 
   const demo = ({ pr, it }: ItemDoMes, titulo: string, preco: Pick<Partes, 'preco' | 'preco_de' | 'preco_por'>): Partes => ({
-    pilar: 'demo', titulo: limitar(titulo), formato: 'arte',
+    // o post que mostra o serviço fica em arte única (a foto do serviço brilha nela); nos ramos só de texto, carrossel
+    pilar: 'demo', titulo: limitar(titulo), formato: ramo.textOnly && !preco.preco ? 'carrossel' : 'arte',
     gancho: unq(it.gancho), meio: unq(it.beneficio), roteiro: `Como montar: ${it.demo}`,
     produto_id: pr.id, descricao: pr.descricao, conviteProprio: null, ...preco,
   })
@@ -146,14 +147,15 @@ export function gerarMes(p: Pacote): PostGerado[] {
     if (pilar === 'need') {
       const { pr, it } = itens[(idx.need + 1) % L]
       return {
-        pilar, titulo: limitar(it.dor), formato: idx.need % 2 ? 'carrossel' : 'arte',
+        // o feed é carrossel: as pessoas leem mais o texto nas páginas do que na legenda
+        pilar, titulo: limitar(it.dor), formato: 'carrossel',
         gancho: unq(it.dorG), meio: unq(it.dorT), roteiro: `Como montar: ${it.sol}`,
         produto_id: pr.id, descricao: pr.descricao, conviteProprio: null, ...SEM_PRECO,
       }
     }
     const a = aproxFeed[idx.aprox % aproxFeed.length], { it } = itens[idx.aprox % L]
     return {
-      pilar, titulo: limitar(trocar(a.t, it)), formato: a.fmt === 'Carrossel' ? 'carrossel' : 'arte',
+      pilar, titulo: limitar(trocar(a.t, it)), formato: 'carrossel',
       gancho: campo(a, 0, it), meio: campo(a, 2, it), roteiro: `Como montar: ${campo(a, 1, it)}`,
       produto_id: null, descricao: null, conviteProprio: campo(a, 3, it), ...SEM_PRECO,
     }
