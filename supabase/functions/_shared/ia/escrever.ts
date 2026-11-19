@@ -108,6 +108,9 @@ function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
     e.produto
       ? `Serviço ou produto do post: ${e.produto.nome}${e.produto.descricao ? `. Descrição do cliente: ${e.produto.descricao}` : ''}.`
       : 'Post de tema geral, sem um serviço específico.',
+    e.produto
+      ? `O post é sobre ${e.produto.nome}: se o texto de modelo abaixo citar outro lugar, produto ou serviço, ignore e fale só de ${e.produto.nome}.`
+      : null,
     e.foto
       ? `Foto do post (anexada${e.foto.ilustrativa ? '; imagem ilustrativa, não é do negócio: não diga que é o espaço, a equipe, o produto ou o trabalho do cliente' : ''}): ${e.foto.descricao}`
       : 'Este post não tem foto: escreva sem mencionar imagem.',
@@ -136,7 +139,7 @@ function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
   }
   if (l.rede === 'facebook') linhas.push('O app acrescenta a assinatura do negócio no fim da legenda.')
   linhas.push('', '# Texto de modelo que estava neste lugar (só referência de tema; não copie)', e.textoModelo)
-  return linhas.join('\n')
+  return linhas.filter((x) => x !== null).join('\n')
 }
 
 type Partes = { titulo: string, gancho: string, meio: string, convite: string, hashtags: string[], roteiro: string | null }

@@ -27,7 +27,7 @@ const ramo: Ramo = {
   gen: (nome: string, c: string) => ({gancho:`Já pensou em viver ${c}?`, demo:`Mostrar os melhores momentos de ${c}: a chegada, a experiência e o rosto de quem está curtindo.`, beneficio:'Uma experiência organizada, sem se preocupar com os detalhes.', dor:'Viagem sem planejamento sai mais cara', dorG:'Deixou tudo para a última hora e pagou mais caro?', dorT:'Comprar perto da data costuma custar mais e limita as opções.', sol:`Mostrar ${c} com tudo organizado e as condições de pagamento.`}),
   lib: [
     {
-      "k": "porto",
+      "k": "porto de galinhas",
       "nome": "Pacote Porto de Galinhas 5 dias",
       "cat": "Pacote",
       "curto": "Porto de Galinhas",

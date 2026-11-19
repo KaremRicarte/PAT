@@ -75,3 +75,15 @@ test('itemDoProduto usa gen para item desconhecido', () => {
   expect(it.nome).toBe('Bolo de pote')
   expect(it.gancho).toContain('bolo de pote')
 })
+
+test('itemDoProduto: chave como palavra inteira (Porto Seguro não vira Porto de Galinhas), sem depender de acento', () => {
+  expect(itemDoProduto(RAMOS.turismo, 'porto seguro').k).toBe('gen')
+  expect(itemDoProduto(RAMOS.turismo, 'Pacote Porto de Galinhas 5 dias').k).toBe('porto de galinhas')
+  expect(itemDoProduto(RAMOS.turismo, 'October Fest').k).toBe('gen')
+  expect(itemDoProduto(RAMOS.turismo, 'Pacote Reveillon na praia').k).toBe('réveillon')
+  expect(itemDoProduto(RAMOS.turismo, 'Passeio de catamarã').k).toBe('catamar')
+  expect(itemDoProduto(RAMOS.advocacia, 'Direito previdenciário').k).toBe('previdenci')
+  // a chave vale no começo de uma palavra, não no meio de outra
+  expect(itemDoProduto(RAMOS.ferramentas, 'Chaveiro').k).toBe('chave')
+  expect(itemDoProduto(RAMOS.turismo, 'Aeroporto de Galinhas').k).toBe('gen')
+})

@@ -22,10 +22,15 @@ export function listaRamos(): { id: string, nome: string, desc: string }[] {
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
 }
 
-// Item da biblioteca cujo `k` aparece no nome; senão, os textos genéricos do ramo.
+// sem acento e em minúsculas, para "Reveillon" achar "réveillon"
+const simples = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
+// Item da biblioteca cujo `k` aparece no nome, começando numa palavra; senão, os textos genéricos do ramo.
+// O `k` pode ser o começo de uma palavra ("previdenci" acha "previdenciário"), mas não o meio de outra,
+// e as chaves de lugar são o nome inteiro: "Porto Seguro" não vira "Porto de Galinhas" (antes a chave era "porto").
 export function itemDoProduto(ramo: Ramo, nome: string): Item {
-  const baixo = nome.toLowerCase()
-  const base = ramo.lib.find((l) => baixo.includes(l.k))
+  const baixo = nome.toLowerCase(), limpo = ` ${simples(nome).replace(/[^a-z0-9]+/g, ' ')}`
+  const base = ramo.lib.find((l) => limpo.includes(` ${simples(l.k).replace(/[^a-z0-9]+/g, ' ')}`))
   if (base) return { ...base, nome }
   return { k: 'gen', nome, cat: 'Geral', curto: baixo, ...ramo.gen(nome, baixo) }
 }
