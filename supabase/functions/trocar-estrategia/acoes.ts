@@ -3,8 +3,7 @@
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import type { Estrategia, Rede, Tom } from '../_shared/modelos/tipos.ts'
 import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
-import { agendaDoMes } from '../_shared/modelos/calendario.ts'
-import { gerarMes, type Pacote, type PostGerado } from '../_shared/modelos/gerar.ts'
+import { agendaDoPacote, gerarMes, type Pacote, type PostGerado } from '../_shared/modelos/gerar.ts'
 import { validarMes, validarPost } from '../_shared/modelos/validar.ts'
 import { lerRedes } from '../gerar-mes/acoes.ts'
 
@@ -53,7 +52,7 @@ export async function trocarEstrategiaDoMes(entrada: unknown, deps: DepsTrocaEst
   const doCliente = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
   const posts = gerarMes({ ramo: cliente.ramo, estrategia: est, anoMes: mes.ano_mes, inicio: desde, negocio, produtos, redes })
   const problemas = [
-    ...validarMes(posts, agendaDoMes(mes.ano_mes, desde, est), redes),
+    ...validarMes(posts, agendaDoPacote({ ramo: cliente.ramo, estrategia: est, anoMes: mes.ano_mes, inicio: desde, produtos }), redes),
     ...posts.flatMap((p) => validarPost(p, ramo, doCliente).map((x) => `${p.data} ${p.rede}/${p.tipo}: ${x}`)),
   ]
   if (problemas.length) {

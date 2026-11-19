@@ -1,7 +1,7 @@
 // Tela do post: a arte grande, as ações (aprovar, Postei, reprovar), os textos (copiar) e baixar/salvar.
 import { t } from '../textos.js'
 import { el, mostrar, aviso, filhosValidos } from '../comum.js'
-import { situacaoDoPost, diaPorExtenso, chaveFormato } from './situacao.js'
+import { situacaoDoPost, diaPorExtenso, chaveFormato, rotuloOcasiao } from './situacao.js'
 import { aplicarAcao, gerarOutro, arquivosParaSalvar, trocasDoMes, LIMITE_TROCAS, rotuloDoBaixar } from './acoesPost.js'
 import { entregar, baixarArquivos, modoDoAparelho, aparelhoEnvia, enviarParaRede } from './salvarArquivo.js'
 import { textoParaCopiar } from './mes.js'
@@ -73,6 +73,7 @@ export function telaPost(ctx, post, aoVoltar) {
       // ainda na fila do PAT: o cliente pode mexer, e a versão dele vence
       post.origem !== 'ia' && ['fila', 'trabalhando'].includes(post.ia_estado)
         ? el('p', { class: 'aviso-fila-ia', texto: t('post.ia.fila') }) : null,
+      rotuloOcasiao(post.ocasiao) ? el('p', { class: 'ocasiao', texto: rotuloOcasiao(post.ocasiao) }) : null,
       el('h1', { tabindex: '-1', texto: post.titulo }),
       el('p', { class: 'quando' },
         el('span', { texto: t('post.quando', { dia: diaPorExtenso(post.data), hora: post.horario }) }),

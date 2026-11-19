@@ -1,5 +1,8 @@
 // Regras puras do calendário e do post (sem DOM).
 import { blocosDoCarrossel } from '../artes/texto.js'
+import { t } from '../textos.js'
+import { daData } from '../../../supabase/functions/_shared/modelos/gerar.ts'
+import { diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
@@ -81,6 +84,18 @@ export function estadoIA(post, hoje) {
 
 // O dia ainda tem post esperando o PAT (na fila ou sendo melhorado)?
 export const diaEsperandoPAT = (posts, hoje) => posts.some((p) => ['fila', 'trabalhando'].includes(estadoIA(p, hoje)))
+
+// Marca da data especial do post: "📅 Natal", "🏷️ Oferta de Natal · 25/12", "🏷️ Vem aí: oferta de Natal · 25/12".
+// null = post comum (ou ocasião em formato inesperado).
+export function rotuloOcasiao(o) {
+  if (!o || typeof o !== 'object' || !/^\d{4}-\d{2}-\d{2}$/.test(o.data ?? '')) return null
+  if (o.fase === 'tema') return o.nome ? t('ocasiao.tema', { nome: o.nome }) : null
+  if (o.fase !== 'dia' && o.fase !== 'aquecimento') return null
+  const oferta = o.nome ? `Oferta ${daData(o.nome)}` : 'Oferta'
+  return o.fase === 'dia'
+    ? t('ocasiao.dia', { oferta, dia: diaMes(o.data) })
+    : t('ocasiao.aquecimento', { oferta: oferta.replace(/^O/, 'o'), dia: diaMes(o.data) })
+}
 
 // Todas as fotos de todos os itens, na ordem dos itens e sem repetir.
 export const todasAsFotos = (produtos, fotosInfo) => [...new Set(produtos.flatMap((p) => fotosDoProduto(p, fotosInfo)))]

@@ -85,7 +85,7 @@ test('troca grava o texto novo, volta a situação e soma 1', async () => {
   const [id, campos] = (deps.gravar as ReturnType<typeof vi.fn>).mock.calls[0]
   expect(id).toBe(ID)
   expect(Object.keys(campos).sort()).toEqual(
-    ['estado', 'foto_path', 'hashtags', 'ia_estado', 'legenda', 'origem', 'pilar', 'preco_de', 'preco_por', 'produto_id',
+    ['estado', 'foto_path', 'hashtags', 'ia_estado', 'legenda', 'ocasiao', 'origem', 'pilar', 'preco_de', 'preco_por', 'produto_id',
       'roteiro', 'sem_foto', 'titulo', 'trocas'])
   expect(campos).toMatchObject({ estado: 'gerado', foto_path: null, sem_foto: false, trocas: 3, preco_de: null, preco_por: null })
   // texto de modelo pedido pelo cliente: a fila não o reescreve

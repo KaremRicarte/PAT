@@ -277,6 +277,15 @@ dialog.janela-ia button.link { margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) { .selo-ia.trabalhando { animation: none; } }
 button.dia-btn { position: relative; }
 .ampulheta { position: absolute; top: 2px; right: 3px; font-size: 11px; line-height: 1; }
+.ocasiao { display: block; font-size: 13px; font-weight: 700; color: var(--pri); margin: 2px 0; }
+.datas-mes { margin: 8px 0 20px; padding: 0; list-style: none; }
+.datas-mes li { background: var(--sunk); border-radius: 12px; padding: 10px 14px; margin: 0 0 8px; }
+.datas-mes small { display: block; color: var(--muted); margin-top: 2px; }
+.promo-data { margin-top: 8px; }
+.promo-data .caixinha { display: flex; gap: 8px; align-items: center; font-weight: 600; color: var(--ink); margin: 16px 0 0; }
+.promo-data .caixinha input { width: auto; margin: 0; }
+.promo-data-detalhes { margin: 8px 0 0 28px; }
+.promo-data-detalhes select { width: 100%; }
 .aviso-fila-ia { background: var(--sunk); border-radius: 12px; padding: 10px 14px; margin: 8px 0; font-size: 14px; }
 .aviso-foto { flex: 1 0 100%; margin: 0; font-size: 13px; color: var(--bad); }
 .lembrete-aviso p { margin: 0 0 12px; font-weight: 700; }

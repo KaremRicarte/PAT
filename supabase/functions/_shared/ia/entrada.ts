@@ -1,7 +1,7 @@
 // Monta a EntradaPost (o que a IA recebe para escrever um post) a partir dos dados do banco, e as regras de foto
 // que a fila (melhorar-posts) e as ações na hora (trocar-post, reescrever-post) compartilham. Puro: o Vitest importa.
 import type { Estrategia, Pilar, Rede, Tom } from '../modelos/tipos.ts'
-import type { PostGerado } from '../modelos/gerar.ts'
+import type { Ocasiao, PostGerado } from '../modelos/gerar.ts'
 import type { EntradaPost } from './escrever.ts'
 
 // descrição usada quando a foto ainda não foi descrita (a imagem vai anexada mesmo assim)
@@ -42,6 +42,7 @@ export type LugarDoPost = {
   data: string, rede: Rede, tipo: PostGerado['tipo'], formato: PostGerado['formato'], pilar: Pilar,
   titulo: string, legenda: string, produto_id: string | null,
   preco_de: number | string | null, preco_por: number | string | null,
+  ocasiao?: Ocasiao | null,
 }
 
 export function montarEntradaPost(
@@ -54,7 +55,7 @@ export function montarEntradaPost(
     estrategia: c.estrategia,
     lugar: {
       data: post.data, rede: post.rede, tipo: post.tipo, formato: post.formato, pilar: post.pilar,
-      preco_de: numero(post.preco_de), preco_por: numero(post.preco_por),
+      preco_de: numero(post.preco_de), preco_por: numero(post.preco_por), ocasiao: post.ocasiao ?? null,
     },
     produto: produto ? { nome: produto.nome, descricao: produto.descricao } : null,
     foto,

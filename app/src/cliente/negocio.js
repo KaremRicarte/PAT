@@ -28,6 +28,9 @@ export function validarItens(itens, ramo = { noPromo: false }) {
       if ((String(i.precoTexto ?? '').trim() && normal === null) || (String(i.promoTexto ?? '').trim() && promo === null)) return 'quiz.itens.precoinvalido'
       if (promo !== null && normal === null) return 'quiz.itens.semnormal'
       if (promo !== null && promo > normal) return 'quiz.itens.promomaior'
+      // caixinha da data marcada: precisa do preço promocional e de um dia escolhido
+      if (i.promoData != null && promo === null) return 'quiz.itens.datasempromo'
+      if (i.promoData != null && !/^\d{4}-\d{2}-\d{2}$/.test(i.promoData)) return 'quiz.itens.datainvalida'
     }
   }
   if (itens.some((i) => (i.fotos?.length ?? 0) > MAX_FOTOS)) return 'quiz.itens.fotos'
@@ -70,7 +73,7 @@ export async function carregarNegocio(supabase, uid) {
   const [n, p] = await Promise.all([
     supabase.from('negocios').select('nome, insta, assinatura, tom, horario, cor1, cor2, logo_path, fotos')
       .eq('cliente_id', uid).maybeSingle(),
-    supabase.from('produtos').select('id, nome, descricao, preco, preco_promo, fotos, foto_path').eq('cliente_id', uid).order('ordem'),
+    supabase.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, fotos, foto_path').eq('cliente_id', uid).order('ordem'),
   ])
   if (n.error) throw n.error
   if (p.error) throw p.error
@@ -122,8 +125,10 @@ export async function salvarDadosNegocio(supabase, uid, dados) {
 export function itensParaSalvar(itens, ramo) {
   return itens.map((i) => {
     const preco = ramo.noPromo ? null : precoDoTexto(i.precoTexto)
-    return { id: i.id, nome: i.nome, descricao: i.descricao, preco,
-      preco_promo: ramo.noPromo ? null : (preco ? precoDoTexto(i.promoTexto) : null), fotos: i.fotos }
+    const preco_promo = ramo.noPromo ? null : (preco ? precoDoTexto(i.promoTexto) : null)
+    // a data só vale com preço promocional (caixinha "Promoção só para uma data especial")
+    return { id: i.id, nome: i.nome, descricao: i.descricao, preco, preco_promo,
+      promo_data: preco_promo !== null && i.promoData ? i.promoData : null, fotos: i.fotos }
   })
 }
 
@@ -161,7 +166,8 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
       }
       const preco = i.preco ?? null
       linhas.push({ id: i.id, cliente_id: uid, nome: i.nome.trim(), descricao: i.descricao?.trim() || null,
-        preco, preco_promo: preco === null ? null : i.preco_promo ?? null, fotos, foto_path: fotos[0] ?? null, ordem })
+        preco, preco_promo: preco === null ? null : i.preco_promo ?? null,
+        promo_data: preco === null || i.preco_promo == null ? null : i.promo_data ?? null, fotos, foto_path: fotos[0] ?? null, ordem })
     }
     const r3 = await supabase.from('produtos').upsert(linhas)
     if (r3.error) throw r3.error

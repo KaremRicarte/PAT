@@ -3,6 +3,7 @@ import { t } from '../textos.js'
 import { el, logo, mostrar, botaoSair } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
+import { datasDoMes, diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
 import { opcoes, telaPassos } from './quiz.js'
 import { estadoDoNegocio } from './perguntas.js'
 import { depoisDeSalvar } from './refazer.js'
@@ -60,6 +61,33 @@ export function telaQuizMes(ctx, antes = ctx.produtos) { // antes: serviços de 
   })
 }
 
+const SEMANA_CURTA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+
+// As datas do mês a gerar (de alvo.inicio em diante), com as promoções marcadas nos itens.
+// Cada uma: { data, nome, especial (da lista de datas ou null = "outro dia" de uma promoção), itens }.
+export function datasDaEstrategia(alvo, ramo, produtos) {
+  const comPromo = (produtos ?? []).filter((p) => p.promo_data && p.promo_data.startsWith(alvo.anoMes) &&
+    p.promo_data >= alvo.inicio && p.preco != null && p.preco_promo != null && Number(p.preco_promo) < Number(p.preco))
+  const especiais = datasDoMes(alvo.anoMes, ramo).filter((d) => d.data >= alvo.inicio)
+  const outros = [...new Set(comPromo.map((p) => p.promo_data))].filter((d) => !especiais.some((x) => x.data === d))
+  return [...especiais.map((d) => ({ data: d.data, nome: d.nome, especial: d })),
+    ...outros.map((d) => ({ data: d, nome: t('mesq.datas.outro'), especial: null }))]
+    .sort((a, b) => a.data.localeCompare(b.data))
+    .map((x) => ({ ...x, itens: comPromo.filter((p) => p.promo_data === x.data).map((p) => p.nome) }))
+}
+
+export function listaDeDatas(alvo, ramo, produtos) {
+  const datas = datasDaEstrategia(alvo, ramo, produtos)
+  if (!datas.length) return null
+  const semana = (d) => SEMANA_CURTA[new Date(`${d}T00:00:00Z`).getUTCDay()]
+  return [el('h2', { texto: t('mesq.datas.titulo', { mes: nomeDoMes(alvo.anoMes) }) }),
+    el('ul', { class: 'datas-mes' }, datas.map((x) => el('li', {},
+      el('strong', { texto: `${semana(x.data)}, ${diaMes(x.data)} · ${x.nome}` }),
+      el('small', { texto: x.itens.length ? t('mesq.datas.promo', { itens: x.itens.join(', ') })
+        : x.especial?.soPromo ? t('mesq.datas.so')
+          : x.especial?.promo ? `${t('mesq.datas.post')} ${t('mesq.datas.dica')}` : t('mesq.datas.post') }))))]
+}
+
 function telaEstrategia({ ctx, ramo, alvo, antes, voltar: aoVoltar }) {
   const { supabase, cliente, meses, atualizar } = ctx
   let escolhida = sugestaoEstrategia(meses[0] ?? null) // meses vem do mais recente para o mais antigo
@@ -70,6 +98,7 @@ function telaEstrategia({ ctx, ramo, alvo, antes, voltar: aoVoltar }) {
     el('h1', { texto: t('mesq.titulo') }),
     el('p', { class: 'muted', texto: t('mesq.dica', { mes: nomeDoMes(alvo.anoMes) }) }),
     cartoesEstrategia(ramo, escolhida, (v) => { escolhida = v }, sugerida),
+    listaDeDatas(alvo, ramo, ctx.produtos),
     el('div', { class: 'acoes' }, gerar, voltar, botaoSair(supabase)))
   form.addEventListener('submit', (ev) => {
     ev.preventDefault()

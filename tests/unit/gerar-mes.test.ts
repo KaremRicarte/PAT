@@ -127,9 +127,9 @@ test.each([
 })
 
 test('texto do cliente com R$, "desconto" ou "off" não trava o mês (vender, itens de vitrine)', async () => {
-  const { gerarMes } = await import('../../supabase/functions/_shared/modelos/gerar.ts')
+  const { agendaDoPacote } = await import('../../supabase/functions/_shared/modelos/gerar.ts')
   const { validarMes, validarPost } = await import('../../supabase/functions/_shared/modelos/validar.ts')
-  const { agendaDoMes, mesAlvo } = await import('../../supabase/functions/_shared/modelos/calendario.ts')
+  const { mesAlvo } = await import('../../supabase/functions/_shared/modelos/calendario.ts')
   const { RAMOS } = await import('../../supabase/functions/_shared/modelos/ramos/index.ts')
   const produtos = [
     { id: 'p1', nome: 'Furadeira', descricao: 'a partir de R$ 1.500', preco: 99.9, preco_promo: null },
@@ -145,7 +145,7 @@ test('texto do cliente com R$, "desconto" ou "off" não trava o mês (vender, it
   expect(posts.filter((p: { preco_por: number | null }) => p.preco_por !== null).length).toBeGreaterThan(0)
   const alvo = mesAlvo('2026-11-16', [])!
   expect(anoMes).toBe(alvo.anoMes)
-  expect(validarMes(posts, agendaDoMes(alvo.anoMes, alvo.inicio, 'vender'))).toEqual([])
+  expect(validarMes(posts, agendaDoPacote({ ramo: 'ferramentas', estrategia: 'vender', ...alvo, produtos }))).toEqual([])
   // sem descontar o texto do cliente, as regras novas pegariam esses posts
   expect(posts.flatMap((p: never) => validarPost(p, RAMOS.ferramentas)).length).toBeGreaterThan(0)
 })

@@ -4,6 +4,8 @@ import { t } from '../textos.js'
 import { el, campo } from '../comum.js'
 import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
 import { REDES } from '../../../supabase/functions/_shared/modelos/tipos.ts'
+import { datasParaPromocao, diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
+import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { MAX_ITENS, LOGO_MAX, validarItens, normalizarInsta, reduzirFoto, MAX_FOTOS_NEGOCIO } from './negocio.js'
 import { montarImportacao, faixaDeFotos } from './importarTela.js'
 
@@ -59,6 +61,8 @@ export function estadoDoNegocio(negocio, produtos, ramo) {
       id: p.id, nome: p.nome, descricao: p.descricao ?? '',
       precoTexto: p.preco ? String(p.preco).replace('.', ',') : '',
       promoTexto: p.preco_promo ? String(p.preco_promo).replace('.', ',') : '',
+      // null = sem data (a promoção vale o mês todo)
+      promoData: p.promo_data ?? null,
       fotos: p.fotos?.length ? p.fotos.map((path) => ({ path })) : p.foto_path ? [{ path: p.foto_path }] : [],
     })),
   }
@@ -88,6 +92,35 @@ export function nomesDasRedes(redes) {
   return REDES.filter((r) => (redes ?? []).includes(r)).map((r) => t(`rede.${r}`)).join(', ')
 }
 
+// "Promoção só para uma data especial": marca e escolhe a data (das próximas datas boas ou outro dia).
+// item.promoData: null = sem data; '' = marcada, falta escolher o dia; 'AAAA-MM-DD' = o dia.
+function caixaDaData(item, datas) {
+  const id = `promo-data-${item.id}`
+  const marcar = el('input', { type: 'checkbox', id, checked: item.promoData != null })
+  const OUTRO = 'outro'
+  const lista = el('select', { 'aria-label': t('quiz.item.promodata.qual') },
+    ...datas.map((d) => el('option', { value: d.data, texto: `${diaMes(d.data)} · ${d.nome}` })),
+    el('option', { value: OUTRO, texto: t('quiz.item.promodata.outro') }))
+  const [rDia, iDia] = campo(t('quiz.item.promodata.dia'), { type: 'date', min: hojeEmSaoPaulo() })
+  const outro = el('div', { class: 'promo-outro' }, rDia, iDia)
+  const passou = el('p', { class: 'muted pequeno', texto: t('quiz.item.promodata.passou') })
+  const detalhes = el('div', { class: 'promo-data-detalhes' }, lista, outro, passou,
+    el('p', { class: 'muted pequeno', texto: t('quiz.item.promodata.dica') }))
+  const daLista = () => datas.some((d) => d.data === item.promoData)
+  function mostrar() {
+    detalhes.hidden = item.promoData == null
+    lista.value = item.promoData && daLista() ? item.promoData : OUTRO
+    outro.hidden = lista.value !== OUTRO
+    iDia.value = item.promoData && !daLista() ? item.promoData : ''
+    passou.hidden = !(item.promoData && item.promoData < hojeEmSaoPaulo())
+  }
+  marcar.addEventListener('change', () => { item.promoData = marcar.checked ? (datas[0]?.data ?? '') : null; mostrar() })
+  lista.addEventListener('change', () => { item.promoData = lista.value === OUTRO ? '' : lista.value; mostrar(); if (lista.value === OUTRO) iDia.focus() })
+  iDia.addEventListener('change', () => { item.promoData = iDia.value || ''; passou.hidden = !(item.promoData && item.promoData < hojeEmSaoPaulo()) })
+  mostrar()
+  return el('div', { class: 'promo-data' }, el('label', { class: 'caixinha', for: id }, marcar, el('span', { texto: t('quiz.item.promodata') })), detalhes)
+}
+
 const BLOCOS = {
   nome: ({ ramo, estado }) => {
     const [rotulo, input] = campo(ramo.nomeQ, { name: 'nome', value: estado.nome, maxlength: 80, autocomplete: 'organization' })
@@ -105,7 +138,8 @@ const BLOCOS = {
     let urls = [] // miniaturas temporárias; liberadas a cada redesenho
     const sugestoes = el('div', { class: 'chips' })
     const adicionar = el('button', { type: 'button', class: 'secundario', texto: t('quiz.item.adicionar') })
-    const novo = (nome = '') => ({ id: crypto.randomUUID(), nome, descricao: '', precoTexto: '', promoTexto: '', fotos: [] })
+    const novo = (nome = '') => ({ id: crypto.randomUUID(), nome, descricao: '', precoTexto: '', promoTexto: '', promoData: null, fotos: [] })
+    const datas = ramo.noPromo ? [] : datasParaPromocao(hojeEmSaoPaulo(), ramo)
     adicionar.addEventListener('click', () => { estado.itens.push(novo()); redesenhar(); lista.querySelector('fieldset:last-child input')?.focus() })
 
     const editor = (item, i) => {
@@ -121,7 +155,8 @@ const BLOCOS = {
         iPreco.addEventListener('input', () => { item.precoTexto = iPreco.value })
         const [rPromo, iPromo] = campo(t('quiz.item.promo'), { value: item.promoTexto, inputmode: 'decimal', placeholder: 'Ex.: 39,90' })
         iPromo.addEventListener('input', () => { item.promoTexto = iPromo.value })
-        preco = el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo))
+        preco = [el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo)),
+          caixaDaData(item, datas)]
       }
       const selos = el('span', { class: 'selos-item' })
       const remover = el('button', { type: 'button', class: 'secundario pequeno', texto: t('quiz.item.remover') })

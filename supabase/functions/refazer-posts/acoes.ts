@@ -11,7 +11,7 @@ export type PostQueFalta = {
   id: string, data: string, rede: Rede, tipo: PostGerado['tipo'], formato: PostGerado['formato'], horario: string,
   ordem: number, estado: string, postado_em: string | null, ano_mes: string, estrategia: string,
 }
-export type CamposRefeitos = Pick<PostGerado, 'titulo' | 'legenda' | 'hashtags' | 'roteiro' | 'pilar' | 'produto_id' | 'preco_de' | 'preco_por'> &
+export type CamposRefeitos = Pick<PostGerado, 'titulo' | 'legenda' | 'hashtags' | 'roteiro' | 'pilar' | 'produto_id' | 'preco_de' | 'preco_por' | 'ocasiao'> &
   // o post volta a ser de modelo e entra de novo na fila da IA (melhorar-posts)
   { estado: 'gerado', foto_path: null, sem_foto: false, origem: 'modelo', ia_estado: 'fila' }
 
@@ -66,7 +66,7 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
       if (problemas.length) return console.error('refazer-posts: validação recusou o post', cliente.id, post.id, problemas)
       mudancas.push({ id: post.id, campos: {
         titulo: novo.titulo, legenda: novo.legenda, hashtags: novo.hashtags, roteiro: novo.roteiro,
-        pilar: novo.pilar, produto_id: novo.produto_id, preco_de: novo.preco_de, preco_por: novo.preco_por,
+        pilar: novo.pilar, produto_id: novo.produto_id, preco_de: novo.preco_de, preco_por: novo.preco_por, ocasiao: novo.ocasiao,
         estado: 'gerado', foto_path: null, sem_foto: false, origem: 'modelo', ia_estado: 'fila',
       } })
     })

@@ -2,7 +2,7 @@
 // Em segundo plano, a IA reescreve os posts de modelo (spec §3.2-3.4, §7 itens 1-3, 7, 9-16): escolhe a foto,
 // escreve a partir dela e grava SÓ se o post continuar igual ao que foi lido (a ação do cliente sempre vence).
 import type { Estrategia, Pilar, Rede, Tom } from '../_shared/modelos/tipos.ts'
-import type { PostGerado } from '../_shared/modelos/gerar.ts'
+import type { Ocasiao, PostGerado } from '../_shared/modelos/gerar.ts'
 import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import { escreverPost, type CamposDaIA, type ChamarIA, type ConteudoIA } from '../_shared/ia/escrever.ts'
 import { caminhoSeguro, fotoIlustrativa, fotosDoProduto, montarEntradaPost, SEM_DESCRICAO } from '../_shared/ia/entrada.ts'
@@ -25,6 +25,8 @@ export type PostDaFila = {
   sem_foto: boolean,
   // numeric do Postgres pode chegar como texto
   preco_de: number | string | null, preco_por: number | string | null,
+  // data especial do post (jsonb): a IA liga o texto à data
+  ocasiao?: Ocasiao | null,
   estado: string, postado_em: string | null, ia_em: string | null,
 }
 

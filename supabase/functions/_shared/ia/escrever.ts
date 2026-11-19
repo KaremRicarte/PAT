@@ -2,7 +2,8 @@
 // (o adaptador com o SDK fica na função Edge); aqui só montamos o pedido, juntamos a resposta e checamos.
 import type { Estrategia, Pilar, Rede, Tom } from '../modelos/tipos.ts'
 import { RAMOS } from '../modelos/ramos/index.ts'
-import { brl, paragrafos, textoDoPreco, type PostGerado } from '../modelos/gerar.ts'
+import { brl, daData, paragrafos, textoDoPreco, type Ocasiao, type PostGerado } from '../modelos/gerar.ts'
+import { diaMes } from '../modelos/datas.ts'
 import { MAX_HASHTAGS, semTextoDoCliente, temPromocao, validarPost } from '../modelos/validar.ts'
 import { INSTRUCOES_POST } from './instrucoes.ts'
 
@@ -28,6 +29,8 @@ export type EntradaPost = {
   lugar: {
     data: string, rede: Rede, tipo: PostGerado['tipo'], formato: PostGerado['formato'], pilar: Pilar,
     preco_de: number | null, preco_por: number | null,
+    // data especial do post (tema, ou aquecimento/dia de uma promoção com data); ausente = post comum
+    ocasiao?: Ocasiao | null,
   },
   produto: { nome: string, descricao: string | null } | null,
   foto: { url: string, descricao: string, ilustrativa?: boolean } | null,
@@ -85,7 +88,7 @@ const semHashtags = (l: EntradaPost['lugar']) => l.rede === 'whatsapp' || l.tipo
 function precoDoPost(e: EntradaPost, noPromo: boolean) {
   const { preco_de, preco_por } = e.lugar
   if (noPromo || preco_por == null) return null
-  return { preco_de, preco_por, texto: textoDoPreco(preco_de, preco_por) }
+  return { preco_de, preco_por, texto: textoDoPreco(preco_de, preco_por, e.lugar.ocasiao ?? null) }
 }
 
 // Os dados deste post, em texto: tudo o que muda de um post para outro fica aqui, fora das instruções fixas.
@@ -113,6 +116,20 @@ function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
     linhas.push(preco.preco_de != null
       ? `Post de promoção: de ${brl(preco.preco_de)} por ${brl(preco.preco_por)}. O app coloca, entre o meio e o convite, exatamente este parágrafo: "${preco.texto}"`
       : `Post de vitrine com valor: ${brl(preco.preco_por)}. O app coloca, entre o meio e o convite, exatamente este parágrafo: "${preco.texto}"`)
+  }
+  if (preco?.preco_de != null) {
+    linhas.push('A oferta precisa ficar evidente: o título e o gancho falam da oferta (oferta, promoção ou valor especial). Não esconda a promoção no fim do texto.')
+  }
+  const o = l.ocasiao
+  if (o) {
+    const quando = `${diaMes(o.data)} (${dataPorExtenso(o.data)})`
+    if (o.fase === 'tema' && o.nome) {
+      linhas.push(`Este post é do dia ${o.nome}, ${quando}: ligue o tema do post a essa data de forma natural e respeitosa${noPromo ? '' : ', sem falar de preço, promoção ou desconto'}.`)
+    } else if (o.fase === 'aquecimento') {
+      linhas.push(`Este post é de aquecimento: a oferta ${o.nome ? `${daData(o.nome)} ` : ''}vale só no dia ${quando}. Anuncie que ela vem aí, crie expectativa e diga o dia; não diga que já está valendo.`)
+    } else if (o.fase === 'dia') {
+      linhas.push(`Este é o post do dia da oferta${o.nome ? ` ${daData(o.nome)}` : ''}: ela vale só hoje, ${quando}. Passe urgência (é hoje, só hoje) sem exagero.`)
+    }
   }
   if (noPromo) {
     linhas.push('Este ramo tem conselho profissional: sem preço, promoção, desconto ou oferta, e sem promessa de resultado.')
@@ -172,6 +189,10 @@ function montar(e: EntradaPost, p: Partes, noPromo: boolean): { post: CamposDaIA
     if (daIA.some((t) => temPromocao(semTextoDoCliente(t, doCliente)))) {
       problemas.push('fala de promoção/desconto/oferta num post sem preço')
     }
+  }
+  // Promoção: a oferta aparece no título (a de hoje não parecia promoção: o título só descrevia a foto).
+  if (preco?.preco_de != null && !temPromocao(p.titulo) && !/especial|vem a[ií]|s[oó] hoje/i.test(p.titulo)) {
+    problemas.push('título de promoção sem falar da oferta')
   }
   // Em post de preço o R$ é permitido, mas só com os valores informados.
   if (preco) {

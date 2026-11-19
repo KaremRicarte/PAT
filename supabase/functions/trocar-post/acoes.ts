@@ -17,7 +17,7 @@ export type PostDoMes = {
 }
 // Texto de modelo: origem 'modelo' e ia_estado 'pulado' (a fila não reescreve uma troca pedida pelo cliente).
 // Texto da IA: origem 'ia', 'pronto', e a foto da qual a IA escreveu fica no post (null = só texto).
-export type CamposTroca = Pick<PostGerado, 'titulo' | 'legenda' | 'hashtags' | 'roteiro' | 'pilar' | 'produto_id' | 'preco_de' | 'preco_por'> &
+export type CamposTroca = Pick<PostGerado, 'titulo' | 'legenda' | 'hashtags' | 'roteiro' | 'pilar' | 'produto_id' | 'preco_de' | 'preco_por' | 'ocasiao'> &
   { estado: 'gerado', foto_path: string | null, sem_foto: false, trocas: number } &
   ({ origem: 'modelo', ia_estado: 'pulado' } | { origem: 'ia', ia_estado: 'pronto' })
 
@@ -78,7 +78,7 @@ export async function trocarPostDoCliente(entrada: unknown, deps: DepsTroca): Pr
 
   const modelo: CamposTroca = {
     titulo: novo.titulo, legenda: novo.legenda, hashtags: novo.hashtags, roteiro: novo.roteiro,
-    pilar: novo.pilar, produto_id: novo.produto_id, preco_de: novo.preco_de, preco_por: novo.preco_por,
+    pilar: novo.pilar, produto_id: novo.produto_id, preco_de: novo.preco_de, preco_por: novo.preco_por, ocasiao: novo.ocasiao,
     // sem a IA também fica a foto que o cliente escolheu, se o serviço do lugar não mudou (como no texto da IA)
     estado: 'gerado', foto_path: fotoEscolhida(cliente.id, post, novo), sem_foto: false, trocas: post.trocas + 1, origem: 'modelo', ia_estado: 'pulado',
   }

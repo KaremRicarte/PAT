@@ -23,7 +23,8 @@ function diasDoMes(anoMes: string, inicio: string) {
   return dias
 }
 
-export function agendaDoMes(anoMes: string, inicio: string, estrategia: Estrategia): Agenda {
+// extras: dias que também recebem post no feed (datas especiais e promoções com data), se forem do mês e de `inicio` em diante.
+export function agendaDoMes(anoMes: string, inicio: string, estrategia: Estrategia, extras: readonly string[] = []): Agenda {
   const dias = diasDoMes(anoMes, inicio)
   const em = (semanas: number[], max: number) =>
     dias.filter((d) => semanas.includes(d.semana)).slice(0, max).map((d) => d.data)
@@ -31,7 +32,7 @@ export function agendaDoMes(anoMes: string, inicio: string, estrategia: Estrateg
   const primeiraQuinta = (de: number, ate: number) =>
     dias.find((d) => d.semana === QUI && d.dia >= de && d.dia <= ate)?.data
   return {
-    feed: em([SEG, QUA, SEX], 12),
+    feed: [...new Set([...em([SEG, QUA, SEX], 12), ...extras.filter((d) => d.startsWith(anoMes) && d >= inicio)])].sort(),
     videos: crescer ? em([TER, QUI], 6) : em([TER], 4),
     status: em([TER, QUI], 8),
     lista: [primeiraQuinta(1, 15), primeiraQuinta(16, 31)].filter((d): d is string => !!d),

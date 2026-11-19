@@ -5,9 +5,9 @@ import { el, logo, mostrar, aviso } from '../comum.js'
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { carregarNegocio } from './negocio.js'
 
-// O que, nos itens, muda os posts: ordem, nome, descrição, preços e fotos.
+// O que, nos itens, muda os posts: ordem, nome, descrição, preços, data da promoção e fotos.
 const resumoDosItens = (produtos) => JSON.stringify((produtos ?? []).map((p) => [
-  p.id, p.nome, p.descricao ?? '', p.preco ?? null, p.preco_promo ?? null,
+  p.id, p.nome, p.descricao ?? '', p.preco ?? null, p.preco_promo ?? null, p.promo_data ?? null,
   p.fotos?.length ? p.fotos : p.foto_path ? [p.foto_path] : [],
 ]))
 export const itensMudaram = (antes, depois) => resumoDosItens(antes) !== resumoDosItens(depois)

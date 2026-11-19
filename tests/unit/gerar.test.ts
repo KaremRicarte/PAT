@@ -33,16 +33,18 @@ const contar = (posts: PostGerado[]) => {
   for (const p of posts) c[`${p.rede}/${p.tipo}`] = (c[`${p.rede}/${p.tipo}`] ?? 0) + 1
   return c
 }
+// datas especiais de dezembro (todos os ramos): Natal e Réveillon entram no feed
+const DEZ = ['2026-12-25', '2026-12-31']
 const tudo = (p: PostGerado) => [p.titulo, p.legenda, p.roteiro ?? '', ...p.hashtags].join('\n')
 
-test('mês de dezembro em vender tem 50 posts', () => {
+test('mês de dezembro em vender tem 53 posts (o Réveillon, numa quinta, ganha feed e stories)', () => {
   const posts = gerarMes(base())
-  expect(posts).toHaveLength(50)
+  expect(posts).toHaveLength(53)
   expect(contar(posts)).toEqual({
-    'instagram/feed': 12, 'instagram/stories': 12, 'facebook/feed': 12,
+    'instagram/feed': 13, 'instagram/stories': 13, 'facebook/feed': 13,
     'tiktok/video': 4, 'whatsapp/status': 8, 'whatsapp/lista': 2,
   })
-  expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', 'vender'))).toEqual([])
+  expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', 'vender', DEZ))).toEqual([])
 })
 
 test('posts em ordem de data, com ordem sequencial a partir de 0', () => {
@@ -58,7 +60,7 @@ describe.each(Object.keys(RAMOS))('ramo %s', (ramo) => {
     const posts = gerarMes(base({ ramo, estrategia, produtos: [...base().produtos, ...LISTA_SPEC] }))
     const problemas = posts.flatMap((p) => validarPost(p, RAMOS[ramo]).map((e) => `${p.data} ${p.rede}/${p.tipo}: ${e}`))
     expect(problemas).toEqual([])
-    expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', estrategia))).toEqual([])
+    expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', estrategia, DEZ))).toEqual([])
   })
 })
 
@@ -137,16 +139,17 @@ test('mais itens com preço que vagas: corta pelo teto de demo', () => {
   const ig = feedDePreco(posts)
   // vender: metade dos 12 dias de feed é demo
   expect(ig).toHaveLength(6)
-  // promoções (ímpares) primeiro, na ordem da lista; sextas antes
+  // promoções (ímpares) primeiro, na ordem da lista; sextas antes (a sexta 25 é do Natal: fica para o post da data)
   expect(ig.map((p) => p.produto_id).sort()).toEqual(['p1', 'p11', 'p3', 'p5', 'p7', 'p9'])
-  expect(ig.filter((p) => ['2026-12-04', '2026-12-11', '2026-12-18', '2026-12-25'].includes(p.data))
-    .map((p) => p.produto_id)).toEqual(['p1', 'p3', 'p5', 'p7'])
-  expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', 'vender'))).toEqual([])
+  expect(ig.filter((p) => ['2026-12-04', '2026-12-11', '2026-12-18'].includes(p.data))
+    .map((p) => p.produto_id)).toEqual(['p1', 'p3', 'p5'])
+  expect(ig.some((p) => p.data === '2026-12-25')).toBe(false)
+  expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', 'vender', DEZ))).toEqual([])
 })
 
 test.each(ESTRATEGIAS)('contagem por rede não muda com posts de preço (%s)', (estrategia) => {
   const posts = gerarMes(turismo({ estrategia }))
-  expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', estrategia))).toEqual([])
+  expect(validarMes(posts, agendaDoMes('2026-12', '2026-12-01', estrategia, DEZ))).toEqual([])
   expect(posts).toHaveLength(gerarMes(turismo({ estrategia, produtos: [LISTA_SPEC[3]] })).length)
 })
 
@@ -234,7 +237,7 @@ test('com redes escolhidas, só vêm posts delas, iguais (texto e ordem) aos do 
   const escolhido = gerarMes(base({ redes: ['instagram', 'whatsapp'] }))
   expect(new Set(escolhido.map((p) => p.rede))).toEqual(new Set(['instagram', 'whatsapp']))
   expect(escolhido).toEqual(completo.filter((p) => p.rede === 'instagram' || p.rede === 'whatsapp'))
-  expect(validarMes(escolhido, agendaDoMes('2026-12', '2026-12-01', 'vender'), ['instagram', 'whatsapp'])).toEqual([])
+  expect(validarMes(escolhido, agendaDoMes('2026-12', '2026-12-01', 'vender', DEZ), ['instagram', 'whatsapp'])).toEqual([])
 })
 
 test('sem redes = as 4 redes, igual a antes', () => {

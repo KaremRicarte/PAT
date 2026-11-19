@@ -4,7 +4,7 @@
 // fica como estava. Grava só se o post continuar igual ao que foi lido (a ação do cliente vence).
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import type { Estrategia, Pilar, Rede, Tom } from '../_shared/modelos/tipos.ts'
-import type { PostGerado } from '../_shared/modelos/gerar.ts'
+import type { Ocasiao, PostGerado } from '../_shared/modelos/gerar.ts'
 import { ramoValido } from '../_shared/modelos/ramos/index.ts'
 import type { CamposDaIA } from '../_shared/ia/escrever.ts'
 import { daPastaDoCliente, fotoEnviadaParaOPost, fotosDoProduto } from '../_shared/ia/entrada.ts'
@@ -17,6 +17,7 @@ export type PostParaReescrever = {
   produto_id: string | null, ordem: number | null, foto_path: string | null, sem_foto: boolean,
   // numeric do Postgres pode chegar como texto
   preco_de: number | string | null, preco_por: number | string | null,
+  ocasiao?: Ocasiao | null,
   estado: string, postado_em: string | null,
   // do mês do post
   cliente_id: string, estrategia: string,

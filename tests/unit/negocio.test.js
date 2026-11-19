@@ -169,7 +169,7 @@ test('itensParaSalvar: converte preços do texto; promo só com preço; ramos no
   const itens = [{ id: 'a', nome: 'Corte', descricao: 'd', precoTexto: '50', promoTexto: '40', fotos: [] },
     { id: 'b', nome: 'X', descricao: '', precoTexto: '', promoTexto: '30', fotos: [] }]
   const [a, b] = itensParaSalvar(itens, { noPromo: false })
-  expect(a).toEqual({ id: 'a', nome: 'Corte', descricao: 'd', preco: 50, preco_promo: 40, fotos: [] })
+  expect(a).toEqual({ id: 'a', nome: 'Corte', descricao: 'd', preco: 50, preco_promo: 40, promo_data: null, fotos: [] })
   expect(b.preco).toBeNull()
   expect(b.preco_promo).toBeNull()
   const [c] = itensParaSalvar(itens, { noPromo: true })

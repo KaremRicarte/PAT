@@ -5,7 +5,7 @@ import { el, logo, mostrar, botaoSair, carregando, aviso, filhosValidos } from '
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { carregarFotosInfo } from './negocio.js'
-import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto, progressoIA, estadoIA, diaEsperandoPAT } from './situacao.js'
+import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto, progressoIA, estadoIA, diaEsperandoPAT, rotuloOcasiao } from './situacao.js'
 import { miniatura } from '../artes/imagens.js'
 import { telaQuizMes, mesMostrado, preferirMes } from './mes.js'
 import { aplicarAcao } from './acoesPost.js'
@@ -21,7 +21,7 @@ const ICONE = { postado: '↑', aprovado: '✓', pendente: '…', reprovado: '�
 const CHAVE_DICAS = 'pat.dicas.vistas'
 const CHAVE_FOTOS_ADIADO = 'pat.fotos.adiado' // quando o cliente tocou "Agora não" no aviso das fotos
 const DIAS_FOTOS_ADIADO = 7
-const COLUNAS = 'id, data, rede, tipo, formato, titulo, legenda, hashtags, roteiro, horario, ordem, estado, foto_path, sem_foto, postado_em, produto_id, trocas, preco_de, preco_por, origem, ia_estado'
+const COLUNAS = 'id, data, rede, tipo, formato, titulo, legenda, hashtags, roteiro, horario, ordem, estado, foto_path, sem_foto, postado_em, produto_id, trocas, preco_de, preco_por, origem, ia_estado, ocasiao'
 
 const tituloDoDia = (data) => `${SEMANA[new Date(`${data}T00:00:00Z`).getUTCDay()]}, ${diaPorExtenso(data)}`
 
@@ -209,11 +209,13 @@ export async function telaCalendario(ctx, diaEscolhido) {
     } else carregarMiniatura(post, mini)
 
     const ia = estadoIA(post, hoje)
+    const ocasiao = rotuloOcasiao(post.ocasiao)
     const abrir = el('button', { type: 'button', class: 'abrir', 'data-post': post.id, onclick: () => abrirPost(post) },
       mini,
       el('span', { class: 'info' },
         el('span', { class: 'rede', texto: `${t(`rede.${post.rede}`)} · ${t(`formato.${chaveFormato(post)}`)}` }),
         el('strong', { class: 'titulo-post', texto: post.titulo }),
+        ocasiao ? el('span', { class: 'ocasiao', texto: ocasiao }) : null,
         el('span', { class: 'linha' }, ...filhosValidos([
           el('span', { class: 'hora', texto: post.horario }),
           el('span', { class: `situacao ${sit}`, texto: t(`cal.situacao.${sit}`) }),

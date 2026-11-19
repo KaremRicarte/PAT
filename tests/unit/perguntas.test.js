@@ -21,7 +21,7 @@ test('estadoDoNegocio: itens com fotos e foto_path antigo', () => {
     { id: 'c', nome: 'Pé', fotos: [] },
   ], ramo)
   expect(e.nome).toBe('Ana')
-  expect(e.itens[0]).toEqual({ id: 'a', nome: 'Corte', descricao: '', precoTexto: '49,9', promoTexto: '39,9',
+  expect(e.itens[0]).toEqual({ id: 'a', nome: 'Corte', descricao: '', precoTexto: '49,9', promoTexto: '39,9', promoData: null,
     fotos: [{ path: 'x/1.jpg' }, { path: 'x/2.jpg' }] })
   expect(e.itens[1].fotos).toEqual([{ path: 'x/b.jpg' }])
   expect(e.itens[2].fotos).toEqual([])

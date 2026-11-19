@@ -115,7 +115,7 @@ test('(c) erro na 2ª chamada → null', async () => {
 })
 
 test('(d) post de promoção: os valores vão nas instruções e a legenda leva o texto de valor dos modelos', async () => {
-  const { chamar, pedidos } = falsa(ok(resposta()))
+  const { chamar, pedidos } = falsa(ok(resposta({ titulo: 'Escova com oferta especial' })))
   const r = await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9 }))
   const texto = textoDo(pedidos[0])
   expect(texto).toContain('R$ 180')
@@ -124,6 +124,28 @@ test('(d) post de promoção: os valores vão nas instruções e a legenda leva 
   // o preço fica entre o meio e o convite
   expect(r!.post.legenda.indexOf('De R$ 180')).toBeGreaterThan(r!.post.legenda.indexOf('mecha por mecha'))
   expect(r!.post.legenda.indexOf('De R$ 180')).toBeLessThan(r!.post.legenda.indexOf('Quer o seu?'))
+})
+
+test('promoção: título que não fala da oferta é recusado e a IA tenta de novo', async () => {
+  const { chamar, pedidos } = falsa(ok(resposta()), ok(resposta({ titulo: 'Escova com oferta especial' })))
+  const r = await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9 }))
+  expect(r!.tentativas).toBe(2)
+  expect(textoDo(pedidos[0])).toMatch(/oferta precisa ficar evidente/)
+  expect(textoDo(pedidos[1])).toMatch(/título de promoção sem falar da oferta/)
+})
+
+test('promoção com data: a IA sabe a fase e a legenda leva o prazo', async () => {
+  const { chamar, pedidos } = falsa(ok(resposta({ titulo: 'Vem aí a oferta de Natal' })))
+  const ocasiao = { nome: 'Natal', data: '2026-12-25', fase: 'aquecimento' as const }
+  const r = await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9, ocasiao }))
+  expect(textoDo(pedidos[0])).toMatch(/aquecimento: a oferta de Natal vale só no dia 25\/12/)
+  expect(r!.post.legenda).toContain('\n\nOferta de Natal, só no dia 25/12: de R$ 180 por R$ 149,90.\n\n')
+})
+
+test('data sem promoção (tema): a IA liga o post à data, sem falar de promoção', async () => {
+  const { chamar, pedidos } = falsa(ok(resposta()))
+  await escreverPost(chamar, entrada({}, { ocasiao: { nome: 'Natal', data: '2026-12-25', fase: 'tema' } }))
+  expect(textoDo(pedidos[0])).toMatch(/Este post é do dia Natal, 25\/12 .*sem falar de preço, promoção ou desconto/)
 })
 
 test('(d) vitrine de preço: só "Por R$ …."', async () => {
@@ -141,7 +163,7 @@ test('(d) post sem preço não menciona preço nas instruções do post', async 
 })
 
 test('(d) a IA citar um valor diferente do informado reprova', async () => {
-  const { chamar, pedidos } = falsa(ok(resposta({ meio: 'Hoje sai por R$ 99.' })), ok(resposta()))
+  const { chamar, pedidos } = falsa(ok(resposta({ titulo: 'Escova com oferta especial', meio: 'Hoje sai por R$ 99.' })), ok(resposta({ titulo: 'Escova com oferta especial' })))
   const r = await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9 }))
   expect(r!.tentativas).toBe(2)
   expect(textoDo(pedidos[1])).toMatch(/valor/)
@@ -188,18 +210,18 @@ test('palavra de promoção no texto do cliente não reprova o post sem preço',
 })
 
 test('post de promoção pode falar em promoção', async () => {
-  const { chamar } = falsa(ok(resposta({ meio: 'A promoção vale para a escova completa.' })))
+  const { chamar } = falsa(ok(resposta({ titulo: 'Escova com oferta especial', meio: 'A promoção vale para a escova completa.' })))
   expect(await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9 }))).not.toBeNull()
 })
 
 test('valores em reais iguais aos informados passam com qualquer espaço (ou sem espaço)', async () => {
   for (const v of ['R$149,90', 'R$ 149,90', 'R$  149,90']) {
-    const { chamar } = falsa(ok(resposta({ meio: `Hoje sai por ${v}.` })))
+    const { chamar } = falsa(ok(resposta({ titulo: 'Escova com oferta especial', meio: `Hoje sai por ${v}.` })))
     const r = await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9 }))
     expect(r?.tentativas).toBe(1)
   }
   // com espaço duplo o valor errado também é visto
-  const { chamar } = falsa(ok(resposta({ meio: 'Hoje sai por R$  99.' })), ok(resposta()))
+  const { chamar } = falsa(ok(resposta({ titulo: 'Escova com oferta especial', meio: 'Hoje sai por R$  99.' })), ok(resposta({ titulo: 'Escova com oferta especial' })))
   expect((await escreverPost(chamar, entrada({}, { preco_de: 180, preco_por: 149.9 })))!.tentativas).toBe(2)
 })
 

@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     async post(id) {
       const linha = await ler<LinhaPost>(db.from('posts')
         .select('id, mes_id, data, rede, tipo, formato, pilar, titulo, legenda, hashtags, roteiro, produto_id, ordem, foto_path, '
-          + 'sem_foto, preco_de, preco_por, estado, postado_em, meses!inner(cliente_id, estrategia)')
+          + 'sem_foto, preco_de, preco_por, ocasiao, estado, postado_em, meses!inner(cliente_id, estrategia)')
         .eq('id', id).maybeSingle())
       if (!linha) return null
       const { meses, ...post } = linha

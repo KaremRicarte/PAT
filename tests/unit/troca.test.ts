@@ -114,7 +114,8 @@ test('advocacia: troca nunca tem preço nem promoção', () => {
 // Impressão digital da saída de gerarMes: o mês gerado não pode mudar sem querer.
 // Refeita de propósito nos posts de preço (promoção/vitrine, preco_de/preco_por em todo post).
 const ETAPA2: Record<string, string> = {
-  vender: 'f5c30dc60e165423', crescer: 'e174ebb289680398', credibilidade: '918c0872bbfdf2d4', tempo: 'a1961febe975ab6d', // feed em carrossel (2026-11-18)
+  // datas especiais (2026-11-19): campo ocasiao em todo post; o Réveillon (31/12) ganha feed e stories
+  vender: '6c3ad5da3bbdc155', crescer: 'b81a8faacc3bdec1', credibilidade: 'a43d6923d0f60b60', tempo: '0a79957fdd4d5078',
 }
 const digital = (posts: PostGerado[]) => createHash('sha256').update(JSON.stringify(posts)).digest('hex').slice(0, 16)
 
