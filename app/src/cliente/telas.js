@@ -4,7 +4,7 @@ import { CONTATO_ADMIN, linkWhatsApp } from '../contato.js'
 import { telaPassos } from './quiz.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { PERGUNTAS_FIXAS, estadoDoNegocio } from './perguntas.js'
-import { salvarDadosNegocio, normalizarInsta } from './negocio.js'
+import { salvarDadosNegocio } from './negocio.js'
 import { telaQuizMes } from './mes.js'
 import { telaCalendario } from './calendario.js'
 
@@ -70,7 +70,7 @@ export function desenhar(tela, ctx) {
       perguntas: PERGUNTAS_FIXAS, rotuloFinal: t('quiz.salvar'),
       ctx: { ramo, estado: estadoDoNegocio(ctx.negocio, ctx.produtos, ramo), supabase, fotosInfo: ctx.fotosInfo },
       aoSalvar: async (estado) => {
-        await salvarDadosNegocio(supabase, cliente.id, { ...estado, insta: normalizarInsta(estado.insta) })
+        await salvarDadosNegocio(supabase, cliente.id, estado)
         await atualizar()
       },
     })

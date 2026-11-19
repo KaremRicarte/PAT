@@ -8,12 +8,15 @@ test.each([
   [{ sessao: {}, cliente: c({ senha_provisoria: true }) }, 'trocar-senha'],
   [{ sessao: {}, cliente: c() }, 'sem-ramo'],
   [{ sessao: {}, cliente: c({ ramo: 'padaria' }) }, 'sem-ramo'],
-  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: null }, 'quiz-negocio'],
+  // sem o negócio criado pela administração: espera o cadastro
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: null }, 'sem-ramo'],
+  // negócio criado no painel, questionário ainda não respondido
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: { pronto: false } }, 'quiz-negocio'],
   // negócio sem itens e sem mês: os itens agora são pedidos junto com o mês
-  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [], mes: null }, 'quiz-mes'],
-  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [], mes: {} }, 'mes'],
-  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [{}], mes: null }, 'quiz-mes'],
-  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: {}, produtos: [{}], mes: {} }, 'mes'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: { pronto: true }, produtos: [], mes: null }, 'quiz-mes'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: { pronto: true }, produtos: [], mes: {} }, 'mes'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: { pronto: true }, produtos: [{}], mes: null }, 'quiz-mes'],
+  [{ sessao: {}, cliente: c({ ramo: 'beleza' }), negocio: { pronto: true }, produtos: [{}], mes: {} }, 'mes'],
   [{ sessao: {}, cliente: c({ ramo: 'beleza', senha_provisoria: true }), negocio: {}, mes: {} }, 'trocar-senha'],
   [{ sessao: {}, cliente: c({ ramo: 'beleza', situacao: 'bloqueado' }), negocio: {}, mes: {} }, 'pausado'],
 ])('%o → %s', (e, tela) => expect(telaInicial(e)).toBe(tela))

@@ -3,9 +3,9 @@
 import { t } from '../textos.js'
 import { el, logo, mostrar } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
-import { PERGUNTAS_FIXAS, estadoDoNegocio, resumoDaPergunta, nomesDasRedes } from './perguntas.js'
+import { PERGUNTAS_FIXAS, estadoDoNegocio, resumoDaPergunta, nomesDasRedes, identidadeDoNegocio } from './perguntas.js'
 import { telaPassos } from './quiz.js'
-import { salvarDadosNegocio, salvarFotosDoNegocio, carregarNegocio, carregarFotosInfo, normalizarInsta } from './negocio.js'
+import { salvarDadosNegocio, salvarFotosDoNegocio, carregarNegocio, carregarFotosInfo } from './negocio.js'
 
 // Linhas puras: [{ chave, rotulo, resumo }] na ordem de PERGUNTAS_FIXAS (cores têm resumo vazio).
 export function linhasDoResumo(estado, ramo) {
@@ -26,8 +26,15 @@ export function telaMeuNegocio(ctx) {
     return el('div', { class: 'linha-negocio' }, el('div', {}, el('span', { class: 'rotulo-linha', texto: rotulo }), valor), alterar)
   })
 
+  // nome, Instagram e logo: definidos pela administração, sem botão
+  const identidade = el('div', { class: 'linha-negocio' }, el('div', {},
+    el('span', { class: 'rotulo-linha', texto: t('meu.rotulo.nome') }),
+    el('span', { class: 'valor', texto: identidadeDoNegocio(estado) }),
+    el('small', { class: 'muted', texto: t('meu.identidade.aviso') })))
+
   mostrar(logo(),
     el('h1', { texto: t('meu.titulo') }),
+    identidade,
     ...linhas,
     el('div', { class: 'linha-negocio' }, el('div', {},
       el('span', { class: 'rotulo-linha', texto: t('meu.rotulo.redes') }),
@@ -49,7 +56,7 @@ export function telaMeuNegocio(ctx) {
           // o mesmo objeto: a descrição que chega depois (aoFotosInfo) atualiza o ctx da tela mostrada
           return telaMeuNegocio(Object.assign(ctx, { negocio, produtos, fotosInfo }))
         }
-        await salvarDadosNegocio(supabase, cliente.id, { ...novo, insta: normalizarInsta(novo.insta) })
+        await salvarDadosNegocio(supabase, cliente.id, novo)
         const { negocio, produtos } = await carregarNegocio(supabase, cliente.id)
         telaMeuNegocio(Object.assign(ctx, { negocio, produtos }))
       },

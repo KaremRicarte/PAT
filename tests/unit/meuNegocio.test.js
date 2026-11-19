@@ -5,10 +5,9 @@ import { RAMOS } from '../../supabase/functions/_shared/modelos/ramos/index.ts'
 test('linhasDoResumo: uma linha por pergunta fixa, sem redes', () => {
   const ramo = RAMOS.beleza
   const linhas = linhasDoResumo(estadoDoNegocio({ nome: 'Studio Ana', insta: '@ana', horario: '19:00' }, [], ramo), ramo)
-  expect(linhas.map((l) => l.chave)).toEqual(['nome', 'marca', 'tom', 'horario', 'cores', 'fotos'])
-  expect(linhas[0]).toEqual({ chave: 'nome', rotulo: 'Nome', resumo: 'Studio Ana' })
-  expect(linhas[1].resumo).toBe('@ana')
-  expect(linhas[4].resumo).toBe('')
+  expect(linhas.map((l) => l.chave)).toEqual(['marca', 'tom', 'horario', 'cores', 'fotos'])
+  expect(linhas[0]).toEqual({ chave: 'marca', rotulo: 'Assinatura das artes', resumo: 'Logo e @' })
+  expect(linhas[3].resumo).toBe('')
 })
 
 test('linha "Minhas fotos" mostra N fotos, 1 foto ou Nenhuma foto', () => {

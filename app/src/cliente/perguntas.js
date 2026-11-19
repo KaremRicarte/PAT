@@ -2,17 +2,17 @@
 // Servem ao quiz inicial, à página "Meu negócio" (uma pergunta por vez) e ao passo de itens do mês.
 import { t } from '../textos.js'
 import { el, campo } from '../comum.js'
-import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
 import { REDES } from '../../../supabase/functions/_shared/modelos/tipos.ts'
 import { datasParaPromocao, diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
-import { MAX_ITENS, LOGO_MAX, validarItens, normalizarInsta, reduzirFoto, MAX_FOTOS_NEGOCIO } from './negocio.js'
+import { MAX_ITENS, validarItens, MAX_FOTOS_NEGOCIO } from './negocio.js'
 import { montarImportacao, faixaDeFotos } from './importarTela.js'
 
 const HORARIOS = [['07:00', 'manha'], ['12:00', 'almoco'], ['19:00', 'noite']]
 const ASSINATURAS = ['ambos', 'logo', 'insta']
 
-export const PERGUNTAS_FIXAS = ['nome', 'marca', 'tom', 'horario', 'cores']
+// Nome, Instagram e logo são da administração: aparecem só para leitura (ver identidadeDoNegocio).
+export const PERGUNTAS_FIXAS = ['marca', 'tom', 'horario', 'cores']
 
 // Lista de opções em cartões (rádio). `lista`: [valor, rótulo, descrição?, selo?]
 export function opcoes(nome, lista, atual, aoMudar) {
@@ -25,29 +25,6 @@ export function opcoes(nome, lista, atual, aoMudar) {
   }))
 }
 
-// Campo de arquivo de imagem que já reduz a foto no aparelho e mostra o resultado.
-function campoFoto(rotulo, { maximo, tipo, jaTem, aoEscolher }) {
-  const id = `foto-${crypto.randomUUID()}`
-  const status = el('p', { class: 'muted pequeno', texto: jaTem ? t('quiz.foto.salva') : '' })
-  const input = el('input', { id, type: 'file', accept: 'image/jpeg,image/png,image/webp,image/*' })
-  input.addEventListener('change', async () => {
-    const arquivo = input.files?.[0]
-    if (!arquivo) return
-    status.className = 'muted pequeno'
-    status.textContent = t('comum.carregando')
-    try {
-      aoEscolher(await reduzirFoto(arquivo, maximo, tipo))
-      status.textContent = t('quiz.foto.ok')
-    } catch (e) {
-      console.error(e)
-      input.value = ''
-      status.className = 'erro pequeno'
-      status.textContent = t('quiz.foto.erro')
-    }
-  })
-  return [el('label', { for: id, texto: rotulo }), input, status]
-}
-
 // Estado editável a partir do que está salvo (negocio/produtos podem vir vazios).
 export function estadoDoNegocio(negocio, produtos, ramo) {
   const n = negocio
@@ -55,7 +32,7 @@ export function estadoDoNegocio(negocio, produtos, ramo) {
     nome: n?.nome ?? '', insta: n?.insta ?? '', assinatura: n?.assinatura ?? 'ambos',
     tom: n?.tom ?? 'proximo', horario: n?.horario ?? '19:00',
     cor1: n?.cor1 ?? ramo.cores.cor1, cor2: n?.cor2 ?? ramo.cores.cor2,
-    logo_path: n?.logo_path ?? null, logoBlob: null,
+    logo_path: n?.logo_path ?? null,
     fotosNegocio: (n?.fotos ?? []).map((path) => ({ path })),
     itens: (produtos ?? []).map((p) => ({
       id: p.id, nome: p.nome, descricao: p.descricao ?? '',
@@ -70,11 +47,7 @@ export function estadoDoNegocio(negocio, produtos, ramo) {
 
 // Texto curto da resposta atual, para a página-resumo. Cores: a tela desenha os quadradinhos.
 export function resumoDaPergunta(chave, estado, ramo) {
-  if (chave === 'nome') return estado.nome
-  if (chave === 'marca') {
-    const partes = [estado.logo_path || estado.logoBlob ? t('resumo.logo') : null, estado.insta || null].filter(Boolean)
-    return partes.length ? partes.join(' · ') : t('resumo.semlogo')
-  }
+  if (chave === 'marca') return t(`quiz.assinatura.${estado.assinatura}`)
   if (chave === 'fotos') {
     const n = estado.fotosNegocio?.length ?? 0
     return n === 0 ? t('resumo.fotos.nenhuma') : n === 1 ? t('resumo.fotos.1') : t('resumo.fotos.n', { n })
@@ -85,6 +58,11 @@ export function resumoDaPergunta(chave, estado, ramo) {
     return h ? t(`quiz.horario.${h[1]}`) : estado.horario
   }
   return ''
+}
+
+// "Malibu Turismo · @malibu · logo": o que a administração configurou (só leitura para o cliente).
+export function identidadeDoNegocio(estado) {
+  return [estado.nome, estado.insta || null, estado.logo_path ? t('resumo.logo') : t('resumo.semlogo')].filter(Boolean).join(' · ')
 }
 
 // 'Instagram, Facebook, ...' na ordem de REDES.
@@ -122,17 +100,6 @@ export function caixaDaData(item, datas) {
 }
 
 const BLOCOS = {
-  nome: ({ ramo, estado }) => {
-    const [rotulo, input] = campo(ramo.nomeQ, { name: 'nome', value: estado.nome, maxlength: 80, autocomplete: 'organization' })
-    input.addEventListener('input', () => { estado.nome = input.value })
-    return {
-      titulo: t('quiz.nome.titulo'), corpo: [rotulo, input],
-      validar: () => {
-        if (estado.nome.trim().length < 2) return t('quiz.nome.erro')
-        return ramo.noPromo && temPromocao(estado.nome) ? t('quiz.nome.promo') : null
-      },
-    }
-  },
   itens: ({ ramo, estado, supabase, fotosInfo }) => {
     const lista = el('div', { class: 'itens' })
     let urls = [] // miniaturas temporárias; liberadas a cada redesenho
@@ -207,23 +174,16 @@ const BLOCOS = {
     corpo: opcoes('horario', HORARIOS.map(([v, k]) => [v, t(`quiz.horario.${k}`), t(`quiz.horario.${k}.desc`)]),
       estado.horario, (v) => { estado.horario = v }),
   }),
-  marca: ({ estado }) => {
-    const [rInsta, iInsta] = campo(t('quiz.insta'), { value: estado.insta ?? '', placeholder: '@seunegocio', autocomplete: 'off', maxlength: 31 })
-    iInsta.addEventListener('input', () => { estado.insta = iInsta.value })
-    return {
-      titulo: t('quiz.marca'),
-      corpo: [
-        campoFoto(t('quiz.logo'), {
-          maximo: LOGO_MAX, tipo: 'image/png', jaTem: !!estado.logo_path, aoEscolher: (b) => { estado.logoBlob = b },
-        }),
-        rInsta, iInsta,
-        el('p', { class: 'rotulo', texto: t('quiz.assinatura') }),
-        opcoes('assinatura', ASSINATURAS.map((v) => [v, t(`quiz.assinatura.${v}`)]), estado.assinatura,
-          (v) => { estado.assinatura = v }),
-      ],
-      validar: () => (normalizarInsta(estado.insta) === undefined ? t('quiz.insta.erro') : null),
-    }
-  },
+  marca: ({ estado }) => ({
+    titulo: t('quiz.assinatura'),
+    corpo: [
+      el('div', { class: 'identidade' },
+        el('strong', { texto: identidadeDoNegocio(estado) }),
+        el('small', { class: 'muted', texto: t('meu.identidade.aviso') })),
+      opcoes('assinatura', ASSINATURAS.map((v) => [v, t(`quiz.assinatura.${v}`)]), estado.assinatura,
+        (v) => { estado.assinatura = v }),
+    ],
+  }),
   cores: ({ ramo, estado }) => {
     const previa = el('div', { class: 'previa-cores', texto: estado.nome || ramo.nome })
     const pintar = () => { previa.style.background = estado.cor2; previa.style.color = estado.cor1 }

@@ -10,13 +10,23 @@ const png = () => new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], 
 const jpg = () => new Blob([new Uint8Array([255, 216, 255, 224])], { type: 'image/jpeg' })
 const reduzir = async (b) => b
 const opc = { reduzir }
+// O negócio nasce no painel (nome, Instagram e logo da administração); o cliente responde o resto.
+async function clienteComNegocio() {
+  const a = await novoCliente({ senha_provisoria: false, ramo: 'beleza' })
+  const r = await servico().from('negocios').insert({
+    cliente_id: a.id, nome: 'Studio Bella', insta: '@studiobella', logo_path: `${a.id}/marca/logo-1.png`,
+  })
+  if (r.error) throw r.error
+  return a
+}
+
 const dados = (extra = {}) => ({
   nome: ' Studio Bella ', insta: '@studiobella', assinatura: 'ambos', tom: 'proximo', horario: '12:00',
   cor1: '#B76E79', cor2: '#F6EFEA', logo_path: null, logoBlob: png(), ...extra,
 })
 
 test('salva o negócio com logo e fotos, depois edita removendo um item', async () => {
-  const a = await novoCliente({ senha_provisoria: false, ramo: 'beleza' })
+  const a = await clienteComNegocio()
   const i1 = randomUUID(), i2 = randomUUID()
   await salvarNegocio(a.db, a.id, dados(), [
     { id: i1, nome: 'Limpeza de pele', descricao: ' 1h ', preco: 180, preco_promo: null, fotos: [{ arquivo: jpg(), nome: 'a.jpg' }] },
@@ -24,7 +34,8 @@ test('salva o negócio com logo e fotos, depois edita removendo um item', async 
   ], undefined, opc)
 
   const { negocio, produtos } = await carregarNegocio(a.db, a.id)
-  expect(negocio).toMatchObject({ nome: 'Studio Bella', horario: '12:00', logo_path: `${a.id}/logo.png` })
+  // o que o cliente mandou de nome e logo não muda o que a administração configurou
+  expect(negocio).toMatchObject({ nome: 'Studio Bella', horario: '12:00', logo_path: `${a.id}/marca/logo-1.png`, pronto: true })
   expect(produtos).toHaveLength(2)
   expect(produtos[0]).toMatchObject({ id: i1, nome: 'Limpeza de pele', descricao: '1h', preco: 180, preco_promo: null })
   expect(produtos[0].fotos).toHaveLength(1)
@@ -33,11 +44,10 @@ test('salva o negócio com logo e fotos, depois edita removendo um item', async 
   expect(produtos[1]).toMatchObject({ id: i2, descricao: null, preco: null, foto_path: null, fotos: [] })
 
   // edição: tira o primeiro item, mantém a logo já enviada
-  await salvarNegocio(a.db, a.id, dados({ logoBlob: null, logo_path: negocio.logo_path, nome: 'Studio Bella Pele' }),
+  await salvarNegocio(a.db, a.id, dados({ logoBlob: null, horario: '07:00' }),
     [{ ...produtos[1], descricao: 'Design', fotos: [] }], undefined, opc)
   const depois = await carregarNegocio(a.db, a.id)
-  expect(depois.negocio.nome).toBe('Studio Bella Pele')
-  expect(depois.negocio.logo_path).toBe(`${a.id}/logo.png`)
+  expect(depois.negocio).toMatchObject({ nome: 'Studio Bella', horario: '07:00', logo_path: `${a.id}/marca/logo-1.png` })
   expect(depois.produtos.map((p) => [p.nome, p.descricao])).toEqual([['Sobrancelha', 'Design']])
 
   expect(await nomes(`${a.id}/produtos/${i1}`)).toEqual([])
@@ -45,7 +55,7 @@ test('salva o negócio com logo e fotos, depois edita removendo um item', async 
 })
 
 test('salva 2 fotos novas, depois remove 1: banco e Storage acompanham', async () => {
-  const a = await novoCliente({ senha_provisoria: false, ramo: 'beleza' })
+  const a = await clienteComNegocio()
   const id = randomUUID()
   const progresso = []
   await salvarNegocio(a.db, a.id, dados(), [
@@ -71,7 +81,7 @@ test('salva 2 fotos novas, depois remove 1: banco e Storage acompanham', async (
 })
 
 test('apagar o item apaga as fotos dele', async () => {
-  const a = await novoCliente({ senha_provisoria: false, ramo: 'beleza' })
+  const a = await clienteComNegocio()
   const id = randomUUID(), outro = randomUUID()
   await salvarNegocio(a.db, a.id, dados(), [
     { id, nome: 'Corte', descricao: '', preco: 100, preco_promo: null, fotos: [{ arquivo: jpg(), nome: '1.jpg' }] },
@@ -86,7 +96,7 @@ test('apagar o item apaga as fotos dele', async () => {
 })
 
 test('preço promocional gravado', async () => {
-  const a = await novoCliente({ senha_provisoria: false, ramo: 'beleza' })
+  const a = await clienteComNegocio()
   const id = randomUUID(), semNormal = randomUUID()
   await salvarNegocio(a.db, a.id, dados(), [
     { id, nome: 'Corte', descricao: '', preco: 100, preco_promo: 79.9, fotos: [] },
@@ -98,7 +108,7 @@ test('preço promocional gravado', async () => {
 })
 
 test('foto trocada que ainda é usada por um post continua no Storage', async () => {
-  const a = await novoCliente({ senha_provisoria: false, ramo: 'beleza' })
+  const a = await clienteComNegocio()
   const id = randomUUID()
   await salvarNegocio(a.db, a.id, dados(), [
     { id, nome: 'Corte', descricao: '', preco: 100, preco_promo: null, fotos: [{ arquivo: jpg(), nome: '1.jpg' }] },

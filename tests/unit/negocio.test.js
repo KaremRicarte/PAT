@@ -79,7 +79,7 @@ test('salvarNegocio: se o 2º envio falha, remove o 1º já enviado e repassa o 
   const enviados = [], removidos = []
   let n = 0
   const consulta = (data) => {
-    const q = { select: () => q, eq: () => q, not: () => q, upsert: async () => ({ error: null }),
+    const q = { select: () => q, eq: () => q, not: () => q, update: () => ({ eq: () => ({ select: async () => ({ data: [{ cliente_id: 'u1' }], error: null }) }) }),
       then: (ok) => ok({ data, error: null }) }
     return q
   }
@@ -104,6 +104,7 @@ test('salvarNegocio: se a leitura dos posts falha, não limpa o Storage e salva 
   const consulta = (tabela) => {
     const q = { select: () => q, eq: () => q, not: () => q, delete: () => q, in: () => q,
       upsert: async () => ({ error: null }),
+      update: () => ({ eq: () => ({ select: async () => ({ data: [{ cliente_id: 'u1' }], error: null }) }) }),
       then: (ok) => ok(tabela === 'posts' ? { data: null, error: new Error('posts falhou') }
         : tabela === 'produtos' ? { data: [{ id: 'i1', foto_path: 'u1/produtos/i1/a.jpg', fotos: ['u1/produtos/i1/a.jpg'] },
           { id: 'i2', foto_path: null, fotos: [] }], error: null }
@@ -123,10 +124,11 @@ test('salvarNegocio: se a leitura dos posts falha, não limpa o Storage e salva 
   log.mockRestore()
 })
 
-function fakeSimples(tabelas) {
+function fakeSimples(tabelas, achou = true) {
   const q = (tabela) => {
     const o = { select: () => o, eq: () => o, not: () => o, delete: () => o, in: () => o,
       upsert: async (v) => { tabelas.push([tabela, v]); return { error: null } },
+      update: (v) => { tabelas.push([tabela, v]); return { eq: () => ({ select: async () => ({ data: achou ? [{ cliente_id: 'u1' }] : [], error: null }) }) } },
       then: (ok) => ok({ data: [], error: null }) }
     return o
   }
@@ -134,26 +136,21 @@ function fakeSimples(tabelas) {
     storage: { from: () => ({ upload: async () => ({ error: null }), remove: async () => ({ error: null }) }) } }
 }
 
-test('salvarDadosNegocio grava só negocios, sem redes e sem tocar em produtos', async () => {
+test('salvarDadosNegocio grava só as escolhas do cliente: sem nome, Instagram, logo nem redes', async () => {
   const { salvarDadosNegocio } = await import('../../app/src/cliente/negocio.js')
   const chamadas = []
-  const dados = { nome: ' X ', insta: null, assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000000', cor2: '#ffffff', logo_path: null }
+  const dados = { nome: 'Outra Empresa', insta: '@outra', assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000000', cor2: '#ffffff', logo_path: 'u1/x.png', logoBlob: 'b' }
   await salvarDadosNegocio(fakeSimples(chamadas), 'u1', dados)
   expect(chamadas.filter(([t]) => t === 'produtos')).toEqual([])
   const gravado = chamadas.find(([t, v]) => t === 'negocios' && v)[1]
-  expect(gravado.nome).toBe('X')
-  expect(gravado).not.toHaveProperty('redes')
+  expect(gravado).toMatchObject({ assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000000', cor2: '#ffffff', pronto: true })
+  for (const c of ['nome', 'insta', 'logo_path', 'redes', 'cliente_id']) expect(gravado).not.toHaveProperty(c)
 })
 
-test('salvarDadosNegocio envia o logo quando há logoBlob', async () => {
+test('salvarDadosNegocio falha se o negócio ainda não foi criado pela administração', async () => {
   const { salvarDadosNegocio } = await import('../../app/src/cliente/negocio.js')
-  const enviados = []
-  const sb = fakeSimples([])
-  sb.storage.from = () => ({ upload: async (c) => { enviados.push(c); return { error: null } } })
-  const dados = { nome: 'X', insta: null, assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000', cor2: '#fff', logo_path: null, logoBlob: 'b' }
-  await salvarDadosNegocio(sb, 'u1', dados)
-  expect(enviados).toEqual(['u1/logo.png'])
-  expect(esquecerImagem).toHaveBeenCalledWith('u1/logo.png')
+  const dados = { assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000000', cor2: '#ffffff' }
+  await expect(salvarDadosNegocio(fakeSimples([], false), 'u1', dados)).rejects.toThrow()
 })
 
 test('salvarItens não toca em negocios', async () => {

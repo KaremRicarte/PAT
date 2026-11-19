@@ -1,13 +1,43 @@
 import supabase from '../supabase.js'
 import { invocar } from '../comum.js'
 import { t } from '../textos.js'
+import { linhaNovaDoNegocio, caminhoDoLogo } from './negocio.js'
 
+// Cada cliente vem com o negócio (nome, Instagram e logo) em c.negocio, ou null.
 export async function listarClientes() {
-  const { data, error } = await supabase.from('clientes')
-    .select('id, nome, email, telefone, idioma, ramo, redes, frequencia, situacao, senha_provisoria')
-    .order('nome')
-  if (error) throw error
-  return data
+  const [c, n] = await Promise.all([
+    supabase.from('clientes')
+      .select('id, nome, email, telefone, idioma, ramo, redes, frequencia, situacao, senha_provisoria')
+      .order('nome'),
+    supabase.from('negocios').select('cliente_id, nome, insta, logo_path'),
+  ])
+  if (c.error) throw c.error
+  if (n.error) throw n.error
+  const porId = new Map(n.data.map((x) => [x.cliente_id, x]))
+  return c.data.map((x) => ({ ...x, negocio: porId.get(x.id) ?? null }))
+}
+
+// Grava nome, Instagram e logo do negócio (dados já validados). cliente: { id, ramo, negocio }.
+// Logo novo vai para um caminho novo (sem cache velho); o antigo é apagado depois de salvar.
+export async function salvarNegocioDoAdmin(cliente, dados, logoBlob = null) {
+  const marcas = supabase.storage.from('marcas')
+  const antigo = cliente.negocio?.logo_path ?? null
+  let logo_path = antigo
+  if (logoBlob) {
+    logo_path = caminhoDoLogo(cliente.id)
+    const { error } = await marcas.upload(logo_path, logoBlob, { contentType: 'image/png' })
+    if (error) return { erro: t('erro.geral') }
+  }
+  const agora = new Date().toISOString()
+  const r = cliente.negocio
+    ? await supabase.from('negocios').update({ ...dados, logo_path, atualizado_em: agora }).eq('cliente_id', cliente.id)
+    : await supabase.from('negocios').insert(linhaNovaDoNegocio(cliente, dados, logo_path))
+  if (r.error) {
+    if (logoBlob) { try { await marcas.remove([logo_path]) } catch { /* melhor esforço */ } }
+    return { erro: t('erro.geral') }
+  }
+  if (logoBlob && antigo) { try { await marcas.remove([antigo]) } catch { /* melhor esforço */ } }
+  return {}
 }
 
 // Chama a função admin-clientes; quando o status não é 2xx, devolve { erro } com a mensagem do corpo.

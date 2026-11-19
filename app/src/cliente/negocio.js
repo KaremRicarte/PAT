@@ -1,6 +1,5 @@
 // Dados do negócio do cliente: leitura, gravação e preparo das fotos.
 // O cliente do Supabase vem por parâmetro, para as funções puras poderem ser testadas sem rede.
-import { esquecerImagem } from '../artes/imagens.js'
 import { invocar } from '../comum.js'
 import { temPromocao } from '../../../supabase/functions/_shared/modelos/validar.ts'
 
@@ -71,7 +70,7 @@ export async function reduzirFoto(arquivo, maximo, tipo) {
 
 export async function carregarNegocio(supabase, uid) {
   const [n, p] = await Promise.all([
-    supabase.from('negocios').select('nome, insta, assinatura, tom, horario, cor1, cor2, logo_path, fotos')
+    supabase.from('negocios').select('nome, insta, assinatura, tom, horario, cor1, cor2, logo_path, fotos, pronto')
       .eq('cliente_id', uid).maybeSingle(),
     supabase.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, fotos, foto_path').eq('cliente_id', uid).order('ordem'),
   ])
@@ -106,17 +105,16 @@ function enviadorDeArquivos(supabase) {
   return { marcas, enviar }
 }
 
-// dados: { nome, insta, assinatura, tom, horario, cor1, cor2, logo_path, logoBlob? }
-// Grava só a linha de `negocios`; produtos não são tocados.
+// dados: { assinatura, tom, horario, cor1, cor2 }
+// Grava só as escolhas do cliente na linha de `negocios` (que a administração criou) e marca o
+// questionário como respondido. Nome, Instagram e logo são da administração: não vão aqui.
 export async function salvarDadosNegocio(supabase, uid, dados) {
-  const { enviar } = enviadorDeArquivos(supabase)
-  const logo_path = dados.logoBlob ? await enviar(`${uid}/logo.png`, dados.logoBlob, 'image/png') : dados.logo_path ?? null
-  if (dados.logoBlob) esquecerImagem(`${uid}/logo.png`) // mesmo caminho, logo novo: o cache não pode devolver o antigo
-  const r1 = await supabase.from('negocios').upsert({
-    cliente_id: uid, nome: dados.nome.trim(), insta: dados.insta, assinatura: dados.assinatura, tom: dados.tom,
-    horario: dados.horario, cor1: dados.cor1, cor2: dados.cor2, logo_path, atualizado_em: new Date().toISOString(),
-  })
+  const r1 = await supabase.from('negocios').update({
+    assinatura: dados.assinatura, tom: dados.tom, horario: dados.horario, cor1: dados.cor1, cor2: dados.cor2,
+    pronto: true, atualizado_em: new Date().toISOString(),
+  }).eq('cliente_id', uid).select('cliente_id')
   if (r1.error) throw r1.error
+  if (!r1.data?.length) throw new Error('negócio não encontrado')
 }
 
 // itens: [{ id, nome, descricao, preco, preco_promo, fotos: [{ path } | { arquivo, nome }] }] — id já gerado no aparelho.

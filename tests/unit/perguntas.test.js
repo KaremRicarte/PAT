@@ -1,16 +1,16 @@
-import { estadoDoNegocio, resumoDaPergunta, nomesDasRedes, PERGUNTAS_FIXAS } from '../../app/src/cliente/perguntas.js'
+import { estadoDoNegocio, resumoDaPergunta, nomesDasRedes, PERGUNTAS_FIXAS, identidadeDoNegocio } from '../../app/src/cliente/perguntas.js'
 import { RAMOS } from '../../supabase/functions/_shared/modelos/ramos/index.ts'
 
 const ramo = RAMOS.beleza
 
-test('PERGUNTAS_FIXAS não inclui redes', () => {
-  expect(PERGUNTAS_FIXAS).toEqual(['nome', 'marca', 'tom', 'horario', 'cores'])
+test('PERGUNTAS_FIXAS não inclui redes nem o nome (o nome é da administração)', () => {
+  expect(PERGUNTAS_FIXAS).toEqual(['marca', 'tom', 'horario', 'cores'])
 })
 
 test('estadoDoNegocio sem cadastro usa os padrões do ramo', () => {
   const e = estadoDoNegocio(null, [], ramo)
   expect(e).toMatchObject({ nome: '', insta: '', assinatura: 'ambos', tom: 'proximo', horario: '19:00',
-    cor1: ramo.cores.cor1, cor2: ramo.cores.cor2, logo_path: null, logoBlob: null, itens: [] })
+    cor1: ramo.cores.cor1, cor2: ramo.cores.cor2, logo_path: null, itens: [] })
   expect(e).not.toHaveProperty('redes')
 })
 
@@ -29,11 +29,10 @@ test('estadoDoNegocio: itens com fotos e foto_path antigo', () => {
 
 test('resumoDaPergunta', () => {
   const e = estadoDoNegocio({ nome: 'Ana', insta: '@ana', tom: 'proximo', horario: '12:00', logo_path: 'u/logo.png' }, [], ramo)
-  expect(resumoDaPergunta('nome', e, ramo)).toBe('Ana')
-  expect(resumoDaPergunta('marca', e, ramo)).toBe('logo · @ana')
-  expect(resumoDaPergunta('marca', { ...e, logo_path: null, insta: '' }, ramo)).toBe('sem logo')
-  expect(resumoDaPergunta('marca', { ...e, logo_path: null }, ramo)).toBe('@ana')
-  expect(resumoDaPergunta('marca', { ...e, insta: null }, ramo)).toBe('logo')
+  expect(resumoDaPergunta('marca', e, ramo)).toBe('Logo e @')
+  expect(resumoDaPergunta('marca', { ...e, assinatura: 'insta' }, ramo)).toBe('Só o @')
+  expect(identidadeDoNegocio(e)).toBe('Ana · @ana · logo')
+  expect(identidadeDoNegocio({ ...e, logo_path: null, insta: '' })).toBe('Ana · sem logo')
   expect(resumoDaPergunta('tom', e, ramo)).toBe(ramo.tons.find(([v]) => v === 'proximo')[1])
   expect(resumoDaPergunta('horario', e, ramo)).toBe('Na hora do almoço')
   expect(resumoDaPergunta('cores', e, ramo)).toBe('')

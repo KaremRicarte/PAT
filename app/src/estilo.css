@@ -364,3 +364,6 @@ a.botao:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
 .cartao-banco img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--sunk); }
 .cartao-banco p { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
 .cartao-banco button { min-height: 44px; margin-top: auto; }
+
+/* Nome, Instagram e logo do negócio (definidos pela administração): só leitura */
+.identidade { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }

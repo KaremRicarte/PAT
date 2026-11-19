@@ -4,14 +4,47 @@ afterEach(() => limpar(criados.splice(0)))
 
 const negocio = (id) => ({ cliente_id: id, nome: 'Loja da Ana', cor1: '#112233', cor2: '#FFFFFF' })
 
-test('cliente grava e lê o próprio negócio e produtos', async () => {
-  const a = await novoCliente({ senha_provisoria: false })
-  expect((await a.db.from('negocios').insert(negocio(a.id))).error).toBeNull()
+test('cliente lê o negócio criado pela administração, grava as escolhas dele e os produtos', async () => {
+  const a = await novoCliente({ senha_provisoria: false }), adm = await novaAdmin()
+  expect((await adm.db.from('negocios').insert(negocio(a.id))).error).toBeNull()
+  const up = await a.db.from('negocios').update({ tom: 'tecnico', cor1: '#000000', pronto: true }).eq('cliente_id', a.id).select('cliente_id')
+  expect(up.error).toBeNull()
+  expect(up.data).toHaveLength(1)
   expect((await a.db.from('produtos').insert({ cliente_id: a.id, nome: 'Furadeira' })).error).toBeNull()
-  const { data: n } = await a.db.from('negocios').select('nome,tom,horario,assinatura')
-  expect(n).toEqual([{ nome: 'Loja da Ana', tom: 'proximo', horario: '19:00', assinatura: 'ambos' }])
+  const { data: n } = await a.db.from('negocios').select('nome,tom,horario,assinatura,pronto')
+  expect(n).toEqual([{ nome: 'Loja da Ana', tom: 'tecnico', horario: '19:00', assinatura: 'ambos', pronto: true }])
   const { data: p } = await a.db.from('produtos').select('nome')
   expect(p).toEqual([{ nome: 'Furadeira' }])
+})
+
+test('cliente não cria negócio, não apaga e não muda nome, Instagram nem logo', async () => {
+  const a = await novoCliente({ senha_provisoria: false })
+  expect((await a.db.from('negocios').insert(negocio(a.id))).error?.code).toBe('42501')
+  await novoNegocio(a, { insta: '@loja', logo_path: `${a.id}/marca/logo-1.png` })
+  for (const campo of [{ nome: 'Outra Empresa' }, { insta: '@outra' }, { logo_path: `${a.id}/x.png` }]) {
+    expect((await a.db.from('negocios').update(campo).eq('cliente_id', a.id)).error?.code).toBe('42501')
+  }
+  await a.db.from('negocios').delete().eq('cliente_id', a.id)
+  const { data } = await servico().from('negocios').select('nome, insta, logo_path').eq('cliente_id', a.id).single()
+  expect(data).toEqual({ nome: 'Ferragens Teste', insta: '@loja', logo_path: `${a.id}/marca/logo-1.png` })
+})
+
+test('admin altera nome, Instagram e logo do negócio de um cliente', async () => {
+  const a = await novoCliente(), adm = await novaAdmin()
+  await novoNegocio(a)
+  const r = await adm.db.from('negocios').update({ nome: 'Novo Nome', insta: '@novo', logo_path: `${a.id}/marca/logo-2.png` }).eq('cliente_id', a.id)
+  expect(r.error).toBeNull()
+  const { data } = await servico().from('negocios').select('nome, insta, logo_path').eq('cliente_id', a.id).single()
+  expect(data).toEqual({ nome: 'Novo Nome', insta: '@novo', logo_path: `${a.id}/marca/logo-2.png` })
+})
+
+test('logo: só a administração grava em <cliente>/marca/ e no logo antigo', async () => {
+  const a = await novoCliente({ senha_provisoria: false }), adm = await novaAdmin()
+  const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })
+  expect((await a.db.storage.from('marcas').upload(`${a.id}/marca/logo-9.png`, png)).error).not.toBeNull()
+  expect((await a.db.storage.from('marcas').upload(`${a.id}/logo.png`, png, { upsert: true })).error).not.toBeNull()
+  expect((await adm.db.storage.from('marcas').upload(`${a.id}/marca/logo-9.png`, png)).error).toBeNull()
+  await servico().storage.from('marcas').remove([`${a.id}/marca/logo-9.png`])
 })
 
 test('cliente não lê negócio nem posts de outro', async () => {
@@ -29,8 +62,9 @@ test('cliente não lê negócio nem posts de outro', async () => {
 
 test('cliente bloqueado não grava negócio', async () => {
   const a = await novoCliente({ situacao: 'bloqueado' })
-  const { error } = await a.db.from('negocios').insert(negocio(a.id))
-  expect(error?.code).toBe('42501')
+  await novoNegocio(a)
+  const { data } = await a.db.from('negocios').update({ tom: 'tecnico' }).eq('cliente_id', a.id).select('cliente_id')
+  expect(data ?? []).toEqual([])
 })
 
 test('cliente não altera o próprio ramo', async () => {
@@ -126,8 +160,9 @@ function postBase() {
 
 test('cliente com senha provisória não grava negócio, produto nem arquivo', async () => {
   const a = await novoCliente({ senha_provisoria: true })
-  expect((await a.db.from('negocios').insert(negocio(a.id))).error?.code).toBe('42501')
   await novoNegocio(a)
+  const { data } = await a.db.from('negocios').update({ tom: 'tecnico' }).eq('cliente_id', a.id).select('cliente_id')
+  expect(data ?? []).toEqual([])
   expect((await a.db.from('produtos').insert({ cliente_id: a.id, nome: 'Trena' })).error?.code).toBe('42501')
   const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })
   expect((await a.db.storage.from('marcas').upload(`${a.id}/x.png`, png)).error).not.toBeNull()
@@ -144,11 +179,11 @@ test('cliente bloqueado não grava produto nem arquivo', async () => {
 test('cliente não lê, não baixa e não lista arquivos de outro', async () => {
   const a = await novoCliente({ senha_provisoria: false }), b = await novoCliente({ senha_provisoria: false })
   const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })
-  expect((await b.db.storage.from('marcas').upload(`${b.id}/logo.png`, png, { upsert: true })).error).toBeNull()
-  expect((await a.db.storage.from('marcas').download(`${b.id}/logo.png`)).error).not.toBeNull()
+  expect((await b.db.storage.from('marcas').upload(`${b.id}/x.png`, png, { upsert: true })).error).toBeNull()
+  expect((await a.db.storage.from('marcas').download(`${b.id}/x.png`)).error).not.toBeNull()
   expect((await a.db.storage.from('marcas').list(b.id)).data ?? []).toEqual([])
-  expect((await a.db.storage.from('marcas').createSignedUrl(`${b.id}/logo.png`, 60)).error).not.toBeNull()
-  await servico().storage.from('marcas').remove([`${b.id}/logo.png`])
+  expect((await a.db.storage.from('marcas').createSignedUrl(`${b.id}/x.png`, 60)).error).not.toBeNull()
+  await servico().storage.from('marcas').remove([`${b.id}/x.png`])
 })
 
 test('cliente não grava nem altera produto de outro', async () => {

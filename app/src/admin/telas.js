@@ -1,6 +1,8 @@
 import { t } from '../textos.js'
 import { el, logo, campo, mostrar, aoEnviar, botaoSair } from '../comum.js'
-import { listarClientes, criarCliente, redefinirSenha, definirSituacao, definirRamo, definirRedes, definirFrequencia } from './dados.js'
+import { listarClientes, criarCliente, redefinirSenha, definirSituacao, definirRamo, definirRedes, definirFrequencia, salvarNegocioDoAdmin } from './dados.js'
+import { validarNegocio } from './negocio.js'
+import { reduzirFoto, LOGO_MAX } from '../cliente/negocio.js'
 import { FREQUENCIAS } from '../../../supabase/functions/_shared/modelos/tipos.ts'
 import { listaRamos } from './ramo.js'
 import { areaBanco } from './banco.js'
@@ -67,11 +69,57 @@ function seletorRamo(atributos, atual = '') {
     listaRamos().map(r => el('option', { value: r.id, texto: r.nome, selected: r.id === atual })))
 }
 
+// Campos do negócio (nome, Instagram, logo). ler() devolve { erro } ou { dados, logoBlob }.
+function camposDoNegocio(atual = null) {
+  const [rNome, iNome] = campo(t('admin.negocio.nome'), { name: 'negocio_nome', autocomplete: 'off', maxlength: 80, value: atual?.nome ?? '' })
+  const [rInsta, iInsta] = campo(t('admin.negocio.insta'), { name: 'negocio_insta', autocomplete: 'off', maxlength: 31, placeholder: '@seunegocio', value: atual?.insta ?? '' })
+  const [rLogo, iLogo] = campo(atual?.logo_path ? t('admin.negocio.logo.troca') : t('admin.negocio.logo'),
+    { name: 'negocio_logo', type: 'file', accept: 'image/png,image/jpeg,image/webp' })
+  return {
+    elementos: [rNome, iNome, rInsta, iInsta, rLogo, iLogo],
+    async ler() {
+      const v = validarNegocio({ nome: iNome.value, insta: iInsta.value })
+      if (v.erro) return { erro: t(v.erro) }
+      const arquivo = iLogo.files?.[0]
+      let logoBlob = null
+      if (arquivo) {
+        try { logoBlob = await reduzirFoto(arquivo, LOGO_MAX, 'image/png') } catch { return { erro: t('quiz.foto.erro') } }
+      }
+      return { dados: v.dados, logoBlob }
+    },
+  }
+}
+
+// Janela "Alterar negócio" de um cliente da lista.
+function janelaNegocio(c, recarregar) {
+  const campos = camposDoNegocio(c.negocio)
+  const cancelar = el('button', { type: 'button', class: 'secundario', texto: t('admin.negocio.cancelar') })
+  const form = el('form', { method: 'dialog', novalidate: true },
+    el('h2', { texto: t('admin.negocio.titulo', { nome: c.nome }) }),
+    ...campos.elementos,
+    el('div', { class: 'acoes' }, el('button', { type: 'submit', texto: t('admin.negocio.salvar') }), cancelar))
+  const janela = el('dialog', { class: 'dialogo' }, form)
+  cancelar.addEventListener('click', () => janela.close())
+  janela.addEventListener('close', () => janela.remove())
+  aoEnviar(form, async () => {
+    const lido = await campos.ler()
+    if (lido.erro) return lido.erro
+    const r = await salvarNegocioDoAdmin(c, lido.dados, lido.logoBlob)
+    if (r.erro) return r.erro
+    janela.close()
+    await recarregar()
+    return null
+  })
+  document.body.append(janela)
+  janela.showModal()
+}
+
 function formNovo(aviso, recarregar) {
   const ramo = seletorRamo({ id: 'campo-ramo', name: 'ramo', required: true })
   const idioma = el('select', { id: 'campo-idioma', name: 'idioma' },
     el('option', { value: 'pt', texto: t('admin.idioma.pt') }),
     el('option', { value: 'es', texto: t('admin.idioma.es') }))
+  const negocio = camposDoNegocio()
   const form = el('form', { class: 'novo', novalidate: true },
     el('h2', { texto: t('admin.novo') }),
     campo(t('admin.nome'), { name: 'nome', autocomplete: 'off', required: true }),
@@ -79,16 +127,21 @@ function formNovo(aviso, recarregar) {
     campo(t('admin.telefone'), { name: 'telefone', type: 'tel', autocomplete: 'off', placeholder: '(11) 98765-4321', required: true }),
     el('label', { for: 'campo-ramo', texto: t('admin.ramo') }), ramo,
     el('label', { for: 'campo-idioma', texto: t('admin.idioma') }), idioma,
+    ...negocio.elementos,
     el('div', { class: 'acoes' }, el('button', { type: 'submit', texto: t('admin.criar') })),
   )
   aoEnviar(form, async (d) => {
+    const lido = await negocio.ler() // confere o negócio antes de criar o cliente
+    if (lido.erro) return lido.erro
     const r = await criarCliente({
       nome: d.get('nome'), email: d.get('email'), telefone: d.get('telefone'), idioma: d.get('idioma'), ramo: d.get('ramo'),
     })
     if (r.erro) return r.erro
+    const n = await salvarNegocioDoAdmin({ id: r.id, ramo: d.get('ramo'), negocio: null }, lido.dados, lido.logoBlob)
     form.reset()
     form.hidden = true
-    aviso.replaceChildren(quadroSenha(r.senhaProvisoria))
+    aviso.replaceChildren(quadroSenha(r.senhaProvisoria),
+      n.erro ? el('p', { class: 'erro', role: 'alert', texto: t('admin.negocio.erro') }) : null)
     await recarregar()
     return null
   })
@@ -96,7 +149,7 @@ function formNovo(aviso, recarregar) {
 }
 
 function tabela(clientes, aviso, recarregar) {
-  const cab = [t('admin.nome'), t('admin.email'), t('admin.telefone'), t('admin.ramo'), t('admin.redes'), t('admin.frequencia'), t('admin.idioma'), t('admin.situacao'), '']
+  const cab = [t('admin.nome'), t('admin.negocio'), t('admin.email'), t('admin.telefone'), t('admin.ramo'), t('admin.redes'), t('admin.frequencia'), t('admin.idioma'), t('admin.situacao'), '']
   return el('table', { class: 'clientes' },
     el('thead', {}, el('tr', {}, cab.map(c => el('th', { scope: 'col', texto: c })))),
     el('tbody', {}, clientes.map(c => linha(c, aviso, recarregar))))
@@ -177,9 +230,18 @@ function linha(c, aviso, recarregar) {
     await recarregar()
   })
 
+  const alterarNegocio = el('button', { type: 'button', class: 'secundario pequeno', texto: t('admin.negocio.alterar') })
+  alterarNegocio.addEventListener('click', () => janelaNegocio(c, recarregar))
+  const n = c.negocio
+
   const celula = (rotulo, ...filhos) => el('td', { 'data-rotulo': rotulo }, ...filhos)
   return el('tr', {},
     celula(t('admin.nome'), el('strong', { texto: c.nome })),
+    celula(t('admin.negocio'),
+      n ? el('strong', { texto: n.nome }) : el('span', { class: 'selo ruim', texto: t('admin.negocio.falta') }),
+      n?.insta ? el('div', { class: 'muted', texto: n.insta }) : null,
+      n ? el('div', { class: 'muted', texto: n.logo_path ? t('resumo.logo') : t('resumo.semlogo') }) : null,
+      alterarNegocio),
     celula(t('admin.email'), c.email),
     celula(t('admin.telefone'), c.telefone),
     celula(t('admin.ramo'), ramo,
