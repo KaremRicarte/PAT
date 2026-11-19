@@ -71,6 +71,26 @@ export const misturar = (a, b, k) => { const x = rgb(a), y = rgb(b); return hex(
 const luminancia = (h) => { const c = rgb(h).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] }
 const sobre = (fundo, escura, clara) => (luminancia(fundo) > 0.4 ? escura : clara)
 const alfa = (h, a) => { const [r, g, b] = rgb(h); return `rgba(${r},${g},${b},${a})` }
+const saturacao = (h) => { const c = rgb(h), mx = Math.max(...c), mn = Math.min(...c); return mx ? (mx - mn) / mx : 0 }
+export const contraste = (a, b) => { const [x, y] = [luminancia(a), luminancia(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+// escurece a cor até ter `min` de contraste com o branco
+const escurecerAte = (cor, min) => { let c = cor; for (let k = 0; k < 30 && contraste(c, '#ffffff') < min; k++) c = misturar(c, '#000000', 0.1); return c }
+
+// A cor de destaque sobre um fundo: se não contrastar (ex.: azul sobre azul), vira um tom claro ou escuro dela.
+const destacar = (cor, fundo) => (contraste(cor, fundo) >= 3 ? cor : luminancia(fundo) < 0.3 ? misturar(cor, '#ffffff', 0.6) : misturar(cor, '#000000', 0.5))
+
+// Os papéis das cores nas artes, venham as cores do cliente em qualquer ordem:
+// c1 = destaque (a mais viva das duas); c2 = a tinta escura (a mais escura, escurecida até o texto ler bem).
+// Ex.: Malibu (azul + cinza-claro) -> destaque azul e tinta azul-marinho; antes o cinza-claro virava a cor do texto.
+export function paletaDaArte(cor1, cor2) {
+  const a = cor1 || '#cccccc', b = cor2 || '#333333'
+  const acento = saturacao(b) > saturacao(a) + 0.15 ? b : a
+  const escura = luminancia(a) <= luminancia(b) ? a : b
+  // e a tinta precisa se separar do destaque (quando as duas vêm da mesma cor, vira um tom bem mais fundo)
+  let c2 = escurecerAte(escura, 7)
+  for (let k = 0; k < 30 && contraste(c2, acento) < 2.5; k++) c2 = misturar(c2, '#000000', 0.1)
+  return { c1: acento, c2 }
+}
 
 // ---------- fontes de cada estilo (looks.js) ----------
 
@@ -197,10 +217,16 @@ function cobrirEm(ctx, img, x, y, w, h) {
   const s = Math.max(w / iw, h / ih), dw = iw * s, dh = ih * s
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
 }
-// A foto dentro de uma forma: `forma()` traça o caminho; [x, y, w, h] é a caixa que a foto cobre.
-function fotoNaForma(f, forma, x, y, w, h) {
+// A foto sangrando num retângulo que encosta nas bordas da arte (sem moldura: foto em forma não se usa mais).
+// veuTopo/veuBase: escurecem o alto ou o pé da foto para o rótulo e a assinatura lerem bem.
+function fotoSangrada(f, x, y, w, h, { veuTopo = false, veuBase = false } = {}) {
   const { ctx } = f
-  ctx.save(); forma(); ctx.clip(); cobrirEm(ctx, f.foto, x, y, w, h); ctx.restore()
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip()
+  cobrirEm(ctx, f.foto, x, y, w, h)
+  const veu = (y0, y1, a0, a1) => { const g = ctx.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, `rgba(0,0,0,${a0})`); g.addColorStop(1, `rgba(0,0,0,${a1})`); ctx.fillStyle = g; ctx.fillRect(x, y0, w, y1 - y0) }
+  if (veuTopo) veu(y, y + Math.min(h * 0.4, 40 * f.u), 0.5, 0)
+  if (veuBase) veu(y + h - Math.min(h * 0.45, 45 * f.u), y + h, 0, 0.55)
+  ctx.restore()
 }
 // A foto na arte inteira, escurecida para o texto claro aparecer.
 function fotoDeFundo(f, escurecer = 0.55) {
@@ -214,7 +240,7 @@ function fotoDeFundo(f, escurecer = 0.55) {
 // ---------- a folha: tudo o que as artes precisam ----------
 
 function folha(ctx, { pecas, cores, logo, foto, estilo, W, H, tipo, pagina, paginas = 1 }) {
-  const c1 = cores.cor1 || '#cccccc', c2 = cores.cor2 || '#333333', voz = vozDe(estilo)
+  const { c1, c2 } = paletaDaArte(cores.cor1, cores.cor2), voz = vozDe(estilo)
   const fonte = (peso) => (s, it) => `${it && voz.italico ? 'italic ' : ''}${peso} ${s}px ${voz.fd}`
   return {
     ctx, W, H, u: W / 100, tipo, pagina, total: paginas, logo, foto, voz,
@@ -266,23 +292,27 @@ function logoEm(f, x, base, lado) {
 function papel(f) {
   const { ctx, W, H, u } = f, x = 9 * u, mw = W - 18 * u, vertical = H > W * 1.5
   ctx.fillStyle = f.papel; ctx.fillRect(0, 0, W, H)
-  // sem foto: uma forma grande saindo pelo canto; com foto: a foto dentro de uma forma orgânica menor
-  const [cx, cy, r] = f.foto ? [W * 0.74, H * (vertical ? 0.78 : 0.8), (vertical ? 30 : 27) * u] : [W * (vertical ? 0.92 : 0.86), H * (vertical ? 0.86 : 0.9), (vertical ? 52 : 40) * u]
-  if (f.foto) fotoNaForma(f, () => bolha(ctx, cx, cy, r, 3), cx - r * 1.2, cy - r * 1.2, r * 2.4, r * 2.4)
-  else { ctx.fillStyle = f.c1; bolha(ctx, cx, cy, r, 3); ctx.fill() }
-  ctx.save(); ctx.strokeStyle = alfa(f.tinta, 0.35); ctx.lineWidth = 0.3 * u
-  bolha(ctx, cx - 4 * u, cy - 3 * u, r * 0.98, 21); ctx.stroke(); ctx.restore()
+  // com foto: a foto ocupa o pé da arte, de borda a borda; sem foto: uma forma grande saindo pelo canto
+  const yFoto = H * (vertical ? 0.56 : 0.6)
+  if (f.foto) fotoSangrada(f, 0, yFoto, W, H - yFoto, { veuBase: true })
+  else {
+    const [cx, cy, r] = [W * (vertical ? 0.92 : 0.86), H * (vertical ? 0.86 : 0.9), (vertical ? 52 : 40) * u]
+    ctx.fillStyle = f.c1; bolha(ctx, cx, cy, r, 3); ctx.fill()
+    ctx.save(); ctx.strokeStyle = alfa(f.tinta, 0.35); ctx.lineWidth = 0.3 * u
+    bolha(ctx, cx - 4 * u, cy - 3 * u, r * 0.98, 21); ctx.stroke(); ctx.restore()
+  }
   rotulo(f, f.nome, x, 8 * u, 2.9 * u, alfa(f.tinta, 0.75), { maxW: mw * 0.7 })
   if (f.tipo === 'car') rotulo(f, marca(f), W - x, 8 * u, 2.9 * u, alfa(f.tinta, 0.75), { alinhar: 'right' })
   ctx.fillStyle = alfa(f.tinta, 0.25); ctx.fillRect(x, 13 * u, mw, 0.18 * u)
-  const topo = vertical ? 30 * u : 24 * u
-  const limite = f.foto ? cy - r - 4 * u : H - 16 * u
-  const b = montar(ctx, f.titulo, { tam: (vertical ? 10.5 : 9.6) * u, largura: mw, altura: Math.min(H * 0.46, limite - topo), fonte: f.leve, lh: 1.1, italicoFinal: 3 })
+  const topo = vertical ? 30 * u : 22 * u
+  const limite = f.foto ? yFoto - 6 * u : H - 16 * u
+  const a0 = montar(ctx, f.apoio, { min: 0.8, tam: 4.3 * u, largura: mw * 0.86, altura: f.foto ? 18 * u : 26 * u, fonte: f.corrido(400), lh: 1.45 })
+  const b = montar(ctx, f.titulo, { tam: (vertical ? 10.5 : 9.6) * u, largura: mw, altura: Math.min(H * 0.46, limite - topo - (a0.h ? a0.h + 5 * u : 0)), fonte: f.leve, lh: 1.1, italicoFinal: 3 })
   pintar(ctx, b, x, topo, f.tinta, { corItalico: f.destaque })
-  const ya = topo + b.h + 6 * u
-  const a = montar(ctx, f.apoio, { tam: 4.3 * u, largura: f.foto ? mw * 0.42 : mw * 0.78, altura: Math.min(26 * u, (f.foto ? H - 16 * u : limite) - ya), fonte: f.corrido(400), lh: 1.45 })
+  const ya = topo + b.h + 5 * u
+  const a = montar(ctx, f.apoio, { min: 0.8, tam: 4.3 * u, largura: mw * 0.86, altura: limite - ya, fonte: f.corrido(400), lh: 1.45 })
   pintar(ctx, a, x, ya, alfa(f.tinta, 0.82))
-  assinar(f, f.tinta)
+  assinar(f, f.foto ? '#ffffff' : f.tinta)
 }
 
 function arcoCapa(f) {
@@ -290,17 +320,19 @@ function arcoCapa(f) {
   ctx.fillStyle = f.c2; ctx.fillRect(0, 0, W, H)
   const ax = 11 * u, aw = W - 22 * u, ay = vertical ? 14 * u : 10 * u, ah = H - ay - 16 * u
   if (f.foto) {
-    // com foto: a foto no alto do arco e o texto no pé, numa faixa clara
-    const faixa = ah * 0.42
-    fotoNaForma(f, () => arco(ctx, ax, ay, aw, ah - faixa), ax, ay, aw, ah - faixa)
-    ctx.fillStyle = f.c1; ctx.fillRect(ax, ay + ah - faixa, aw, faixa)
-    if (f.tipo === 'car') rotulo(f, `1 / ${f.total}`, W / 2, 4 * u, 2.8 * u, alfa(luz, 0.8), { alinhar: 'center' })
-    const pad = 7 * u, larg = aw - pad * 2
-    const a = montar(ctx, f.apoio, { tam: 3.8 * u, largura: larg, altura: faixa * 0.3, fonte: f.corrido(500), lh: 1.4 })
-    const b = montar(ctx, f.titulo, { tam: 7.6 * u, largura: larg, altura: faixa - a.h - 12 * u, fonte: f.forte, italicoFinal: 3 })
-    const y = ay + ah - faixa + (faixa - b.h - (a.h ? a.h + 3 * u : 0)) / 2
-    pintar(ctx, b, ax + pad, y, tintaArco, { alinhar: 'center', largura: larg, corItalico: misturar(f.c2, f.c1, 0.1) })
-    pintar(ctx, a, ax + pad, y + b.h + 3 * u, alfa(tintaArco, 0.85), { alinhar: 'center', largura: larg })
+    // com foto: a foto no alto, de borda a borda; o arco de cor sobe por cima dela e leva o texto
+    const corte = H * (vertical ? 0.5 : 0.46), topoArco = corte - aw * 0.32
+    fotoSangrada(f, 0, 0, W, corte + 2, { veuTopo: true })
+    ctx.fillStyle = f.c2; ctx.fillRect(0, corte, W, H - corte)
+    ctx.fillStyle = f.c1; arco(ctx, ax, topoArco, aw, H - 16 * u - topoArco); ctx.fill()
+    if (f.tipo === 'car') rotulo(f, `1 / ${f.total}`, W / 2, 4 * u, 2.8 * u, 'rgba(255,255,255,.85)', { alinhar: 'center' })
+    const pad = 8 * u, larg = aw - pad * 2, tinta = sobre(f.c1, tintaArco, '#ffffff')
+    const topo = topoArco + aw * 0.22, fundo = H - 22 * u
+    const a = montar(ctx, f.apoio, { min: 0.8, tam: 3.9 * u, largura: larg, altura: (fundo - topo) * 0.3, fonte: f.corrido(500), lh: 1.4 })
+    const b = montar(ctx, f.titulo, { tam: (vertical ? 8.6 : 7.6) * u, largura: larg, altura: fundo - topo - (a.h ? a.h + 4 * u : 0), fonte: f.forte, italicoFinal: 3 })
+    const y = topo + (fundo - topo - b.h - (a.h ? a.h + 4 * u : 0)) / 2
+    pintar(ctx, b, ax + pad, y, tinta, { alinhar: 'center', largura: larg })
+    pintar(ctx, a, ax + pad, y + b.h + 4 * u, alfa(tinta, 0.85), { alinhar: 'center', largura: larg })
     return assinar(f, luz)
   }
   ctx.fillStyle = f.c1; arco(ctx, ax, ay, aw, ah); ctx.fill()
@@ -308,12 +340,14 @@ function arcoCapa(f) {
   if (f.tipo === 'car') rotulo(f, `1 / ${f.total}`, W / 2, 4 * u, 2.8 * u, alfa(luz, 0.8), { alinhar: 'center' })
   const pad = 9 * u, larg = aw - pad * 2
   // o apoio no pé do arco; o título centrado no espaço entre a curva e o apoio, sem encostar nele
-  const a = montar(ctx, f.apoio, { tam: 3.9 * u, largura: aw - 22 * u, altura: 20 * u, fonte: f.corrido(500), lh: 1.45 })
+  const a = montar(ctx, f.apoio, { min: 0.8, tam: 3.9 * u, largura: aw - 22 * u, altura: 20 * u, fonte: f.corrido(500), lh: 1.45 })
   const yApoio = ay + ah - a.h - 8 * u
   const topo = ay + aw * 0.32, fundo = (a.h ? yApoio - 5 * u : ay + ah - 8 * u)
   const b = montar(ctx, f.titulo, { tam: (vertical ? 9.6 : 8.6) * u, largura: larg, altura: fundo - topo, fonte: f.forte, italicoFinal: 3 })
-  pintar(ctx, b, ax + pad, topo + (fundo - topo - b.h) / 2, tintaArco, { alinhar: 'center', largura: larg, corItalico: misturar(f.c2, f.c1, 0.1) })
-  pintar(ctx, a, ax + 11 * u, yApoio, alfa(tintaArco, 0.85), { alinhar: 'center', largura: aw - 22 * u })
+  // texto sobre a cor de destaque: escuro se ela for clara, branco se for escura (ex.: o azul da Malibu)
+  const tx = sobre(f.c1, tintaArco, '#ffffff')
+  pintar(ctx, b, ax + pad, topo + (fundo - topo - b.h) / 2, tx, { alinhar: 'center', largura: larg, corItalico: tx === '#ffffff' ? misturar(f.c1, '#ffffff', 0.6) : misturar(f.c2, f.c1, 0.1) })
+  pintar(ctx, a, ax + 11 * u, yApoio, alfa(tx, 0.85), { alinhar: 'center', largura: aw - 22 * u })
   assinar(f, luz)
 }
 
@@ -332,13 +366,14 @@ function bilhete(f) {
   const { ctx, W, H, u } = f, x = 10 * u, mw = W - 20 * u, vertical = H > W * 1.5
   if (f.foto) fotoDeFundo(f, 0.55)
   else fundoEscuroSuave(f)
+  const corAspas = f.foto ? f.c1 : destacar(f.c1, misturar(f.c2, f.c1, 0.1))
   if (f.tipo === 'car') rotulo(f, `1/${f.total}`, W - x, 8 * u, 2.8 * u, alfa(f.claro, 0.7), { alinhar: 'right' })
   const yA = vertical ? 18 * u : 9 * u
-  aspas(f, f.c1, yA)
+  aspas(f, corAspas, yA)
   const yT = yA + 28 * u
   const b = montar(ctx, f.titulo, { tam: (vertical ? 10.4 : 9.4) * u, largura: mw, altura: H - yT - 48 * u, fonte: f.frase, lh: 1.12 })
   pintar(ctx, b, x, yT, f.claro)
-  const a = montar(ctx, f.apoio, { tam: 4.2 * u, largura: mw * 0.85, altura: 24 * u, fonte: f.corrido(400), lh: 1.45 })
+  const a = montar(ctx, f.apoio, { min: 0.8, tam: 4.2 * u, largura: mw * 0.85, altura: 24 * u, fonte: f.corrido(400), lh: 1.45 })
   pintar(ctx, a, x, yT + b.h + 6 * u, alfa(f.claro, 0.85))
   ctx.fillStyle = alfa(f.claro, 0.35); ctx.fillRect(x, H - 15 * u, 10 * u, 0.25 * u)
   assinar(f, f.claro)
@@ -347,36 +382,58 @@ function bilhete(f) {
 function corCheia(f) {
   const { ctx, W, H, u } = f, tinta = sobre(f.c1, f.tinta, '#ffffff')
   ctx.fillStyle = f.c1; ctx.fillRect(0, 0, W, H)
+  // com foto: a foto em cima, de borda a borda, e a cor cheia embaixo com o texto
+  const corte = f.foto ? H * 0.5 : 0
   const cx = W - 4 * u, cy = H * 0.3
-  if (f.foto) fotoNaForma(f, () => circulo(ctx, cx, cy, 26 * u), cx - 26 * u, cy - 26 * u, 52 * u, 52 * u)
-  ctx.strokeStyle = alfa(tinta, 0.4); ctx.lineWidth = 0.35 * u
-  circulo(ctx, cx, cy, 30 * u); ctx.stroke()
-  if (!f.foto) { circulo(ctx, cx, cy, 22 * u); ctx.stroke() }
-  rotulo(f, marca(f), 9 * u, 8 * u, 2.8 * u, alfa(tinta, 0.7), { maxW: W * 0.6 })
-  const a = montar(ctx, f.apoio, { tam: 4.2 * u, largura: W * 0.7, altura: 22 * u, fonte: f.corrido(400), lh: 1.45 })
-  const b = montar(ctx, f.titulo, { tam: 10 * u, largura: W - 18 * u, altura: Math.min(H * 0.42, H - cy - 30 * u - 17 * u - a.h), fonte: f.leve, lh: 1.08, italicoFinal: 2 })
+  if (f.foto) fotoSangrada(f, 0, 0, W, corte, { veuTopo: true })
+  else {
+    ctx.strokeStyle = alfa(tinta, 0.4); ctx.lineWidth = 0.35 * u
+    circulo(ctx, cx, cy, 30 * u); ctx.stroke(); circulo(ctx, cx, cy, 22 * u); ctx.stroke()
+  }
+  rotulo(f, marca(f), 9 * u, 8 * u, 2.8 * u, f.foto ? 'rgba(255,255,255,.85)' : alfa(tinta, 0.7), { maxW: W * 0.6 })
+  const a = montar(ctx, f.apoio, { min: 0.8, tam: 4.2 * u, largura: W * 0.7, altura: 22 * u, fonte: f.corrido(400), lh: 1.45 })
+  const espaco = f.foto ? H - corte - 7 * u - 17 * u - (a.h ? a.h + 5 * u : 0) : H - cy - 30 * u - 17 * u - a.h
+  const b = montar(ctx, f.titulo, { tam: 10 * u, largura: W - 18 * u, altura: Math.min(H * 0.42, espaco), fonte: f.leve, lh: 1.08, italicoFinal: 2 })
   const y = H - 17 * u - (a.h ? a.h + 5 * u : 0) - b.h
-  pintar(ctx, b, 9 * u, y, tinta, { corItalico: f.voz.italico ? undefined : f.c2 })
+  // destaque sem itálico: um tom que contrasta com a cor cheia (claro sobre cor escura, escuro sobre cor clara)
+  pintar(ctx, b, 9 * u, y, tinta, { corItalico: f.voz.italico ? undefined : tinta === '#ffffff' ? misturar(f.c1, '#ffffff', 0.6) : f.c2 })
   pintar(ctx, a, 9 * u, y + b.h + 5 * u, alfa(tinta, 0.85))
   assinar(f, tinta)
 }
 
 function pergunta(f) {
-  const { ctx, W, H, u } = f
+  const { ctx, W, H, u } = f, x = 9 * u, mw = W - 18 * u, vertical = H > W * 1.5
   ctx.fillStyle = f.papel; ctx.fillRect(0, 0, W, H)
+  rotulo(f, marca(f), x, 8 * u, 2.8 * u, alfa(f.tinta, 0.7), { maxW: W * 0.6 })
+  const topo = vertical ? 26 * u : 20 * u
+  let limite, largApoio = mw * 0.86
+  const fonteSinal = (s) => `${f.voz.forte} ${s}px ${f.voz.fd}`
   if (f.foto) {
-    const cx = W * 0.72, cy = H * 0.68, r = 24 * u
-    fotoNaForma(f, () => circulo(ctx, cx, cy, r), cx - r, cy - r, r * 2, r * 2)
+    // a foto no pé, de borda a borda; o "?" num selo redondo na cor de destaque, sobre a linha da foto
+    const yFoto = H * (vertical ? 0.56 : 0.6)
+    fotoSangrada(f, 0, yFoto, W, H - yFoto, { veuBase: true })
+    const r = (vertical ? 11 : 10) * u, cx = W - x - r, cy = yFoto
+    ctx.fillStyle = f.c1; circulo(ctx, cx, cy, r); ctx.fill()
+    ctx.font = fonteSinal(r * 1.3); ctx.fillStyle = sobre(f.c1, f.tinta, '#ffffff'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillText('?', cx, cy + r * 0.05)
+    limite = yFoto - r - 4 * u
+  } else {
+    // o "?" grande no canto de baixo, sem encostar no texto
+    const tam = H * (vertical ? 0.46 : 0.56), base = H - 12 * u, dir = W - 5 * u
+    ctx.font = fonteSinal(tam); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'
+    const m = ctx.measureText('?'), alto = m.actualBoundingBoxAscent || tam * 0.72, largo = m.width || tam * 0.5
+    ctx.fillStyle = f.c1; ctx.fillText('?', dir, base)
+    limite = base - alto - 5 * u
+    largApoio = Math.min(mw * 0.86, dir - largo - x - 4 * u)
   }
-  ctx.save(); ctx.globalAlpha = f.foto ? 0.85 : 1
-  ctx.font = `${f.voz.italico ? 'italic ' : ''}${f.voz.leve} ${H * 0.95}px ${f.voz.fd}`; ctx.fillStyle = f.c1; ctx.textBaseline = 'middle'; ctx.textAlign = 'right'
-  ctx.fillText('?', W + 8 * u, H * 0.52); ctx.restore()
-  rotulo(f, marca(f), 9 * u, 8 * u, 2.8 * u, alfa(f.tinta, 0.7), { maxW: W * 0.6 })
-  const b = montar(ctx, f.titulo, { tam: 9.4 * u, largura: W * 0.74, altura: H * (f.foto ? 0.36 : 0.5), fonte: f.leve, lh: 1.1, italicoFinal: 2 })
-  pintar(ctx, b, 9 * u, 20 * u, f.tinta, { corItalico: f.destaque })
-  const a = montar(ctx, f.apoio, { tam: 4.2 * u, largura: W * (f.foto ? 0.42 : 0.6), altura: 24 * u, fonte: f.corrido(400), lh: 1.45 })
-  pintar(ctx, a, 9 * u, 20 * u + b.h + 6 * u, alfa(f.tinta, 0.82))
-  assinar(f, f.tinta)
+  const a0 = montar(ctx, f.apoio, { min: 0.8, tam: 4.2 * u, largura: mw * 0.86, altura: 20 * u, fonte: f.corrido(400), lh: 1.45 })
+  const b = montar(ctx, f.titulo, { tam: (vertical ? 10.4 : 9.4) * u, largura: mw * 0.92, altura: Math.min(H * 0.5, limite - topo - (f.foto && a0.h ? a0.h + 5 * u : 0)), fonte: f.leve, lh: 1.1, italicoFinal: 2 })
+  pintar(ctx, b, x, topo, f.tinta, { corItalico: f.destaque })
+  const ya = topo + b.h + 5 * u
+  // sem foto, o apoio pode descer ao lado do "?"
+  const a = montar(ctx, f.apoio, { min: 0.8, tam: 4.2 * u, largura: largApoio, altura: (f.foto ? limite : H - 18 * u) - ya, fonte: f.corrido(400), lh: 1.45 })
+  pintar(ctx, a, x, ya, alfa(f.tinta, 0.82))
+  assinar(f, f.foto ? '#ffffff' : f.tinta)
 }
 
 function horizonte(f) {
@@ -396,7 +453,7 @@ function horizonte(f) {
   rotulo(f, marca(f), 9 * u, 8 * u, 2.8 * u, alfa(f.claro, 0.85), { maxW: W * 0.6 })
   const b = montar(ctx, f.titulo, { tam: 8.6 * u, largura: W - 18 * u, altura: (H - linha) * 0.5, fonte: f.leve, lh: 1.1, italicoFinal: 3 })
   pintar(ctx, b, 9 * u, linha + 7 * u, f.tinta, { corItalico: f.destaque })
-  const a = montar(ctx, f.apoio, { tam: 4.2 * u, largura: W * 0.78, altura: H - linha - b.h - 32 * u, fonte: f.corrido(400), lh: 1.45 })
+  const a = montar(ctx, f.apoio, { min: 0.8, tam: 4.2 * u, largura: W * 0.78, altura: H - linha - b.h - 32 * u, fonte: f.corrido(400), lh: 1.45 })
   pintar(ctx, a, 9 * u, linha + 7 * u + b.h + 4.5 * u, alfa(f.tinta, 0.82))
   assinar(f, f.tinta)
 }
@@ -405,14 +462,17 @@ function ondas(f) {
   const { ctx, W, H, u } = f, cx = W * 0.5, cy = H * 0.3, larg = W - 20 * u
   if (f.foto) fotoDeFundo(f, 0.6)
   else { ctx.fillStyle = misturar(f.c2, '#000000', 0.15); ctx.fillRect(0, 0, W, H) }
-  ctx.lineWidth = 0.35 * u
-  for (let i = 0; i < 8; i++) { ctx.strokeStyle = alfa(f.c1, 0.55 - i * 0.06); circulo(ctx, cx, cy, (6 + i * 6.5) * u); ctx.stroke() }
-  ctx.fillStyle = f.c1; circulo(ctx, cx, cy, 4 * u); ctx.fill()
+  // as ondas só sem foto (por cima da foto, ficam sujas)
+  if (!f.foto) {
+    ctx.lineWidth = 0.35 * u
+    for (let i = 0; i < 8; i++) { ctx.strokeStyle = alfa(f.c1, 0.55 - i * 0.06); circulo(ctx, cx, cy, (6 + i * 6.5) * u); ctx.stroke() }
+    ctx.fillStyle = f.c1; circulo(ctx, cx, cy, 4 * u); ctx.fill()
+  }
   rotulo(f, marca(f), 9 * u, 8 * u, 2.8 * u, alfa(f.claro, 0.75), { maxW: W * 0.6 })
   const b = montar(ctx, f.titulo, { tam: 8.6 * u, largura: larg, altura: H * 0.28, fonte: f.frase, lh: 1.12 })
   const y = Math.max(cy + 58 * u, H * 0.6)
   pintar(ctx, b, 10 * u, y - b.h / 2, f.claro, { alinhar: 'center', largura: larg })
-  const a = montar(ctx, f.apoio, { tam: 4.2 * u, largura: larg, altura: H - y - b.h / 2 - 22 * u, fonte: f.corrido(400), lh: 1.45 })
+  const a = montar(ctx, f.apoio, { min: 0.8, tam: 4.2 * u, largura: larg, altura: H - y - b.h / 2 - 22 * u, fonte: f.corrido(400), lh: 1.45 })
   pintar(ctx, a, 10 * u, y + b.h / 2 + 4 * u, alfa(f.claro, 0.85), { alinhar: 'center', largura: larg })
   assinar(f, f.claro)
 }
@@ -422,21 +482,39 @@ function pedra(f) {
   ctx.fillStyle = f.papel; ctx.fillRect(0, 0, W, H)
   rotulo(f, marca(f), 9 * u, 8 * u, 2.8 * u, alfa(f.tinta, 0.7), { maxW: W * 0.6 })
   if (f.foto) {
-    // com foto: a foto dentro da pedra e o título embaixo dela
-    const cyF = H * 0.38, rF = 33 * u
-    ctx.fillStyle = f.c1; bolha(ctx, W * 0.5 + 5 * u, cyF + 4 * u, rF, 31, 0.1); ctx.fill()
-    fotoNaForma(f, () => bolha(ctx, W * 0.5, cyF, rF, 17, 0.1), W * 0.5 - rF * 1.2, cyF - rF * 1.2, rF * 2.4, rF * 2.4)
-    const yb = cyF + rF + 7 * u, mw = W - 18 * u
-    const b = montar(ctx, f.titulo, { tam: 7.6 * u, largura: mw, altura: H - yb - 18 * u, fonte: f.leve, lh: 1.1, italicoFinal: 2 })
-    pintar(ctx, b, 9 * u, yb, f.tinta, { alinhar: 'center', largura: mw, corItalico: f.destaque })
-    return assinar(f, f.tinta)
+    // com foto: a foto ocupa metade da arte, de borda a borda (no alto nos stories; à esquerda no feed)
+    const vertical = H > W * 1.5
+    if (vertical) {
+      const corte = H * 0.48
+      fotoSangrada(f, 0, 0, W, corte, { veuTopo: true })
+      ctx.fillStyle = f.c1; ctx.fillRect(0, corte, W, 1.2 * u)
+      const mw = W - 18 * u, yb = corte + 9 * u
+      const b = montar(ctx, f.titulo, { tam: 9.6 * u, largura: mw, altura: (H - yb) * 0.5, fonte: f.leve, lh: 1.1, italicoFinal: 2 })
+      pintar(ctx, b, 9 * u, yb, f.tinta, { corItalico: f.destaque })
+      const a = montar(ctx, f.apoio, { min: 0.8, tam: 4.2 * u, largura: mw * 0.86, altura: H - yb - b.h - 26 * u, fonte: f.corrido(400), lh: 1.45 })
+      pintar(ctx, a, 9 * u, yb + b.h + 5 * u, alfa(f.tinta, 0.82))
+      return assinar(f, f.tinta)
+    }
+    const corte = W * 0.46
+    ctx.fillStyle = f.papel; ctx.fillRect(0, 0, W, H)
+    fotoSangrada(f, 0, 0, corte, H)
+    ctx.fillStyle = f.c1; ctx.fillRect(corte, 0, 1.2 * u, H)
+    const x = corte + 7 * u, mw = W - x - 7 * u
+    rotulo(f, marca(f), x, 8 * u, 2.6 * u, alfa(f.tinta, 0.7), { maxW: mw })
+    const a = montar(ctx, f.apoio, { min: 0.8, tam: 3.9 * u, largura: mw, altura: 26 * u, fonte: f.corrido(400), lh: 1.45 })
+    const b = montar(ctx, f.titulo, { tam: 7.2 * u, largura: mw, altura: H - 40 * u - (a.h ? a.h + 5 * u : 0), fonte: f.leve, lh: 1.1, italicoFinal: 2 })
+    const y = (H - b.h - (a.h ? a.h + 5 * u : 0)) / 2
+    pintar(ctx, b, x, y, f.tinta, { corItalico: f.destaque })
+    pintar(ctx, a, x, y + b.h + 5 * u, alfa(f.tinta, 0.82))
+    rotulo(f, f.insta || f.nome, x, H - 9.5 * u, 3 * u, f.tinta, { espacamento: 0.02, peso: 600, maxW: mw })
+    return
   }
   ctx.fillStyle = f.c1; bolha(ctx, W * 0.5 + 5 * u, cy + 4 * u, r, 31, 0.1); ctx.fill()
   ctx.fillStyle = f.c2; bolha(ctx, W * 0.5, cy, r, 17, 0.1); ctx.fill()
   const b = montar(ctx, f.titulo, { tam: 7.6 * u, largura: larg, altura: r * 1.25, fonte: f.leve, lh: 1.1, italicoFinal: 2 })
-  pintar(ctx, b, W / 2 - larg / 2, cy - b.h / 2, f.claro, { alinhar: 'center', largura: larg, corItalico: f.c1 })
+  pintar(ctx, b, W / 2 - larg / 2, cy - b.h / 2, f.claro, { alinhar: 'center', largura: larg, corItalico: destacar(f.c1, f.c2) })
   const ya = Math.min(cy + r + 9 * u, H - 30 * u)
-  const a = montar(ctx, f.apoio, { tam: 4.2 * u, largura: W * 0.76, altura: H - ya - 16 * u, fonte: f.corrido(400), lh: 1.45 })
+  const a = montar(ctx, f.apoio, { min: 0.8, tam: 4.2 * u, largura: W * 0.76, altura: H - ya - 16 * u, fonte: f.corrido(400), lh: 1.45 })
   pintar(ctx, a, W * 0.12, ya, alfa(f.tinta, 0.82), { alinhar: 'center', largura: W * 0.76 })
   assinar(f, f.tinta)
 }
@@ -450,7 +528,7 @@ function cartao(f) {
   ctx.fillStyle = f.papel; retangulo(ctx, m, topoCartao, W - m * 2, base - topoCartao, 2.5 * u); ctx.fill()
   ctx.strokeStyle = alfa(f.tinta, 0.2); ctx.lineWidth = 0.25 * u; retangulo(ctx, m + 2.5 * u, topoCartao + 2.5 * u, W - m * 2 - 5 * u, base - topoCartao - 5 * u, 1.5 * u); ctx.stroke()
   rotulo(f, marca(f), W / 2, topoCartao + 9 * u, 2.6 * u, alfa(f.tinta, 0.65), { alinhar: 'center', maxW: larg })
-  const a = montar(ctx, f.apoio, { tam: 4 * u, largura: larg, altura: f.foto ? 0 : 20 * u, fonte: f.corrido(400), lh: 1.45 })
+  const a = montar(ctx, f.apoio, { min: 0.8, tam: 4 * u, largura: larg, altura: f.foto ? 0 : 20 * u, fonte: f.corrido(400), lh: 1.45 })
   const b = montar(ctx, f.titulo, { tam: 8.4 * u, largura: larg, altura: (base - topoCartao) * (f.foto ? 0.55 : 0.5), fonte: f.leve, lh: 1.12, italicoFinal: 3 })
   const total = b.h + (a.h ? 8 * u + a.h : 0), y = topoCartao + (base - topoCartao - total) / 2 + 3 * u
   pintar(ctx, b, 17 * u, y, f.tinta, { alinhar: 'center', largura: larg, corItalico: f.destaque })
@@ -462,8 +540,18 @@ function cartao(f) {
 function janela(f) {
   const { ctx, W, H, u } = f, x = 9 * u, w = W - 18 * u, y0 = 14 * u, h = H * (H > W * 1.5 ? 0.42 : 0.38)
   ctx.fillStyle = f.papel; ctx.fillRect(0, 0, W, H)
-  if (f.foto) fotoNaForma(f, () => retangulo(ctx, x, y0, w, h, 4 * u), x, y0, w, h)
-  else {
+  if (f.foto) {
+    const corte = H * (H > W * 1.5 ? 0.58 : 0.55), escuro = misturar(f.c2, '#000000', 0.1)
+    fotoSangrada(f, 0, 0, W, corte, { veuTopo: true })
+    ctx.fillStyle = escuro; ctx.fillRect(0, corte, W, H - corte)
+    ctx.fillStyle = f.c1; ctx.fillRect(x, corte + 7 * u, 10 * u, 0.6 * u)
+    rotulo(f, marca(f), x, 8 * u, 2.8 * u, 'rgba(255,255,255,.85)', { maxW: w })
+    const b = montar(ctx, f.titulo, { tam: 8.4 * u, largura: w, altura: (H - corte) - 34 * u, fonte: f.leve, lh: 1.1, italicoFinal: 3 })
+    pintar(ctx, b, x, corte + 12 * u, f.claro, { corItalico: misturar(f.c1, '#ffffff', 0.25) })
+    const a = montar(ctx, f.apoio, { min: 0.8, tam: 4.2 * u, largura: w * 0.85, altura: H - corte - b.h - 36 * u, fonte: f.corrido(400), lh: 1.45 })
+    pintar(ctx, a, x, corte + 12 * u + b.h + 4 * u, alfa(f.claro, 0.85))
+    return assinar(f, f.claro)
+  } else {
     ctx.save(); retangulo(ctx, x, y0, w, h, 4 * u); ctx.clip()
     const g = ctx.createLinearGradient(0, y0, 0, y0 + h); g.addColorStop(0, f.c2); g.addColorStop(1, misturar(f.c2, f.c1, 0.65))
     ctx.fillStyle = g; ctx.fillRect(x, y0, w, h)
@@ -474,7 +562,7 @@ function janela(f) {
   rotulo(f, marca(f), x, 8 * u, 2.8 * u, alfa(f.tinta, 0.7), { maxW: w })
   const b = montar(ctx, f.titulo, { tam: 8.4 * u, largura: w, altura: H - y0 - h - 34 * u, fonte: f.leve, lh: 1.1, italicoFinal: 3 })
   pintar(ctx, b, x, y0 + h + 6 * u, f.tinta, { corItalico: f.destaque })
-  const a = montar(ctx, f.apoio, { tam: 4.2 * u, largura: w * 0.85, altura: H - y0 - h - b.h - 30 * u, fonte: f.corrido(400), lh: 1.45 })
+  const a = montar(ctx, f.apoio, { min: 0.8, tam: 4.2 * u, largura: w * 0.85, altura: H - y0 - h - b.h - 30 * u, fonte: f.corrido(400), lh: 1.45 })
   pintar(ctx, a, x, y0 + h + 6 * u + b.h + 4 * u, alfa(f.tinta, 0.82))
   assinar(f, f.tinta)
 }
@@ -494,14 +582,14 @@ function paginaDaVez(f) {
   return { tipo, texto, k }
 }
 
-// Página do meio com foto (só a primeira): a foto numa janela e o texto embaixo.
+// Página do meio com foto (só a primeira): a foto em cima, de borda a borda, e o texto embaixo.
 function meioComFoto(f, texto, fundo, cor) {
-  const { ctx, W, H, u } = f, x = 9 * u, w = W - 18 * u, y0 = 16 * u, h = H * 0.42
+  const { ctx, W, H, u } = f, x = 9 * u, w = W - 18 * u, corte = H * 0.48
   ctx.fillStyle = fundo; ctx.fillRect(0, 0, W, H)
-  rotulo(f, marca(f), x, 8 * u, 2.8 * u, alfa(cor, 0.7))
-  fotoNaForma(f, () => retangulo(ctx, x, y0, w, h, 4 * u), x, y0, w, h)
-  const b = montar(ctx, texto, { tam: 5.6 * u, largura: w, altura: H - y0 - h - 30 * u, fonte: f.corrido(400), lh: 1.4 })
-  pintar(ctx, b, x, y0 + h + 6 * u, cor)
+  fotoSangrada(f, 0, 0, W, corte, { veuTopo: true })
+  rotulo(f, marca(f), x, 8 * u, 2.8 * u, 'rgba(255,255,255,.85)')
+  const b = montar(ctx, texto, { tam: 5.6 * u, largura: w, altura: H - corte - 30 * u, fonte: f.corrido(400), lh: 1.4 })
+  pintar(ctx, b, x, corte + 7 * u, cor)
   assinar(f, cor)
 }
 
@@ -525,14 +613,15 @@ function internaClara(f, { tipo, texto, k }) {
   }
   // fundo: o papel; nas páginas ímpares do meio, um tom mais forte da cor clara (o carrossel respira)
   const forte = tipo === 'meio' && k % 2 === 1
-  ctx.fillStyle = forte ? misturar(f.c1, '#ffffff', 0.35) : f.papel; ctx.fillRect(0, 0, W, H)
+  ctx.fillStyle = forte ? misturar(f.c1, '#ffffff', 0.5) : f.papel; ctx.fillRect(0, 0, W, H)
   // a forma passeia pelas páginas
   const lugares = [[0.1, 0.18, 34], [0.95, 0.55, 30], [0.08, 0.92, 28], [0.92, 0.12, 26], [0.5, 1.02, 30]]
   const [lx, ly, lr] = tipo === 'fecho' ? [0.5, 0.5, 30] : lugares[(f.pagina - 2) % lugares.length]
   if (forte) {
     ctx.save(); ctx.strokeStyle = alfa(f.tinta, 0.4); ctx.lineWidth = 0.35 * u; bolha(ctx, W * lx, H * ly, lr * u, 3 + f.pagina); ctx.stroke(); ctx.restore()
   } else {
-    ctx.fillStyle = f.c1; bolha(ctx, W * lx, H * ly, lr * u, 3 + f.pagina); ctx.fill()
+    // a forma fica atrás do texto: num tom suave, para a leitura não sofrer
+    ctx.fillStyle = tipo === 'fecho' ? f.c1 : misturar(f.papel, f.c1, 0.3); bolha(ctx, W * lx, H * ly, lr * u, 3 + f.pagina); ctx.fill()
     ctx.save(); ctx.strokeStyle = alfa(f.tinta, 0.35); ctx.lineWidth = 0.3 * u; bolha(ctx, W * lx - 4 * u, H * ly - 3 * u, lr * u * 0.98, 21); ctx.stroke(); ctx.restore()
   }
   cabecalhoClaro(f, f.tinta)
@@ -592,9 +681,10 @@ function internaEscura(f, { tipo, texto, k }) {
     return pe(escuro)
   }
   if (tipo === 'convite') {
-    degrade(f.c1, misturar(f.c1, '#ffffff', 0.3)); grao(ctx, 0, 0, W, H, 0.05, 5); marcar(escuro)
+    const tx = sobre(f.c1, escuro, '#ffffff')
+    degrade(f.c1, misturar(f.c1, '#ffffff', 0.3)); grao(ctx, 0, 0, W, H, 0.05, 5); marcar(tx)
     const b = montar(ctx, texto, { tam: 8.6 * u, largura: mw, altura: H * 0.5, fonte: f.frase, lh: 1.15 })
-    pintar(ctx, b, x, (H - b.h) / 2 - 4 * u, escuro); return pe(escuro)
+    pintar(ctx, b, x, (H - b.h) / 2 - 4 * u, tx); return pe(tx)
   }
   fundoEscuroSuave(f); marcar(f.claro)
   fechoDoCarrossel(f, f.claro, alfa(f.claro, 0.75), t('arte.fam.siga'))
@@ -615,8 +705,8 @@ function internaArco(f, { tipo, texto, k }) {
     ctx.fillStyle = f.c1; ctx.fillRect(0, 0, W, H)
     ctx.fillStyle = f.c2; arco(ctx, ax, ay, aw, ah); ctx.fill()
     dentro(texto, ay, ah, { tam: 8 * u, fonte: f.forte, cor: luz, italicoFinal: 3, corItalico: f.c1 })
-    numero(tintaArco)
-    return assinar(f, tintaArco)
+    numero(sobre(f.c1, tintaArco, '#ffffff'))
+    return assinar(f, sobre(f.c1, tintaArco, '#ffffff'))
   }
   numero(luz)
   if (tipo === 'gancho') {
@@ -624,14 +714,17 @@ function internaArco(f, { tipo, texto, k }) {
     dentro(texto, ay, ah, { tam: 9.5 * u, fonte: f.forte, cor: luz, italicoFinal: 2, corItalico: f.c1 })
   } else if (tipo === 'meio') {
     if (k === 0 && f.foto) {
-      const hf = (ah - 20 * u) * 0.5
-      fotoNaForma(f, () => arco(ctx, ax, ay, aw, hf + aw / 2), ax, ay, aw, hf + aw / 2)
-      const b = montar(ctx, texto, { tam: 5.4 * u, largura: aw, altura: H - ay - hf - aw / 2 - 26 * u, fonte: f.corrido(500), lh: 1.4 })
-      pintar(ctx, b, ax, ay + hf + aw / 2 + 5 * u, luz, { alinhar: 'center', largura: aw })
+      // a foto em cima, de borda a borda; o fundo escuro sobe num arco por cima dela
+      const corte = H * 0.5, topoArco = corte - aw * 0.3
+      fotoSangrada(f, 0, 0, W, corte + 2, { veuTopo: true })
+      ctx.fillStyle = f.c2; ctx.fillRect(0, corte, W, H - corte); arco(ctx, ax, topoArco, aw, H - topoArco); ctx.fill()
+      numero('#ffffff')
+      const b = montar(ctx, texto, { tam: 5.4 * u, largura: aw - pad * 2, altura: H - topoArco - aw * 0.18 - 24 * u, fonte: f.corrido(500), lh: 1.4 })
+      pintar(ctx, b, ax + pad, topoArco + aw * 0.18, luz, { alinhar: 'center', largura: aw - pad * 2 })
     } else if (k % 2 === 0) {
       ctx.fillStyle = f.c1; arco(ctx, ax, ay + 20 * u, aw, ah - 20 * u); ctx.fill()
       ctx.fillStyle = luz; circulo(ctx, W / 2, ay + 11 * u, 6 * u); ctx.fill()
-      dentro(texto, ay + 20 * u, ah - 20 * u, { tam: 5.6 * u, fonte: f.corrido(500), cor: tintaArco, lh: 1.4 })
+      dentro(texto, ay + 20 * u, ah - 20 * u, { tam: 5.6 * u, fonte: f.corrido(500), cor: sobre(f.c1, tintaArco, '#ffffff'), lh: 1.4 })
     } else {
       // um arco pequeno no alto e o texto claro embaixo
       const w = 22 * u
