@@ -67,3 +67,9 @@ describe('depoisDeSalvar segue direto para o app quando não há o que perguntar
     expect(atualizar).toHaveBeenCalled()
   })
 })
+
+test('itensMudaram: só marcar ou desmarcar "Ocultar preço" já conta como mudança', () => {
+  const A = { id: 'a', nome: 'Gramado', preco: 2199, preco_promo: null, promo_data: null, fotos: [] }
+  expect(itensMudaram([A], [{ ...A, ocultar_preco: true }])).toBe(true)
+  expect(itensMudaram([{ ...A, ocultar_preco: false }], [A])).toBe(false)
+})
