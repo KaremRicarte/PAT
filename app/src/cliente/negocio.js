@@ -166,7 +166,8 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
       for (const f of i.fotos) {
         if (f.arquivo) {
           const blob = await reduzir(f.arquivo)
-          const caminho = await enviar(`${uid}/produtos/${i.id}/${crypto.randomUUID()}.jpg`, blob, 'image/jpeg')
+          // com resumo do conteúdo (importação), o nome do arquivo é o resumo: a mesma foto é reconhecida depois
+          const caminho = await enviar(`${uid}/produtos/${i.id}/${f.hash ?? crypto.randomUUID()}.jpg`, blob, 'image/jpeg')
           enviadas.push(caminho)
           fotos.push(caminho)
           aoProgredir?.(++feitas, total)

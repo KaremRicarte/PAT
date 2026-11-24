@@ -3,7 +3,7 @@
 import { t } from '../textos.js'
 import { el } from '../comum.js'
 import { MAX_ITENS, MAX_FOTOS } from './negocio.js'
-import { decodificarTexto, lerLista, juntarImportacao } from './importar.js'
+import { decodificarTexto, lerLista, juntarImportacao, resumoDoArquivo } from './importar.js'
 
 const lista = (a) => a.join(', ')
 
@@ -143,7 +143,10 @@ export function montarImportacao({ ramo, estado, aoMudar }) {
       const fotos = candidatas.filter((_, i) => oks[i])
       const naoAbriram = candidatas.filter((_, i) => !oks[i]).map((f) => f.name)
       const lido = textos.length ? lerLista(decodificarTexto(await textos[0].arrayBuffer())) : { linhas: [], erros: [] }
-      const r = juntarImportacao(estado.itens, { ...lido, arquivosDeFoto: fotos },
+      // resumo de cada foto, para não importar duas vezes a mesma; se o navegador não conseguir, importa como antes
+      let hashes
+      try { hashes = new Map(await Promise.all(fotos.map(async (f) => [f, await resumoDoArquivo(f)]))) } catch (e) { console.error(e) }
+      const r = juntarImportacao(estado.itens, { ...lido, arquivosDeFoto: fotos, hashes },
         { noPromo: !!ramo.noPromo, novoId: () => crypto.randomUUID() })
       estado.itens = r.itens
       const linhas = textoDoResumo({ ...r.resumo, naoAbriram }, { textosIgnorados: Math.max(textos.length - 1, 0) })

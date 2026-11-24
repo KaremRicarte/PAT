@@ -231,3 +231,15 @@ test('quiz.itens.repetido existe em textos', async () => {
   const { t } = await import('../../app/src/textos.js')
   expect(t('quiz.itens.repetido')).toBe('Há dois itens com o mesmo nome. Apague um deles ou junte as fotos num só.')
 })
+
+test('salvarItens guarda a foto com hash no caminho do hash', async () => {
+  const { salvarItens } = await import('../../app/src/cliente/negocio.js')
+  const caminhos = []
+  const sb = fakeSimples([])
+  sb.storage = { from: () => ({ upload: async (c) => { caminhos.push(c); return { error: null } }, remove: async () => ({ error: null }) }) }
+  const arquivo = new Blob(['x'])
+  await salvarItens(sb, 'u1', [{ id: 'i1', nome: 'Item', descricao: '', preco: 10, preco_promo: null,
+    fotos: [{ arquivo, nome: 'item_1.jpg', hash: 'abc' }, { arquivo, nome: 'item_2.jpg' }] }], null, { reduzir: async (a) => a, descrever: false })
+  expect(caminhos[0]).toBe('u1/produtos/i1/abc.jpg')
+  expect(caminhos[1]).toMatch(/^u1\/produtos\/i1\/[0-9a-f-]{36}\.jpg$/)
+})

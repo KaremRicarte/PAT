@@ -1,4 +1,4 @@
-import { normalizarNome, chavesDaFoto, decodificarTexto, lerLista, juntarImportacao } from '../../app/src/cliente/importar.js'
+import { normalizarNome, chavesDaFoto, resumoDoArquivo, decodificarTexto, lerLista, juntarImportacao } from '../../app/src/cliente/importar.js'
 
 describe('lerLista', () => {
   test('quatro linhas', () => {
@@ -148,5 +148,33 @@ describe('juntarImportacao', () => {
     const antes = structuredClone(atual)
     juntarImportacao(atual, ent('Gramado;2199\nNovo', [arq('gramado_1.jpg'), arq('bonito_1.jpg')]), opc())
     expect(atual).toEqual(antes)
+  })
+})
+
+describe('fotos repetidas (mesmo conteúdo)', () => {
+  const arq = (name) => ({ name })
+  const mkId = () => { let n = 0; return () => `n${++n}` }
+  test('mesma foto (mesmo hash) não entra duas vezes', () => {
+    const a = arq('gramado_1.jpg'), b = arq('gramado_2.jpg'), c = arq('gramado_3.jpg')
+    const hashes = new Map([[a, 'abc'], [b, 'def'], [c, 'def']])
+    const atual = [{ id: 'i1', nome: 'Gramado', fotos: [{ path: 'u/produtos/i1/abc.jpg' }] }]
+    const r = juntarImportacao(atual, { linhas: [], erros: [], arquivosDeFoto: [a, b, c], hashes }, { novoId: mkId() })
+    expect(r.itens[0].fotos.map((f) => f.nome ?? f.path)).toEqual(['u/produtos/i1/abc.jpg', 'gramado_2.jpg'])
+    expect(r.itens[0].fotos[1].hash).toBe('def')
+    expect(r.resumo.fotos).toBe(1)
+    expect(r.resumo.foraFotos).toEqual([])
+  })
+  test('item cheio com foto repetida: a repetida não vai para foraFotos', () => {
+    const fotos = Array.from({ length: 12 }, (_, i) => ({ path: `u/produtos/i1/h${i}.jpg` }))
+    const rep = arq('gramado_1.jpg'), nova = arq('gramado_2.jpg')
+    const hashes = new Map([[rep, 'h3'], [nova, 'zz']])
+    const r = juntarImportacao([{ id: 'i1', nome: 'Gramado', fotos }], { linhas: [], erros: [], arquivosDeFoto: [rep, nova], hashes }, { novoId: mkId() })
+    expect(r.resumo.foraFotos).toEqual(['gramado_2.jpg'])
+  })
+  test('resumoDoArquivo: 32 caracteres hex, igual para conteúdos iguais', async () => {
+    const h1 = await resumoDoArquivo(new Blob(['x']))
+    expect(h1).toMatch(/^[0-9a-f]{32}$/)
+    expect(await resumoDoArquivo(new Blob(['x']))).toBe(h1)
+    expect(await resumoDoArquivo(new Blob(['y']))).not.toBe(h1)
   })
 })

@@ -65,8 +65,16 @@ function precoParaTexto(v) {
   return Number.isInteger(v) ? String(v) : v.toFixed(2).replace('.', ',')
 }
 
+// Resumo do conteúdo do arquivo original (SHA-256, 32 primeiros caracteres em hex): a mesma foto dá o mesmo
+// resumo, mesmo com outro nome. Vira o nome do arquivo guardado, para reconhecer a foto numa nova importação.
+export async function resumoDoArquivo(arquivo) {
+  const bytes = await crypto.subtle.digest('SHA-256', await arquivo.arrayBuffer())
+  return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32)
+}
+
 // Junta o que veio da importação com os itens atuais, sem apagar nada.
-export function juntarImportacao(itens, { linhas = [], erros = [], arquivosDeFoto = [] }, { noPromo = false, novoId } = {}) {
+// hashes (opcional): Map arquivo -> resumoDoArquivo, para não importar duas vezes a mesma foto.
+export function juntarImportacao(itens, { linhas = [], erros = [], arquivosDeFoto = [], hashes } = {}, { noPromo = false, novoId } = {}) {
   const lista = itens.map((i) => ({
     ...i,
     fotos: [...(i.fotos ?? (i.foto_path ? [{ path: i.foto_path }] : []))],
@@ -113,8 +121,11 @@ export function juntarImportacao(itens, { linhas = [], erros = [], arquivosDeFot
     nomesNoLote.set(item, vistos)
     if (vistos.has(arq.name)) continue
     vistos.add(arq.name)
+    // a mesma foto (mesmo conteúdo) já está no item, salva ou neste lote: fica de fora em silêncio
+    const hash = hashes?.get(arq)
+    if (hash && item.fotos.some((f) => f.hash === hash || f.path?.endsWith(`/${hash}.jpg`))) continue
     if (item.fotos.length >= MAX_FOTOS) { resumo.foraFotos.push(arq.name); continue }
-    item.fotos.push({ arquivo: arq, nome: arq.name })
+    item.fotos.push(hash ? { arquivo: arq, nome: arq.name, hash } : { arquivo: arq, nome: arq.name })
     item.fotosNovas++
     resumo.fotos++
   }
