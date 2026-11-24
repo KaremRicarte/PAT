@@ -29,6 +29,7 @@ const PAGINA = 1000
 
 function criarDeps(): { deps: DepsMelhorar, pegar: (n: number) => Promise<PostDaFila[]> } {
   const db = createClient(URL_PROJETO, CHAVE, { auth: { persistSession: false, autoRefreshToken: false } })
+  const reservadas = new Set<string>()
   const ler = async <T>(consulta: PromiseLike<{ data: T | null, error: unknown }>): Promise<T | null> => {
     const { data, error } = await consulta
     if (error) throw error
@@ -110,6 +111,23 @@ function criarDeps(): { deps: DepsMelhorar, pegar: (n: number) => Promise<PostDa
     async registrarUsada(clienteId, path) {
       const { error } = await db.from('fotos_usadas').insert({ cliente_id: clienteId, path })
       if (error) throw error
+    },
+    // o uso mais recente de cada foto (para o revezamento das fotos do item)
+    async ultimoUso(clienteId, paths) {
+      const uso: Record<string, string> = {}
+      for (let i = 0; i < paths.length; i += PEDACO) {
+        const linhas = await ler<{ path: string, usado_em: string }[]>(db.from('fotos_usadas').select('path, usado_em')
+          .eq('cliente_id', clienteId).in('path', paths.slice(i, i + PEDACO)))
+        for (const l of linhas ?? []) if (!uso[l.path] || l.usado_em > uso[l.path]) uso[l.path] = l.usado_em
+      }
+      return uso
+    },
+    // fotos já pegas por um post nesta execução (os posts de um lote rodam em paralelo)
+    reservar: (clienteId, path) => {
+      const chave = `${clienteId}|${path}`
+      if (reservadas.has(chave)) return false
+      reservadas.add(chave)
+      return true
     },
 
     async gravar(post, campos) {

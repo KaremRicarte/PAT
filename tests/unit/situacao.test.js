@@ -203,3 +203,11 @@ test('pecasDaArte: story em enquete mostra a pergunta e chama para o adesivo', (
   const p = pecasDaArte(post, { nome: 'Malibu' }, { noPromo: false })
   expect(p).toMatchObject({ titulo: 'Você já conhece Gramado no Natal?', gancho: 'Vote na enquete aqui embaixo', enquete: true })
 })
+
+test('fotoDoPost: mesmo item, mesma ordem, meses diferentes -> fotos diferentes', () => {
+  const produtos = [{ id: 's1', fotos: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }]
+  const loja = RAMOS.loja ?? Object.values(RAMOS).find((r) => !r.textOnly)
+  const nov = fotoDoPostN({ produto_id: 's1', ordem: 2, data: '2026-11-20' }, produtos, loja)
+  const dez = fotoDoPostN({ produto_id: 's1', ordem: 2, data: '2026-12-20' }, produtos, loja)
+  expect(nov).not.toBe(dez)
+})

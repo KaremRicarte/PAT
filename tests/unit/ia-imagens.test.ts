@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { escolherImagemGeral, fotoDoLugar, temaDaImagem, type DepsImagens } from '../../supabase/functions/_shared/ia/imagens.ts'
+import { escolherImagemGeral, fotoDoLugar, indiceDoRevezamento, temaDaImagem, type DepsImagens } from '../../supabase/functions/_shared/ia/imagens.ts'
 
 const prods = [
   { id: 's1', fotos: ['a.jpg', 'b.jpg', 'c.jpg'] },
@@ -23,6 +23,22 @@ describe('fotoDoLugar', () => {
     expect(fotoDoLugar({ post: { produto_id: 's2', ordem: 0 }, produtos: prods, fotosInfo: { 'velha.jpg': { serve: false } } })).toBeNull()
     expect(fotoDoLugar({ post: { produto_id: 's2', ordem: 0 }, produtos: prods, fotosInfo: {} })).toBe('velha.jpg')
     expect(fotoDoLugar({ post: { produto_id: null, ordem: 0 }, produtos: prods, fotosInfo: {} })).toBeNull()
+  })
+})
+
+describe('indiceDoRevezamento', () => {
+  it('muda de mês para mês com 6, 8 e 12 fotos', () => {
+    for (const n of [6, 8, 12]) expect(indiceDoRevezamento(3, '2026-11-10', n)).not.toBe(indiceDoRevezamento(3, '2026-12-10', n))
+  })
+  it('sem data: igual à ordem; sem fotos: -1; sempre dentro da lista', () => {
+    expect(indiceDoRevezamento(3, null, 8)).toBe(3)
+    expect(indiceDoRevezamento(0, '2026-11-01', 0)).toBe(-1)
+    for (let o = 0; o < 40; o++) { const i = indiceDoRevezamento(o, '2027-02-01', 7); expect(i >= 0 && i < 7).toBe(true) }
+  })
+  it('fotoDoLugar: mesmo item e ordem, meses diferentes -> fotos diferentes', () => {
+    const p8 = [{ id: 's1', fotos: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }]
+    const f = (data: string) => fotoDoLugar({ post: { produto_id: 's1', ordem: 2, data }, produtos: p8, fotosInfo: {} })
+    expect(f('2026-11-20')).not.toBe(f('2026-12-20'))
   })
 })
 

@@ -72,7 +72,7 @@ export async function reescreverPostDoCliente(entrada: unknown, deps: DepsReescr
       const candidatas = comFotos.find((p) => p.id === post.produto_id)?.fotos ?? []
       const info: Record<string, InfoFoto> = candidatas.length ? await deps.fotosInfo(candidatas) : {}
       const fotosInfo: FotosInfo = Object.fromEntries(Object.entries(info).map(([p, i]) => [p, { serve: i.serve ?? undefined }]))
-      const path = fotoDoLugar({ post: { produto_id: post.produto_id, foto_path: null, ordem: post.ordem }, produtos: comFotos, fotosInfo })
+      const path = fotoDoLugar({ post: { produto_id: post.produto_id, foto_path: null, ordem: post.ordem, data: post.data }, produtos: comFotos, fotosInfo })
       if (path) foto = { path, descricao: info[path]?.descricao ?? null }
     }
 

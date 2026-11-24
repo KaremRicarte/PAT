@@ -99,6 +99,8 @@ function montar(o: Opcoes = {}) {
     copiarExterna: async (cliente, origem, e) => { copias.push(e.url); return `${cliente}/banco/${origem}-${e.id}.jpg` },
     copiarDoBanco: async (cliente, path) => { copias.push(path); return `${cliente}/banco/banco-${path.split('/').pop()}` },
     registrarUsada: async (cliente, path) => { usadas.push([cliente, path]) },
+    ultimoUso: async (_c, paths) => Object.fromEntries(paths.filter((p) => o.ultimoUso?.[p]).map((p) => [p, o.ultimoUso![p]])),
+    reservar: (() => { const r = o.reservadas ?? new Set<string>(); return (c: string, p: string) => { const k = `${c}|${p}`; if (r.has(k)) return false; r.add(k); return true } })(),
     gravar: async (p, campos) => { gravados.push({ post: p, campos }); return o.gravarPega ?? true },
     marcar: async (p, estado) => { marcados.push({ id: p.id, estado }) },
     hoje: () => '2026-11-17',
@@ -572,5 +574,40 @@ describe('processarFila', () => {
       agora: () => t,
     })
     expect(pegou).toBe(1)
+  })
+})
+
+describe('revezamento das fotos do item', () => {
+  const a = `${UID}/produtos/a.jpg`, b = `${UID}/produtos/b.jpg`, c = `${UID}/produtos/c.jpg`
+  const ctx = contexto({ produtos: [{ id: 's1', nome: 'Escova progressiva', descricao: null, fotos: [a, b, c], foto_path: null }] })
+  const info = { [a]: { descricao: 'A.', serve: true }, [b]: { descricao: 'B.', serve: true }, [c]: { descricao: 'C.', serve: true } }
+  test('post de item prefere a foto nunca usada', async () => {
+    const m = montar({ ctx, info, ultimoUso: { [a]: '2026-11-01T00:00:00Z', [b]: '2026-10-01T00:00:00Z' } })
+    expect(await melhorarUmPost(m.deps, post())).toBe('pronto')
+    expect(m.gravados[0].campos.foto_path).toBe(c)
+    expect(m.usadas).toEqual([[UID, c]])
+  })
+  test('todas usadas: a usada há mais tempo', async () => {
+    const m = montar({ ctx, info, ultimoUso: { [a]: '2026-11-01T00:00:00Z', [b]: '2026-09-01T00:00:00Z', [c]: '2026-10-01T00:00:00Z' } })
+    await melhorarUmPost(m.deps, post())
+    expect(m.gravados[0].campos.foto_path).toBe(b)
+  })
+  test('dois posts do mesmo item no mesmo lote não pegam a mesma foto', async () => {
+    const m = montar({ ctx, info })
+    await Promise.all([melhorarUmPost(m.deps, post({ id: 'p1', ordem: 0 })), melhorarUmPost(m.deps, post({ id: 'p2', ordem: 0 }))])
+    const fotos = m.gravados.map((g) => g.campos.foto_path)
+    expect(fotos).toHaveLength(2)
+    expect(fotos[0]).not.toBe(fotos[1])
+  })
+  test('foto escolhida pelo cliente não muda nem registra uso de outra', async () => {
+    const m = montar({ ctx, info, ultimoUso: { [a]: '2026-11-01T00:00:00Z' } })
+    await melhorarUmPost(m.deps, post({ foto_path: a }))
+    expect(m.gravados[0].campos.foto_path).toBe(a)
+    expect(m.usadas).toEqual([])
+  })
+  test('cliente mexeu (gravar não pegou): não registra uso', async () => {
+    const m = montar({ ctx, info, gravarPega: false })
+    await melhorarUmPost(m.deps, post())
+    expect(m.usadas).toEqual([])
   })
 })

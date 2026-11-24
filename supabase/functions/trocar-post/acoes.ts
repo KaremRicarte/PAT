@@ -114,7 +114,7 @@ async function textoDaIA(
     const candidatas = escolhida ? [escolhida] : servico?.fotos ?? []
     const info: Record<string, InfoFoto> = candidatas.length ? await deps.fotosInfo(candidatas) : {}
     const fotosInfo: FotosInfo = Object.fromEntries(Object.entries(info).map(([p, i]) => [p, { serve: i.serve ?? undefined }]))
-    const path = fotoDoLugar({ post: { produto_id: novo.produto_id, foto_path: escolhida, ordem: post.ordem }, produtos: comFotos, fotosInfo })
+    const path = fotoDoLugar({ post: { produto_id: novo.produto_id, foto_path: escolhida, ordem: post.ordem, data: post.data }, produtos: comFotos, fotosInfo })
     return await escreverNaHora(deps, {
       clienteId,
       dados: { ramo, estrategia: post.estrategia as Estrategia, negocio, produtos },

@@ -9,8 +9,8 @@ import { caminhoSeguro, fotoIlustrativa, fotosDoProduto, montarEntradaPost, SEM_
 import { criarPalavras } from '../_shared/ia/palavras.ts'
 import { descreverFoto } from '../_shared/ia/descrever.ts'
 import {
-  escolherImagemGeral, fotoDoLugar, temaDaImagem,
-  type DepsImagens, type FotosInfo, type ImagemEscolhida,
+  escolherImagemGeral, indiceDoRevezamento, temaDaImagem,
+  type DepsImagens, type ImagemEscolhida,
 } from '../_shared/ia/imagens.ts'
 import { custoImagemGerada } from '../_shared/ia/custo.ts'
 import { comLimiteEUso, LIMITE_MENSAL, type RegistroUso, type TipoUso } from '../_shared/ia/uso.ts'
@@ -66,8 +66,12 @@ export type DepsMelhorar = Omit<DepsImagens, 'escolher' | 'palavras' | 'gerar'> 
   gravarFoto: (linha: LinhaFotoIA) => Promise<void>,
   copiarExterna: (clienteId: string, origem: 'pexels' | 'pixabay' | 'gerada', externa: { id: string, url: string }) => Promise<string | null>,
   copiarDoBanco: (clienteId: string, pathNoBanco: string) => Promise<string | null>,
-  // fotos_usadas (janela de 90 dias do banco próprio)
-  registrarUsada: (clienteId: string, pathNoBanco: string) => Promise<void>,
+  // fotos_usadas: fotos do banco próprio (janela de 90 dias) e fotos dos itens do cliente (revezamento)
+  registrarUsada: (clienteId: string, path: string) => Promise<void>,
+  // último uso (usado_em mais recente) de cada caminho em fotos_usadas; caminho nunca usado fica de fora
+  ultimoUso: (clienteId: string, paths: string[]) => Promise<Record<string, string>>,
+  // reserva a foto para um post desta execução; false = outro post desta execução já pegou
+  reservar: (clienteId: string, path: string) => boolean,
   // gravação condicional: true se pegou a linha (legenda, foto, sem_foto, estado e postado iguais ao lido,
   // e ainda 'trabalhando' com o mesmo ia_em)
   gravar: (post: PostDaFila, campos: CamposGravados) => Promise<boolean>,
@@ -229,6 +233,8 @@ async function melhorarComPrazo(
   }
 
   let foto: { path: string, descricao: string } | null = null
+  // foto do item escolhida pelo revezamento (para marcar como usada depois de gravar)
+  let fotoDoItem: string | null = null
   if (semFoto) {
     // sem foto: só texto
   } else if (post.foto_path) {
@@ -236,17 +242,31 @@ async function melhorarComPrazo(
     const d = await descrita(post.foto_path)
     foto = { path: post.foto_path, descricao: d?.descricao ?? SEM_DESCRICAO }
   } else if (post.produto_id) {
-    // post de serviço: revezando as fotos do serviço, pulando as reprovadas (inclusive as reprovadas agora)
-    const fotosInfo: FotosInfo = Object.fromEntries(Object.entries(info).map(([p, i]) => [p, { serve: i.serve ?? undefined }]))
-    const lugar = { produto_id: post.produto_id, foto_path: null, ordem: post.ordem }
-    for (let i = 0; i <= (produto?.fotos.length ?? 0); i++) {
-      const path = fotoDoLugar({ post: lugar, produtos, fotosInfo })
-      if (!path) break
+    // post de serviço: as fotos do serviço que servem, começando pela da vez (revezamento por ordem e mês) e depois
+    // pelas que o cliente usou há mais tempo (nunca usadas primeiro). Fotos reservadas por outro post desta execução
+    // ficam para o fim; reprovadas (inclusive agora) são puladas.
+    const servem = (produto?.fotos ?? []).filter((p) => info[p]?.serve !== false)
+    const i0 = indiceDoRevezamento(post.ordem, post.data, servem.length)
+    const daVez = i0 < 0 ? [] : [...servem.slice(i0), ...servem.slice(0, i0)]
+    const uso = daVez.length ? await deps.ultimoUso(clienteId, daVez) : {}
+    const ordem = [...daVez].sort((a, b) => (uso[a] ?? '').localeCompare(uso[b] ?? ''))
+    // reserva uma por vez (sem await entre olhar e reservar), para dois posts em paralelo não pegarem a mesma
+    const tentadas = new Set<string>()
+    const tentar = async (path: string) => {
+      tentadas.add(path)
       const d = await descrita(path)
-      if (d?.serve === false) { fotosInfo[path] = { serve: false }; continue }
+      if (d?.serve === false) return false
       foto = { path, descricao: d?.descricao ?? SEM_DESCRICAO }
-      break
+      fotoDoItem = path
+      return true
     }
+    let achou = false
+    for (const path of ordem) {
+      if (!deps.reservar(clienteId, path)) continue
+      if ((achou = await tentar(path))) break
+    }
+    // todas reservadas por outros posts: repete a foto, na mesma ordem
+    if (!achou) for (const path of ordem) if (!tentadas.has(path) && await tentar(path)) break
   } else if (!soTexto) {
     // post de tema geral: fotos do cliente -> banco próprio -> Pexels -> Pixabay -> imagem gerada -> só texto
     let descrever = DESCREVER_POR_POST
@@ -277,7 +297,13 @@ async function melhorarComPrazo(
   if (!escrito) return desistir()
 
   const pegou = await deps.gravar(post, { ...escrito.post, foto_path: fotoPath, origem: 'ia', ia_estado: 'pronto' })
-  if (pegou) return 'pronto'
+  if (pegou) {
+    // a foto do item entrou no post: fica marcada como usada agora, para o revezamento dos próximos posts
+    if (fotoDoItem && fotoPath === fotoDoItem) {
+      try { await deps.registrarUsada(clienteId, fotoDoItem) } catch (e) { console.error('melhorar-posts: não consegui registrar a foto usada', e) }
+    }
+    return 'pronto'
+  }
   // o cliente mexeu no post enquanto a IA escrevia: o que ele fez vence; o post sai da fila sem ser sobrescrito
   await deps.marcar(post, 'pulado')
   return 'cliente-mexeu'

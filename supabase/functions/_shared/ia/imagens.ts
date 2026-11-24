@@ -2,6 +2,9 @@
 // (banco, Pexels, Pixabay, a IA que olha as candidatas) entra em `deps`; aqui só ficam as regras.
 import type { Palavras } from './palavras.ts'
 import { LIMITE_GERADAS } from './uso.ts'
+import { indiceDoRevezamento } from '../modelos/revezamento.ts'
+
+export { indiceDoRevezamento }
 
 export type FotosInfo = Record<string, { serve?: boolean } | undefined>
 type Produto = { id: string, fotos?: string[] | null, foto_path?: string | null }
@@ -9,10 +12,10 @@ type Produto = { id: string, fotos?: string[] | null, foto_path?: string | null 
 // Mesma regra de fotosDoProduto em app/src/cliente/situacao.js (mantenha as duas iguais; aqui não dá para importar app/).
 const fotosDoProduto = (p: Produto): string[] => (p.fotos?.length ? p.fotos : p.foto_path ? [p.foto_path] : [])
 
-// Foto de um post de serviço: a escolhida pelo cliente vence; senão revezam as fotos do serviço pela ordem do post
-// (como fotoDoPost em situacao.js), pulando as reprovadas (serve === false). Post sem serviço -> null (vai para escolherImagemGeral).
+// Foto de um post de serviço: a escolhida pelo cliente vence; senão revezam as fotos do serviço (indiceDoRevezamento,
+// como fotoDoPost em situacao.js), pulando as reprovadas (serve === false). Post sem serviço -> null (vai para escolherImagemGeral).
 export function fotoDoLugar(a: {
-  post: { produto_id?: string | null, foto_path?: string | null, ordem?: number | null },
+  post: { produto_id?: string | null, foto_path?: string | null, ordem?: number | null, data?: string | null },
   produtos: Produto[], fotosInfo: FotosInfo,
 }): string | null {
   const { post, produtos, fotosInfo } = a
@@ -20,7 +23,7 @@ export function fotoDoLugar(a: {
   const produto = post.produto_id ? produtos.find((p) => p.id === post.produto_id) : null
   if (!produto) return null
   const f = fotosDoProduto(produto).filter((p) => fotosInfo[p]?.serve !== false)
-  return f.length ? f[(post.ordem ?? 0) % f.length] : null
+  return f.length ? f[indiceDoRevezamento(post.ordem, post.data, f.length)] : null
 }
 
 export type Origem = 'cliente' | 'banco' | 'pexels' | 'pixabay' | 'gerada'

@@ -3,6 +3,7 @@ import { blocosDoCarrossel } from '../artes/texto.js'
 import { t } from '../textos.js'
 import { daData } from '../../../supabase/functions/_shared/modelos/gerar.ts'
 import { diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
+import { indiceDoRevezamento } from '../../../supabase/functions/_shared/modelos/revezamento.ts'
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
@@ -103,7 +104,7 @@ export const todasAsFotos = (produtos, fotosInfo) => [...new Set(produtos.flatMa
 // Foto do post (null = arte só com texto):
 // 1. sem_foto em ramo só de texto -> nenhuma; 2. a foto escolhida para o post (mesmo reprovada pela IA:
 //    a escolha do cliente vale; o aviso aparece em Meu negócio);
-// 3. post de um item -> só as fotos DELE, revezando pela ordem do post (nunca a de outro item);
+// 3. post de um item -> só as fotos DELE, revezando pela ordem do post e pelo mês (nunca a de outro item);
 // 4. post geral (fora dos ramos só de texto) -> reveza todas as fotos pela ordem do post;
 //    com uma foto só, alterna foto e só texto, para não repetir a mesma foto o mês todo.
 export function fotoDoPost(post, produtos, ramo, fotosInfo) {
@@ -113,13 +114,13 @@ export function fotoDoPost(post, produtos, ramo, fotosInfo) {
   const produto = post.produto_id ? produtos.find((p) => p.id === post.produto_id) : null
   if (produto) {
     const f = fotosDoProduto(produto, fotosInfo)
-    return f.length ? f[(post.ordem ?? 0) % f.length] : null
+    return f.length ? f[indiceDoRevezamento(post.ordem, post.data, f.length)] : null
   }
   if (soTexto) return null
   const fotos = todasAsFotos(produtos, fotosInfo)
   if (!fotos.length) return null
   const ciclo = fotos.length === 1 ? [fotos[0], null] : fotos
-  return ciclo[(post.ordem ?? 0) % ciclo.length]
+  return ciclo[indiceDoRevezamento(post.ordem, post.data, ciclo.length)]
 }
 
 // Fotos para a montagem de vídeo: as do item a partir da foto da vez, até `max`; post geral -> só a foto da vez.
