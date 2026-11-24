@@ -9,6 +9,15 @@ export const MAX_FOTOS_NEGOCIO = 30 // "Minhas fotos" (spec §3.7)
 export const FOTO_MAX = 1600 // lado maior das fotos, em px
 export const LOGO_MAX = 800
 
+// Nome para comparar itens e arquivos: sem acentos, maiúsculas, espaços nem símbolos ("October Fest" = "october_fest").
+export function normalizarNome(s) {
+  return String(s ?? '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+}
+
 // Nova medida mantendo a proporção; nunca aumenta a imagem.
 export function medidaReduzida(largura, altura, maximo) {
   const fator = Math.min(1, maximo / Math.max(largura, altura))
@@ -21,6 +30,7 @@ export function validarItens(itens, ramo = { noPromo: false }) {
   if (!itens.length) return 'quiz.itens.min'
   if (itens.length > MAX_ITENS) return 'quiz.itens.max'
   if (itens.some((i) => { const n = String(i.nome ?? '').trim(); return n.length < 2 || n.length > 80 })) return 'quiz.itens.nome'
+  if (new Set(itens.map((i) => normalizarNome(i.nome))).size < itens.length) return 'quiz.itens.repetido'
   if (ramo.noPromo && itens.some((i) => temPromocao(`${i.nome} ${i.descricao ?? ''}`))) return 'quiz.itens.promo'
   if (!ramo.noPromo) {
     for (const i of itens) {

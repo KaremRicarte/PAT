@@ -1,13 +1,7 @@
 // Funções puras para ler a lista (.txt) e o nome das fotos da importação.
-import { precoDoTexto, MAX_ITENS, MAX_FOTOS } from './negocio.js'
+import { precoDoTexto, MAX_ITENS, MAX_FOTOS, normalizarNome } from './negocio.js'
 
-export function normalizarNome(s) {
-  return String(s ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-}
+export { normalizarNome } from './negocio.js'
 
 // Chaves possíveis do item de uma foto, da mais específica para a menos: o nome inteiro (sem extensão),
 // depois sem a numeração do fim (_01, -2, " (3)", " 4") e cortando pedaços do fim no "_".

@@ -218,3 +218,16 @@ test('salvarFotosDoNegocio: limite de 30', async () => {
   await expect(salvarFotosDoNegocio(sb, 'u1', muitas)).rejects.toThrow()
   expect(sb.reg.gravado).toBeNull()
 })
+
+test('validarItens recusa nomes iguais depois de normalizar', () => {
+  const ok = { precoTexto: '100', promoTexto: '', fotos: [] }
+  expect(validarItens([{ ...ok, nome: 'October Fest' }, { ...ok, nome: 'october-fest' }])).toBe('quiz.itens.repetido')
+  expect(validarItens([{ ...ok, nome: 'Gramado' }, { ...ok, nome: 'Gramado no Natal' }])).toBeNull()
+  // o nome curto demais é avisado antes da repetição
+  expect(validarItens([{ ...ok, nome: 'a' }, { ...ok, nome: 'a' }])).toBe('quiz.itens.nome')
+})
+
+test('quiz.itens.repetido existe em textos', async () => {
+  const { t } = await import('../../app/src/textos.js')
+  expect(t('quiz.itens.repetido')).toBe('Há dois itens com o mesmo nome. Apague um deles ou junte as fotos num só.')
+})
