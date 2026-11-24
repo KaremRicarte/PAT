@@ -9,12 +9,22 @@ export function normalizarNome(s) {
     .replace(/[^a-z0-9]/g, '')
 }
 
-export function chaveDaFoto(nomeArquivo) {
-  const nome = String(nomeArquivo ?? '')
-  const i = nome.indexOf('_')
-  if (i >= 0) return normalizarNome(nome.slice(0, i))
-  return normalizarNome(nome.replace(/\.[^.]*$/, ''))
+// Chaves possíveis do item de uma foto, da mais específica para a menos: o nome inteiro (sem extensão),
+// depois sem a numeração do fim (_01, -2, " (3)", " 4") e cortando pedaços do fim no "_".
+// Ex.: october_fest_01.jpg -> octoberfest01, octoberfest, october; gramado_praca.jpg -> gramadopraca, gramado.
+function nomeDaFoto(nomeArquivo) {
+  const semExt = String(nomeArquivo ?? '').replace(/\.[^.]*$/, '')
+  const semNumero = semExt.replace(/[\s_-]*\(?\d+\)?$/, '') || semExt
+  return { semExt, partes: semNumero.split('_') }
 }
+
+export function chavesDaFoto(nomeArquivo) {
+  const { semExt, partes } = nomeDaFoto(nomeArquivo)
+  const chaves = [semExt]
+  for (let n = partes.length; n >= 1; n--) chaves.push(partes.slice(0, n).join(''))
+  return [...new Set(chaves.map(normalizarNome).filter(Boolean))]
+}
+
 
 export function decodificarTexto(bytes) {
   let txt
@@ -98,10 +108,11 @@ export function juntarImportacao(itens, { linhas = [], erros = [], arquivosDeFot
 
   const nomesNoLote = new Map()
   for (const arq of arquivosDeFoto) {
-    const chave = chaveDaFoto(arq.name)
-    const item = chave ? porChave.get(chave) : null
+    const chaves = chavesDaFoto(arq.name)
+    const achada = chaves.find((c) => porChave.has(c))
+    const item = achada ? porChave.get(achada) : null
     if (!item) {
-      if (!foraDaLista.has(chave)) resumo.semItem.push(arq.name)
+      if (!chaves.some((c) => foraDaLista.has(c))) resumo.semItem.push(arq.name)
       continue
     }
     const vistos = nomesNoLote.get(item) ?? new Set()

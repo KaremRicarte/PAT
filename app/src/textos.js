@@ -269,7 +269,7 @@ const pt = {
   'importar.como': 'Como montar o arquivo',
   'importar.como.formato': 'Uma linha por item: nome;preço normal;preço promocional. Exemplo para copiar:',
   'importar.como.exemplo': 'Gramado;2199;1799\nLeste Europeu;10299;9999\nportoseguro;1999;1999\nportugal;0;0',
-  'importar.como.fotos': 'As fotos vão para o item cujo nome é igual ao começo do nome do arquivo, até o primeiro "_". Exemplo: gramado_1.jpg e Gramado_2.jpg vão para Gramado. Nada é gravado antes de você tocar em Salvar.',
+  'importar.como.fotos': 'As fotos vão para o item com o mesmo nome do arquivo, sem contar o número do fim. Maiúsculas, acentos, espaços, "_" e "-" não fazem diferença. Exemplo: gramado_1.jpg e Gramado-2.jpg vão para Gramado; october_fest_01.jpg e Octoberfest.jpg vão para October Fest. Nada é gravado antes de você tocar em Salvar.',
   'importar.arrastar': 'Solte aqui o arquivo de texto e as fotos',
   'importar.lendo': 'Lendo os arquivos…',
   'importar.erro.leitura': 'Não consegui ler esses arquivos. Tente de novo.',

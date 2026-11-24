@@ -1,4 +1,4 @@
-import { normalizarNome, chaveDaFoto, decodificarTexto, lerLista, juntarImportacao } from '../../app/src/cliente/importar.js'
+import { normalizarNome, chavesDaFoto, decodificarTexto, lerLista, juntarImportacao } from '../../app/src/cliente/importar.js'
 
 describe('lerLista', () => {
   test('quatro linhas', () => {
@@ -30,9 +30,12 @@ describe('lerLista', () => {
 })
 
 describe('nomes', () => {
-  test('chaveDaFoto e normalizarNome', () => {
-    expect(chaveDaFoto('Leste-Europeu_1.JPG')).toBe('lesteeuropeu')
-    expect(chaveDaFoto('gramado.jpg')).toBe('gramado')
+  test('chavesDaFoto e normalizarNome', () => {
+    expect(chavesDaFoto('Leste-Europeu_1.JPG')).toContain('lesteeuropeu')
+    expect(chavesDaFoto('gramado.jpg')).toEqual(['gramado'])
+    const k = chavesDaFoto('october_fest_01.jpg')
+    expect(k.indexOf('octoberfest')).toBeGreaterThanOrEqual(0)
+    expect(k.indexOf('octoberfest')).toBeLessThan(k.indexOf('october'))
     expect(normalizarNome('São Paulo')).toBe('saopaulo')
   })
 })
@@ -103,6 +106,17 @@ describe('juntarImportacao', () => {
     expect(r2.itens).toHaveLength(20)
     expect(r2.resumo.foraItens).toHaveLength(2)
     expect(r2.resumo.novos).toBe(20)
+  })
+  test('chavesDaFoto: sinônimos e sufixos', () => {
+    const atual = [{ id: 'o', nome: 'October Fest', fotos: [] }, { id: 'g', nome: 'Gramado', fotos: [] }, { id: 'p', nome: 'Pacote 2027', fotos: [] }, { id: 'l', nome: 'Leste Europeu', fotos: [] }]
+    const nomes = ['october_fest_01.jpg', 'Octoberfest-2.JPG', 'october fest (3).jpg', 'OCTOBERFEST.jpg', 'gramado_praca.jpg', 'pacote_2027_01.jpg', 'Pacote 2027.jpg', 'Leste-Europeu_1.JPG']
+    const r = juntarImportacao(atual, ent('', nomes.map(arq)), opc())
+    const de = (id) => r.itens.find((i) => i.id === id).fotos.map((f) => f.nome)
+    expect(de('o')).toEqual(['october_fest_01.jpg', 'Octoberfest-2.JPG', 'october fest (3).jpg', 'OCTOBERFEST.jpg'])
+    expect(de('g')).toEqual(['gramado_praca.jpg'])
+    expect(de('p')).toEqual(['pacote_2027_01.jpg', 'Pacote 2027.jpg'])
+    expect(de('l')).toEqual(['Leste-Europeu_1.JPG'])
+    expect(r.resumo.semItem).toEqual([])
   })
   test('13ª foto vai para foraFotos', () => {
     const atual = [{ id: 'g', nome: 'Gramado', fotos: Array.from({ length: 11 }, (_, i) => ({ path: `p${i}` })) }]
