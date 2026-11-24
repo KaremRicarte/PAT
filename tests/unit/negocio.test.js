@@ -243,3 +243,17 @@ test('salvarItens guarda a foto com hash no caminho do hash', async () => {
   expect(caminhos[0]).toBe('u1/produtos/i1/abc.jpg')
   expect(caminhos[1]).toMatch(/^u1\/produtos\/i1\/[0-9a-f-]{36}\.jpg$/)
 })
+
+test('salvarItens que falha não apaga a foto com hash (outros posts podem usar o mesmo arquivo)', async () => {
+  const { salvarItens } = await import('../../app/src/cliente/negocio.js')
+  const removidos = []
+  const sb = fakeSimples([])
+  let n = 0
+  sb.storage = { from: () => ({
+    upload: async () => (++n === 2 ? { error: new Error('falhou') } : { error: null }),
+    remove: async (l) => { removidos.push(...l); return { error: null } } }) }
+  const arquivo = new Blob(['x'])
+  await expect(salvarItens(sb, 'u1', [{ id: 'i1', nome: 'Item', descricao: '', preco: 10, preco_promo: null,
+    fotos: [{ arquivo, nome: 'item_1.jpg', hash: 'abc' }, { arquivo, nome: 'item_2.jpg' }] }], null, { reduzir: async (a) => a, descrever: false })).rejects.toThrow()
+  expect(removidos).not.toContain('u1/produtos/i1/abc.jpg')
+})

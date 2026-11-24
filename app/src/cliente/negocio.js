@@ -168,7 +168,8 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
           const blob = await reduzir(f.arquivo)
           // com resumo do conteúdo (importação), o nome do arquivo é o resumo: a mesma foto é reconhecida depois
           const caminho = await enviar(`${uid}/produtos/${i.id}/${f.hash ?? crypto.randomUUID()}.jpg`, blob, 'image/jpeg')
-          enviadas.push(caminho)
+          // foto com hash: o mesmo arquivo pode já existir e estar em posts; numa falha, ele fica (nunca é apagado)
+          if (!f.hash) enviadas.push(caminho)
           fotos.push(caminho)
           aoProgredir?.(++feitas, total)
         } else fotos.push(f.path)

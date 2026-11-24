@@ -234,7 +234,7 @@ async function melhorarComPrazo(
 
   let foto: { path: string, descricao: string } | null = null
   // foto do item escolhida pelo revezamento (para marcar como usada depois de gravar)
-  let fotoDoItem: string | null = null
+  let fotoDoItem = null as string | null
   if (semFoto) {
     // sem foto: só texto
   } else if (post.foto_path) {
@@ -248,7 +248,10 @@ async function melhorarComPrazo(
     const servem = (produto?.fotos ?? []).filter((p) => info[p]?.serve !== false)
     const i0 = indiceDoRevezamento(post.ordem, post.data, servem.length)
     const daVez = i0 < 0 ? [] : [...servem.slice(i0), ...servem.slice(0, i0)]
-    const uso = daVez.length ? await deps.ultimoUso(clienteId, daVez) : {}
+    // sem saber o uso (erro de leitura), segue só com o revezamento: o post não perde a versão da IA por isso
+    const uso: Record<string, string> = daVez.length
+      ? await deps.ultimoUso(clienteId, daVez).catch((e) => { console.error('melhorar-posts: não consegui ler o uso das fotos', e); return {} })
+      : {}
     const ordem = [...daVez].sort((a, b) => (uso[a] ?? '').localeCompare(uso[b] ?? ''))
     // reserva uma por vez (sem await entre olhar e reservar), para dois posts em paralelo não pegarem a mesma
     const tentadas = new Set<string>()

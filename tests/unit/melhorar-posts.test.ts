@@ -1,3 +1,4 @@
+import { vi } from 'vitest'
 import {
   ESQUEMA_ESCOLHA, melhorarUmPost, processarFila,
   type Contexto, type DepsMelhorar, type LinhaFotoIA, type PostDaFila,
@@ -610,4 +611,14 @@ describe('revezamento das fotos do item', () => {
     await melhorarUmPost(m.deps, post())
     expect(m.usadas).toEqual([])
   })
+})
+
+test('falha ao ler o uso das fotos: segue com o revezamento simples (não desiste do post)', async () => {
+  const a = `${UID}/produtos/a.jpg`
+  const m = montar({ info: { [a]: { descricao: 'A.', serve: true } } })
+  m.deps.ultimoUso = async () => { throw new Error('rede') }
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+  expect(await melhorarUmPost(m.deps, post())).toBe('pronto')
+  expect(m.gravados[0].campos.foto_path).toBe(a)
+  log.mockRestore()
 })
