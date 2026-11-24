@@ -18,6 +18,23 @@ export function normalizarNome(s) {
     .replace(/[^a-z0-9]/g, '')
 }
 
+// Grupos de posições (0, 1, …) dos itens com o mesmo nome depois de normalizar ("October Fest" = "october fest").
+export function itensRepetidos(itens) {
+  const grupos = new Map()
+  itens.forEach((i, idx) => {
+    const k = normalizarNome(i.nome)
+    if (k) grupos.set(k, [...(grupos.get(k) ?? []), idx])
+  })
+  return [...grupos.values()].filter((g) => g.length > 1)
+}
+
+// Texto que diz quais itens se repetem: "October Fest" (Pacote 2) e "october fest" (Pacote 4); …
+export function textoDosRepetidos(itens, rotulo) {
+  return itensRepetidos(itens)
+    .map((g) => g.map((idx) => `"${String(itens[idx].nome).trim()}" (${rotulo} ${idx + 1})`).join(' e '))
+    .join('; ')
+}
+
 // Nova medida mantendo a proporção; nunca aumenta a imagem.
 export function medidaReduzida(largura, altura, maximo) {
   const fator = Math.min(1, maximo / Math.max(largura, altura))
@@ -30,7 +47,7 @@ export function validarItens(itens, ramo = { noPromo: false }) {
   if (!itens.length) return 'quiz.itens.min'
   if (itens.length > MAX_ITENS) return 'quiz.itens.max'
   if (itens.some((i) => { const n = String(i.nome ?? '').trim(); return n.length < 2 || n.length > 80 })) return 'quiz.itens.nome'
-  if (new Set(itens.map((i) => normalizarNome(i.nome))).size < itens.length) return 'quiz.itens.repetido'
+  if (itensRepetidos(itens).length) return 'quiz.itens.repetido'
   if (ramo.noPromo && itens.some((i) => temPromocao(`${i.nome} ${i.descricao ?? ''}`))) return 'quiz.itens.promo'
   if (!ramo.noPromo) {
     for (const i of itens) {

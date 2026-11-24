@@ -5,7 +5,7 @@ import { el, campo } from '../comum.js'
 import { REDES } from '../../../supabase/functions/_shared/modelos/tipos.ts'
 import { datasParaPromocao, diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
-import { MAX_ITENS, validarItens, MAX_FOTOS_NEGOCIO } from './negocio.js'
+import { MAX_ITENS, validarItens, MAX_FOTOS_NEGOCIO, itensRepetidos, textoDosRepetidos } from './negocio.js'
 import { montarImportacao, faixaDeFotos } from './importarTela.js'
 
 const HORARIOS = [['07:00', 'manha'], ['12:00', 'almoco'], ['19:00', 'noite']]
@@ -111,7 +111,8 @@ const BLOCOS = {
 
     const editor = (item, i) => {
       const [rNome, iNome] = campo(t('quiz.item.nome'), { value: item.nome, maxlength: 80 })
-      iNome.addEventListener('input', () => { item.nome = iNome.value })
+      // mexeu no nome: tira a marca de "nome repetido" (volta na próxima vez que tentar salvar, se ainda repetir)
+      iNome.addEventListener('input', () => { item.nome = iNome.value; iNome.closest('fieldset')?.classList.remove('repetido') })
       const idDesc = `desc-${item.id}`
       const desc = el('textarea', { id: idDesc, rows: 2, maxlength: 300 })
       desc.value = item.descricao
@@ -153,7 +154,19 @@ const BLOCOS = {
     return {
       titulo: ramo.itensQ,
       corpo: [...montarImportacao({ ramo, estado, aoMudar: redesenhar }), el('p', { class: 'muted', texto: t('quiz.itens.dica', { max: MAX_ITENS }) }), sugestoes, lista, adicionar],
-      validar: () => { const k = validarItens(estado.itens, ramo); return k ? t(k, { max: MAX_ITENS }) : null },
+      validar: () => {
+        const k = validarItens(estado.itens, ramo)
+        // itens com o mesmo nome: borda vermelha nos dois, a tela vai até o primeiro e a mensagem diz quais são
+        const caixas = [...lista.children]
+        caixas.forEach((c) => c.classList.remove('repetido'))
+        if (k === 'quiz.itens.repetido') {
+          const marcadas = itensRepetidos(estado.itens).flat().map((idx) => caixas[idx]).filter(Boolean)
+          marcadas.forEach((c) => c.classList.add('repetido'))
+          marcadas[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return t(k, { nomes: textoDosRepetidos(estado.itens, ramo.itemOne) })
+        }
+        return k ? t(k, { max: MAX_ITENS }) : null
+      },
     }
   },
   fotos: ({ estado, supabase, fotosInfo }) => {

@@ -227,10 +227,6 @@ test('validarItens recusa nomes iguais depois de normalizar', () => {
   expect(validarItens([{ ...ok, nome: 'a' }, { ...ok, nome: 'a' }])).toBe('quiz.itens.nome')
 })
 
-test('quiz.itens.repetido existe em textos', async () => {
-  const { t } = await import('../../app/src/textos.js')
-  expect(t('quiz.itens.repetido')).toBe('Há dois itens com o mesmo nome. Apague um deles ou junte as fotos num só.')
-})
 
 test('salvarItens guarda a foto com hash no caminho do hash', async () => {
   const { salvarItens } = await import('../../app/src/cliente/negocio.js')
@@ -256,4 +252,18 @@ test('salvarItens que falha não apaga a foto com hash (outros posts podem usar 
   await expect(salvarItens(sb, 'u1', [{ id: 'i1', nome: 'Item', descricao: '', preco: 10, preco_promo: null,
     fotos: [{ arquivo, nome: 'item_1.jpg', hash: 'abc' }, { arquivo, nome: 'item_2.jpg' }] }], null, { reduzir: async (a) => a, descrever: false })).rejects.toThrow()
   expect(removidos).not.toContain('u1/produtos/i1/abc.jpg')
+})
+
+test('itensRepetidos: grupos de posições com o mesmo nome normalizado', async () => {
+  const { itensRepetidos, textoDosRepetidos } = await import('../../app/src/cliente/negocio.js')
+  const itens = [{ nome: 'Gramado' }, { nome: 'October Fest' }, { nome: 'Porto' }, { nome: 'october fest ' }, { nome: 'gramado' }]
+  expect(itensRepetidos(itens)).toEqual([[0, 4], [1, 3]])
+  expect(itensRepetidos([{ nome: 'A1' }, { nome: 'B2' }])).toEqual([])
+  expect(textoDosRepetidos(itens, 'Pacote')).toBe('"Gramado" (Pacote 1) e "gramado" (Pacote 5); "October Fest" (Pacote 2) e "october fest" (Pacote 4)')
+})
+
+test('quiz.itens.repetido diz quais itens', async () => {
+  const { t } = await import('../../app/src/textos.js')
+  expect(t('quiz.itens.repetido', { nomes: '"A" (Pacote 1) e "a" (Pacote 2)' }))
+    .toBe('Estes itens têm o mesmo nome: "A" (Pacote 1) e "a" (Pacote 2). Eles estão marcados em vermelho. Apague um deles ou junte as fotos num só.')
 })
