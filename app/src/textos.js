@@ -231,7 +231,7 @@ const pt = {
   'quiz.item.promodata.dia': 'Dia da promoção',
   'quiz.item.promodata.dica': 'O PAT anuncia a oferta na semana antes e reforça no dia. Nos outros dias, o item aparece com o preço normal.',
   'quiz.item.promodata.passou': 'Esta data já passou: a promoção não entra mais nos posts.',
-  'quiz.itens.fotos': 'Cada item pode ter no máximo 6 fotos.',
+  'quiz.itens.fotos': 'Cada item pode ter no máximo 12 fotos.',
   'quiz.itens.nome': 'Cada item precisa de um nome, com pelo menos 2 letras.',
   'quiz.item.nome': 'Nome',
   'quiz.item.descricao': 'Descrição (opcional)',

@@ -20,7 +20,7 @@ describe('textoDoResumo', () => {
   test('limites, preços ignorados e outros arquivos de texto', () => {
     const r = textoDoResumo({ ...base, foraItens: ['Item A', 'Item B'], foraFotos: ['x_1.jpg'], precosIgnorados: true }, { textosIgnorados: 1 })
     expect(r).toContain('⚠ Não couberam (limite de 20 itens), com as fotos: Item A, Item B')
-    expect(r).toContain('⚠ Não couberam (limite de 6 fotos por item): x_1.jpg')
+    expect(r).toContain('⚠ Não couberam (limite de 12 fotos por item): x_1.jpg')
     expect(r).toContain('Na sua área, os preços não aparecem nos posts.')
     expect(r).toContain('⚠ Usamos só o primeiro arquivo de texto; 1 outro foi ignorado')
     expect(r[0]).toBe('Nada novo foi importado.')

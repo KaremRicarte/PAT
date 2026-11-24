@@ -93,16 +93,22 @@ describe('juntarImportacao', () => {
     expect(r.resumo.fotos).toBe(2)
     expect(r.resumo.semItem).toEqual(['praia_1.jpg', '_x.jpg'])
   })
-  test('limite de 6 fotos e 20 itens', () => {
-    const fotos = Array.from({ length: 8 }, (_, i) => arq(`a_${i}.jpg`))
+  test('limite de 12 fotos e 20 itens', () => {
+    const fotos = Array.from({ length: 14 }, (_, i) => arq(`a_${i}.jpg`))
     const r = juntarImportacao([{ id: 'a', nome: 'A', fotos: [{ path: 'p' }] }], ent('', fotos), opc())
-    expect(r.itens[0].fotos).toHaveLength(6)
+    expect(r.itens[0].fotos).toHaveLength(12)
     expect(r.resumo.foraFotos).toHaveLength(3)
     const lista = Array.from({ length: 22 }, (_, i) => `Item ${String.fromCharCode(65 + i)}${i}`).join('\n')
     const r2 = juntarImportacao([], ent(lista, [arq('itemv21_1.jpg')]), opc())
     expect(r2.itens).toHaveLength(20)
     expect(r2.resumo.foraItens).toHaveLength(2)
     expect(r2.resumo.novos).toBe(20)
+  })
+  test('13ª foto vai para foraFotos', () => {
+    const atual = [{ id: 'g', nome: 'Gramado', fotos: Array.from({ length: 11 }, (_, i) => ({ path: `p${i}` })) }]
+    const r = juntarImportacao(atual, ent('', [arq('gramado_1.jpg'), arq('gramado_2.jpg'), arq('gramado_3.jpg')]), opc())
+    expect(r.resumo.fotos).toBe(1)
+    expect(r.resumo.foraFotos).toEqual(['gramado_2.jpg', 'gramado_3.jpg'])
   })
   test('importar duas vezes não duplica', () => {
     const e = ent('Gramado;2199', [arq('gramado_1.jpg')])
