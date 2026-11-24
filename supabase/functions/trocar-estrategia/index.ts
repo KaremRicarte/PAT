@@ -1,6 +1,7 @@
 // Função trocar-estrategia: troca a estratégia de um mês e refaz os posts que faltam (RPC trocar_estrategia_mes).
 // Quem chama é sempre o próprio cliente; o id vem do token validado pelo Auth, nunca do corpo.
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { precosVisiveis } from '../_shared/modelos/precos.ts'
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import { hojeEmSaoPaulo } from '../_shared/modelos/calendario.ts'
 import { cutucarMelhorarPosts } from '../_shared/cutucar.ts'
@@ -40,8 +41,8 @@ Deno.serve(async (req) => {
     cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo, frequencia').eq('id', quem.id).maybeSingle()),
     mes: (id) => ler(db.from('meses').select('id, cliente_id, ano_mes, estrategia, redes').eq('id', id).maybeSingle()),
     negocio: () => ler(db.from('negocios').select('nome, insta, tom, horario').eq('cliente_id', quem.id).maybeSingle()),
-    produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data')
-      .eq('cliente_id', quem.id).order('ordem'))) ?? [],
+    produtos: async () => precosVisiveis((await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, ocultar_preco')
+      .eq('cliente_id', quem.id).order('ordem'))) ?? []),
     hoje: () => hojeEmSaoPaulo(),
     async gravar(mesId, estrategia, desde, posts) {
       const { data, error } = await db.rpc('trocar_estrategia_mes', {

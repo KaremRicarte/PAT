@@ -1,6 +1,7 @@
 // Função refazer-posts: depois de editar os itens, refaz os posts que faltam com os modelos prontos.
 // Quem chama é sempre o próprio cliente; o id vem do token validado pelo Auth, nunca do corpo.
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { precosVisiveis } from '../_shared/modelos/precos.ts'
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import { hojeEmSaoPaulo } from '../_shared/modelos/calendario.ts'
 import { cutucarMelhorarPosts } from '../_shared/cutucar.ts'
@@ -41,8 +42,8 @@ Deno.serve(async (req) => {
   const deps: DepsRefazer = {
     cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo, frequencia').eq('id', quem.id).maybeSingle()),
     negocio: () => ler(db.from('negocios').select('nome, insta, tom, horario').eq('cliente_id', quem.id).maybeSingle()),
-    produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data')
-      .eq('cliente_id', quem.id).order('ordem'))) ?? [],
+    produtos: async () => precosVisiveis((await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, ocultar_preco')
+      .eq('cliente_id', quem.id).order('ordem'))) ?? []),
     hoje: () => hojeEmSaoPaulo(),
     async postsQueFaltam(hoje) {
       const linhas = (await ler<LinhaPost[]>(db.from('posts')

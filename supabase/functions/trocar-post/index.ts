@@ -2,6 +2,7 @@
 // (até ~30 s); sem a IA, por outro dos modelos prontos.
 // Quem chama é sempre o próprio cliente; o id vem do token validado pelo Auth, nunca do corpo.
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { precosVisiveis } from '../_shared/modelos/precos.ts'
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import { contarUsoNoMes, criarChamarIA, registrarUso, TEMPO_TROCA_MS, urlAssinada } from '../_shared/ia/adaptadores.ts'
 import { trocarPostDoCliente, type DepsTroca, type PostDoMes } from './acoes.ts'
@@ -53,8 +54,8 @@ Deno.serve(async (req) => {
     trocasDoMes: async (mesId) => ((await ler(db.from('posts').select('trocas').eq('mes_id', mesId))) ?? [])
       .reduce((soma: number, p: { trocas: number }) => soma + p.trocas, 0),
     negocio: () => ler(db.from('negocios').select('nome, insta, tom, horario').eq('cliente_id', quem.id).maybeSingle()),
-    produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, fotos, foto_path')
-      .eq('cliente_id', quem.id).order('ordem'))) ?? [],
+    produtos: async () => precosVisiveis((await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, ocultar_preco, fotos, foto_path')
+      .eq('cliente_id', quem.id).order('ordem'))) ?? []),
     async gravar(id, campos) {
       const { error } = await db.from('posts').update(campos).eq('id', id)
       if (error) throw error

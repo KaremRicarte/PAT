@@ -1,6 +1,7 @@
 // Função gerar-mes: monta o mês do cliente que está chamando e grava tudo de uma vez (RPC criar_mes).
 // Quem chama é sempre o próprio cliente; o id vem do token validado pelo Auth, nunca do corpo.
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { precosVisiveis } from '../_shared/modelos/precos.ts'
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import { hojeEmSaoPaulo } from '../_shared/modelos/calendario.ts'
 import { cutucarMelhorarPosts } from '../_shared/cutucar.ts'
@@ -39,8 +40,8 @@ Deno.serve(async (req) => {
   const deps: DepsMes = {
     cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo, redes, frequencia').eq('id', quem.id).maybeSingle()),
     negocio: () => ler(db.from('negocios').select('nome, insta, tom, horario').eq('cliente_id', quem.id).maybeSingle()),
-    produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data')
-      .eq('cliente_id', quem.id).order('ordem'))) ?? [],
+    produtos: async () => precosVisiveis((await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, ocultar_preco')
+      .eq('cliente_id', quem.id).order('ordem'))) ?? []),
     mesesGerados: async () => ((await ler(db.from('meses').select('ano_mes').eq('cliente_id', quem.id))) ?? [])
       .map((m: { ano_mes: string }) => m.ano_mes),
     hoje: () => hojeEmSaoPaulo(),
