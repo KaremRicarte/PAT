@@ -40,6 +40,8 @@ export function estadoDoNegocio(negocio, produtos, ramo) {
       promoTexto: p.preco_promo ? String(p.preco_promo).replace('.', ',') : '',
       // null = sem data (a promoção vale o mês todo)
       promoData: p.promo_data ?? null,
+      // caixinha "Ocultar preço": o preço fica salvo, mas os posts saem sem valor
+      ocultarPreco: Boolean(p.ocultar_preco),
       fotos: p.fotos?.length ? p.fotos.map((path) => ({ path })) : p.foto_path ? [{ path: p.foto_path }] : [],
     })),
   }
@@ -99,6 +101,16 @@ export function caixaDaData(item, datas) {
   return el('div', { class: 'promo-data' }, el('label', { class: 'caixinha', for: id }, marcar, el('span', { texto: t('quiz.item.promodata') })), detalhes)
 }
 
+// Caixinha "Ocultar preço" do item (igual à da data da promoção): o preço continua salvo, mas não aparece nos posts.
+export function caixaOcultarPreco(item) {
+  const id = `ocultar-preco-${item.id}`
+  const marcar = el('input', { type: 'checkbox', id, checked: Boolean(item.ocultarPreco) })
+  marcar.addEventListener('change', () => { item.ocultarPreco = marcar.checked })
+  return el('div', { class: 'promo-data' },
+    el('label', { class: 'caixinha', for: id }, marcar, el('span', { texto: t('quiz.item.ocultarpreco') })),
+    el('p', { class: 'muted pequeno', texto: t('quiz.item.ocultarpreco.dica') }))
+}
+
 const BLOCOS = {
   itens: ({ ramo, estado, supabase, fotosInfo }) => {
     const lista = el('div', { class: 'itens' })
@@ -124,7 +136,7 @@ const BLOCOS = {
         const [rPromo, iPromo] = campo(t('quiz.item.promo'), { value: item.promoTexto, inputmode: 'decimal', placeholder: 'Ex.: 39,90' })
         iPromo.addEventListener('input', () => { item.promoTexto = iPromo.value })
         preco = [el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo)),
-          caixaDaData(item, datas)]
+          caixaDaData(item, datas), caixaOcultarPreco(item)]
       }
       const selos = el('span', { class: 'selos-item' })
       const remover = el('button', { type: 'button', class: 'secundario pequeno', texto: t('quiz.item.remover') })

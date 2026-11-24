@@ -5,7 +5,7 @@ import { t } from '../textos.js'
 import { el, logo, mostrar, campo, aviso } from '../comum.js'
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { validarItens, itensParaSalvar } from './negocio.js'
-import { estadoDoNegocio, caixaDaData } from './perguntas.js'
+import { estadoDoNegocio, caixaDaData, caixaOcultarPreco } from './perguntas.js'
 import { chamarFuncao } from './refazer.js'
 import { datasParaPromocao } from '../../../supabase/functions/_shared/modelos/datas.ts'
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
@@ -14,7 +14,7 @@ import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/cale
 export function itemParaGravar(item, ramo) {
   const [salvo] = itensParaSalvar([item], ramo)
   return { nome: salvo.nome.trim(), descricao: salvo.descricao?.trim() || null, preco: salvo.preco,
-    preco_promo: salvo.preco_promo, promo_data: salvo.promo_data }
+    preco_promo: salvo.preco_promo, promo_data: salvo.promo_data, ocultar_preco: salvo.ocultar_preco }
 }
 
 // aoCancelar: volta ao post; aoRefeito: o post foi refeito (o calendário recarrega e mostra o PAT trabalhando).
@@ -40,7 +40,7 @@ export function telaRefazerPost(ctx, post, { aoCancelar, aoRefeito }) {
       iPreco.addEventListener('input', () => { item.precoTexto = iPreco.value })
       const [rPromo, iPromo] = campo(t('quiz.item.promo'), { value: item.promoTexto, inputmode: 'decimal', placeholder: 'Ex.: 39,90' })
       iPromo.addEventListener('input', () => { item.promoTexto = iPromo.value })
-      campos.push(el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo)), caixaDaData(item, datasParaPromocao(hojeEmSaoPaulo(), ramo)))
+      campos.push(el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo)), caixaDaData(item, datasParaPromocao(hojeEmSaoPaulo(), ramo)), caixaOcultarPreco(item))
     }
   }
 

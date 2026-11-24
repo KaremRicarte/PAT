@@ -166,7 +166,7 @@ test('itensParaSalvar: converte preços do texto; promo só com preço; ramos no
   const itens = [{ id: 'a', nome: 'Corte', descricao: 'd', precoTexto: '50', promoTexto: '40', fotos: [] },
     { id: 'b', nome: 'X', descricao: '', precoTexto: '', promoTexto: '30', fotos: [] }]
   const [a, b] = itensParaSalvar(itens, { noPromo: false })
-  expect(a).toEqual({ id: 'a', nome: 'Corte', descricao: 'd', preco: 50, preco_promo: 40, promo_data: null, fotos: [] })
+  expect(a).toEqual({ id: 'a', nome: 'Corte', descricao: 'd', preco: 50, preco_promo: 40, promo_data: null, ocultar_preco: false, fotos: [] })
   expect(b.preco).toBeNull()
   expect(b.preco_promo).toBeNull()
   const [c] = itensParaSalvar(itens, { noPromo: true })
@@ -266,4 +266,14 @@ test('quiz.itens.repetido diz quais itens', async () => {
   const { t } = await import('../../app/src/textos.js')
   expect(t('quiz.itens.repetido', { nomes: '"A" (Pacote 1) e "a" (Pacote 2)' }))
     .toBe('Estes itens têm o mesmo nome: "A" (Pacote 1) e "a" (Pacote 2). Eles estão marcados em vermelho. Apague um deles ou junte as fotos num só.')
+})
+
+test('itensParaSalvar e salvarItens levam a caixinha Ocultar preço', async () => {
+  const { itensParaSalvar, salvarItens } = await import('../../app/src/cliente/negocio.js')
+  const itens = [{ id: 'a', nome: 'Corte', descricao: '', precoTexto: '50', promoTexto: '', ocultarPreco: true, fotos: [] }]
+  expect(itensParaSalvar(itens, { noPromo: false })[0].ocultar_preco).toBe(true)
+  expect(itensParaSalvar(itens, { noPromo: true })[0].ocultar_preco).toBe(false)
+  const chamadas = []
+  await salvarItens(fakeSimples(chamadas), 'u1', itensParaSalvar(itens, { noPromo: false }))
+  expect(chamadas.find(([t, v]) => t === 'produtos' && v)[1][0]).toMatchObject({ ocultar_preco: true, preco: 50 })
 })

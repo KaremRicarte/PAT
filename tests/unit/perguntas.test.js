@@ -21,7 +21,7 @@ test('estadoDoNegocio: itens com fotos e foto_path antigo', () => {
     { id: 'c', nome: 'Pé', fotos: [] },
   ], ramo)
   expect(e.nome).toBe('Ana')
-  expect(e.itens[0]).toEqual({ id: 'a', nome: 'Corte', descricao: '', precoTexto: '49,9', promoTexto: '39,9', promoData: null,
+  expect(e.itens[0]).toEqual({ id: 'a', nome: 'Corte', descricao: '', precoTexto: '49,9', promoTexto: '39,9', promoData: null, ocultarPreco: false,
     fotos: [{ path: 'x/1.jpg' }, { path: 'x/2.jpg' }] })
   expect(e.itens[1].fotos).toEqual([{ path: 'x/b.jpg' }])
   expect(e.itens[2].fotos).toEqual([])
@@ -43,4 +43,9 @@ test('nomesDasRedes na ordem de REDES', () => {
   expect(nomesDasRedes(['instagram', 'facebook', 'tiktok', 'whatsapp'])).toBe('Instagram, Facebook, TikTok / Reels, WhatsApp')
   expect(nomesDasRedes([])).toBe('')
   expect(nomesDasRedes(undefined)).toBe('')
+})
+
+test('estadoDoNegocio lê a caixinha Ocultar preço', () => {
+  const e = estadoDoNegocio(null, [{ id: 'a', nome: 'Corte', preco: 50, preco_promo: null, ocultar_preco: true, fotos: [] }], ramo)
+  expect(e.itens[0].ocultarPreco).toBe(true)
 })

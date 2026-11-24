@@ -99,7 +99,7 @@ export async function carregarNegocio(supabase, uid) {
   const [n, p] = await Promise.all([
     supabase.from('negocios').select('nome, insta, assinatura, tom, horario, cor1, cor2, logo_path, fotos, pronto')
       .eq('cliente_id', uid).maybeSingle(),
-    supabase.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, fotos, foto_path').eq('cliente_id', uid).order('ordem'),
+    supabase.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, ocultar_preco, fotos, foto_path').eq('cliente_id', uid).order('ordem'),
   ])
   if (n.error) throw n.error
   if (p.error) throw p.error
@@ -153,7 +153,9 @@ export function itensParaSalvar(itens, ramo) {
     const preco_promo = ramo.noPromo ? null : (preco ? precoDoTexto(i.promoTexto) : null)
     // caixinha "Promoção só para uma data especial" (vale com ou sem preço; ramos noPromo não têm promoção)
     return { id: i.id, nome: i.nome, descricao: i.descricao, preco, preco_promo,
-      promo_data: !ramo.noPromo && i.promoData ? i.promoData : null, fotos: i.fotos }
+      promo_data: !ramo.noPromo && i.promoData ? i.promoData : null,
+      // caixinha "Ocultar preço" (ramos noPromo não têm preço)
+      ocultar_preco: !ramo.noPromo && Boolean(i.ocultarPreco), fotos: i.fotos }
   })
 }
 
@@ -194,7 +196,7 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
       const preco = i.preco ?? null
       linhas.push({ id: i.id, cliente_id: uid, nome: i.nome.trim(), descricao: i.descricao?.trim() || null,
         preco, preco_promo: preco === null ? null : i.preco_promo ?? null,
-        promo_data: i.promo_data ?? null, fotos, foto_path: fotos[0] ?? null, ordem })
+        promo_data: i.promo_data ?? null, ocultar_preco: i.ocultar_preco ?? false, fotos, foto_path: fotos[0] ?? null, ordem })
     }
     const r3 = await supabase.from('produtos').upsert(linhas)
     if (r3.error) throw r3.error

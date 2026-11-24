@@ -226,6 +226,8 @@ const pt = {
   'quiz.itens.promomaior': 'O preço promocional precisa ser menor que o preço normal.',
   'quiz.itens.datainvalida': 'Escolha o dia da promoção.',
   'quiz.item.promodata': 'Promoção só para uma data especial',
+  'quiz.item.ocultarpreco': 'Ocultar preço',
+  'quiz.item.ocultarpreco.dica': 'O preço fica salvo, mas não aparece na arte nem na legenda.',
   'quiz.item.promodata.qual': 'Qual data?',
   'quiz.item.promodata.outro': 'Outro dia…',
   'quiz.item.promodata.dia': 'Dia da promoção',
