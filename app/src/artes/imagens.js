@@ -102,7 +102,7 @@ async function prepararArte(supabase, post, { negocio, produtos, ramo, fotosInfo
   const medida = medidaDaArte(post)
   if (!medida) return null
   const look = lookDoRamo(ramo?.id)
-  const pecas = pecasDaArte(post, negocio, ramo)
+  const pecas = pecasDaArte(post, negocio, ramo, produtos)
   const fotoPath = fotoDoPost(post, produtos ?? [], ramo, fotosInfo)
   const logoPath = pecas.assinatura.logo ? negocio.logo_path : null
   const soltar = prenderImagens([fotoPath, logoPath]) // quem chama solta depois de desenhar
@@ -185,7 +185,7 @@ export async function miniatura(supabase, post, ctxDados, largura = 240) {
 // Fotos e logo ficam presos até soltar(): os bitmaps são desenhados durante toda a gravação.
 async function prepararVideo(supabase, post, { negocio, produtos, ramo, fotosInfo }, fotoPaths) {
   const look = lookDoRamo(ramo?.id)
-  const pecas = pecasDaArte(post, negocio, ramo)
+  const pecas = pecasDaArte(post, negocio, ramo, produtos)
   const paths = (fotoPaths ?? fotosDoPost(post, produtos ?? [], ramo, 4, fotosInfo)).filter(Boolean)
   const logoPath = pecas.assinatura.logo ? negocio.logo_path : null
   const soltar = prenderImagens([...paths, logoPath])

@@ -220,6 +220,175 @@ function seloDePreco(f, preco, tinta, y) {
   return m.h
 }
 
+// ---------- cartão do pacote de viagem (Turismo) ----------
+// No estilo dos cartões de agência: linhas com ícone (hotel, transporte, transfer, datas, refeições), o preço
+// "De … por", a unidade, as parcelas, o selo do Pix e o selo do WhatsApp. Painel escuro: lê em qualquer foto.
+
+// Ícones desenhados (caminhos SVG de 24×24): emoji muda de um celular para outro e pode virar quadradinho.
+const ICONES = {
+  hotel: 'M3 7v11h2v-3h14v3h2v-7a3 3 0 0 0-3-3h-7v6H5V7H3zm4 1a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+  aviao: 'M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z',
+  onibus: 'M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM18 11H6V6h12v5z',
+  transfer: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-8l-2.08-5.99zM6.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm11 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM5 11l1.5-4.5h11L19 11H5z',
+  data: 'M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V9h14v11z',
+  refeicao: 'M20 3H4v10a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4v-3h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 5h-2V5h2v3zM2 19h18v2H2z',
+  whats: 'M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.2-.8-2.7-1.1-4.4-3.9-4.5-4-.1-.2-1.1-1.4-1.1-2.7s.7-1.9.9-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.1 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.6-.1 1.3z',
+}
+const VERDE = '#25D366'
+const caminhos = new Map()
+
+function desenharIcone(ctx, nome, x, y, tam, cor) {
+  ctx.save()
+  ctx.fillStyle = cor
+  if (typeof Path2D === 'function' && ctx.translate) {
+    if (!caminhos.has(nome)) caminhos.set(nome, new Path2D(ICONES[nome]))
+    ctx.translate(x, y)
+    ctx.scale(tam / 24, tam / 24)
+    ctx.fill(caminhos.get(nome))
+  } else {
+    ctx.beginPath(); ctx.arc(x + tam / 2, y + tam / 2, tam / 3, 0, Math.PI * 2); ctx.fill()
+  }
+  ctx.restore()
+}
+
+// Medidas do cartão na escala `e` (1 = tamanho cheio; encolhe até caber no espaço).
+function medidasDoCartao(f, pecas, e) {
+  const { ctx, u, mw, look } = f
+  const pc = pecas.pacote, preco = pecas.preco
+  const m = {
+    e, pad: 3.2 * u * e, gap: 2 * u * e,
+    linha: 3.9 * u * e, icone: 4.2 * u * e, entre: 1.35,
+    de: 3.2 * u * e, por: 8.5 * u * e, peq: 2.9 * u * e,
+    pilula: 2.8 * u * e, whats: 3.4 * u * e,
+  }
+  const larguraTexto = mw - m.pad * 2 - m.icone - 2 * u * e
+  ctx.font = `600 ${m.linha}px ${look.fb ?? look.fd}`
+  // cada linha cabe em até 2 linhas de texto (o hotel longo quebra; além disso, a fonte comprime no fillText)
+  m.linhas = pc.linhas.map((l) => ({ ...l, partes: quebrarLinhas(l.texto, larguraTexto, medidor(ctx)).slice(0, 2) }))
+  m.larguraTexto = larguraTexto
+  let h = m.pad
+  h += m.linhas.reduce((s, l) => s + l.partes.length * m.linha * m.entre, 0)
+  if (preco) {
+    h += m.gap
+    if (preco.de) h += m.de * 1.3
+    h += m.por * 1.1
+    if (pc.unidade) h += m.peq * 1.4
+    if (pc.parcelas) h += m.peq * 1.4
+    if (pc.pix) h += m.gap + m.pilula * 1.9
+  }
+  if (pc.whatsapp) h += m.gap + m.whats * 2.2
+  m.h = h + m.pad
+  return m
+}
+
+export function medirCartao(f, pecas, alturaMax) {
+  let e = 1
+  let m = medidasDoCartao(f, pecas, e)
+  for (let i = 0; i < 20 && m.h > alturaMax; i++) { e *= 0.93; m = medidasDoCartao(f, pecas, e) }
+  return m
+}
+
+// Pílula com texto (e ícone opcional) centralizado ou à esquerda; devolve a altura.
+function pilula(f, texto, x, y, w, h, tam, { fundo, tinta, icone = null, centro = false }) {
+  const { ctx, look } = f
+  ctx.save()
+  ctx.fillStyle = fundo
+  retanguloArredondado(ctx, x, y, w, h, h / 2)
+  ctx.fill()
+  ctx.font = `800 ${tam}px ${look.fd}`
+  const tamIcone = icone ? tam * 1.3 : 0, folga = icone ? tam * 0.5 : 0
+  const max = w - h - tamIcone - folga
+  const largura = Math.min(ctx.measureText(texto).width, max)
+  let tx = centro ? x + (w - largura - tamIcone - folga) / 2 : x + h / 2
+  if (icone) { desenharIcone(ctx, icone, tx, y + (h - tamIcone) / 2, tamIcone, tinta); tx += tamIcone + folga }
+  ctx.fillStyle = tinta
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(texto, tx, y + h / 2, max)
+  ctx.restore()
+}
+
+// Desenha o cartão com o topo em `y` (medidas de medirCartao). Devolve a altura.
+function desenharCartao(f, pecas, m, y) {
+  const { ctx, x, mw, u, look } = f
+  const pc = pecas.pacote, preco = pecas.preco
+  const branco = '#FFFFFF'
+  ctx.save()
+  ctx.fillStyle = 'rgba(0,0,0,.6)'
+  retanguloArredondado(ctx, x, y, mw, m.h, 3 * u * m.e)
+  ctx.fill()
+  const ix = x + m.pad, tx = ix + m.icone + 2 * u * m.e
+  let cy = y + m.pad
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  for (const l of m.linhas) {
+    const alto = m.linha * m.entre
+    desenharIcone(ctx, l.icone, ix, cy + (alto - m.icone) / 2, m.icone, branco)
+    ctx.font = `600 ${m.linha}px ${look.fb ?? look.fd}`
+    ctx.fillStyle = branco
+    l.partes.forEach((p, i) => ctx.fillText(p, tx, cy + alto * i + alto / 2, m.larguraTexto))
+    cy += alto * l.partes.length
+  }
+  const largura = mw - m.pad * 2
+  if (preco) {
+    cy += m.gap
+    ctx.textBaseline = 'top'
+    if (preco.de) {
+      const txt = `De ${preco.de} por`
+      ctx.font = `700 ${m.de}px ${look.fd}`
+      ctx.fillStyle = branco
+      ctx.globalAlpha = 0.85
+      ctx.fillText(txt, ix, cy, largura)
+      // risca só o valor antigo
+      const w0 = ctx.measureText('De ').width, wv = ctx.measureText(preco.de).width
+      ctx.fillRect(ix + w0, cy + m.de * 0.5, Math.min(wv, largura - w0), Math.max(1, m.de * 0.08))
+      ctx.globalAlpha = 1
+      cy += m.de * 1.3
+    }
+    ctx.font = `800 ${m.por}px ${look.fd}`
+    ctx.fillStyle = branco
+    ctx.fillText(preco.por, ix, cy, largura)
+    cy += m.por * 1.1
+    ctx.font = `600 ${m.peq}px ${look.fb ?? look.fd}`
+    for (const txt of [pc.unidade, pc.parcelas]) {
+      if (!txt) continue
+      ctx.fillText(txt, ix, cy + m.peq * 0.2, largura)
+      cy += m.peq * 1.4
+    }
+    if (pc.pix) {
+      cy += m.gap
+      ctx.font = `800 ${m.pilula}px ${look.fd}`
+      const w = Math.min(ctx.measureText(pc.pix).width + m.pilula * 1.9, largura)
+      pilula(f, pc.pix, ix, cy, w, m.pilula * 1.9, m.pilula, { fundo: VERDE, tinta: '#0B2E13' })
+      cy += m.pilula * 1.9
+    }
+  }
+  if (pc.whatsapp) {
+    cy += m.gap
+    pilula(f, `${t('arte.pacote.whats')} · ${pc.whatsapp}`, ix, cy, largura, m.whats * 2.2, m.whats,
+      { fundo: VERDE, tinta: branco, icone: 'whats', centro: true })
+  }
+  ctx.restore()
+  return m.h
+}
+
+// Arte com o cartão do pacote (arte única, capa do vídeo e 1ª página do carrossel): rótulo e título no alto,
+// o cartão embaixo, acima da assinatura.
+function arteDoPacote(f, { pecas, foto, logo, rotuloTexto }) {
+  const { u, H } = f
+  const tinta = fundoComFoto(f, foto)
+  const topo = 17 * u, fundo = H - 20 * u
+  rotulo(f, rotuloTexto ?? pecas.rotulo, 9 * u, tinta)
+  // o título fica com pelo menos 2 linhas pequenas; o resto é do cartão
+  const minTitulo = 14 * u
+  const m = medirCartao(f, pecas, fundo - topo - minTitulo - 3 * u)
+  const tit = montarTitulo(f, pecas.titulo, 8 * u, fundo - topo - m.h - 3 * u)
+  pintarTitulo(f, tit, topo, tinta)
+  desenharCartao(f, pecas, m, fundo - m.h)
+  faixa(f)
+  assinar(f, pecas.assinatura, logo, tinta)
+}
+
 // ---------- acabamento ----------
 
 // Acabamento do estilo (band): faixa embaixo (varejo), filete lateral (sóbrio) ou moldura fina (elegante).
@@ -307,6 +476,7 @@ function fundoComFoto(f, foto) {
 // Arte única (drawSingle). Vertical (Stories, Status, capa de vídeo): rótulo e frase no alto, sem a enquete.
 // Feed: título e uma frase de apoio embaixo.
 function arteUnica(f, { pecas, foto, logo, capaDeVideo }) {
+  if (pecas.pacote) return arteDoPacote(f, { pecas, foto, logo })
   const { u, H, W } = f
   const tinta = fundoComFoto(f, foto)
   const topo = 17 * u, fundo = H - 20 * u
@@ -344,7 +514,9 @@ function textoNoMeio(f, texto, tamanho, cor) {
 function paginaDoCarrossel(f, { pecas, foto, logo, pagina }) {
   const { u, H } = f
   const topo = 17 * u, fundo = H - 20 * u
-  if (pagina === 1) {
+  if (pagina === 1 && pecas.pacote) {
+    arteDoPacote(f, { pecas, foto, logo, rotuloTexto: `1/5 · ${pecas.rotulo}` })
+  } else if (pagina === 1) {
     const tinta = fundoComFoto(f, foto)
     rotulo(f, `1/5 · ${pecas.rotulo}`, 9 * u, tinta)
     const apoio = montarTexto(f, t('arte.arraste'), 5 * u, 10 * u)
@@ -387,7 +559,8 @@ function paginaDoCarrossel(f, { pecas, foto, logo, pagina }) {
 // `pecas.assinatura` já deve vir pronta (assinaturaDaArte).
 // `arte`: id da família de artes (familia.js). Posts com preço seguem a composição de antes (o selo de preço mora nela).
 export function desenharArte(ctx, { pecas, look, cores, foto = null, logo = null, W, H, pagina = 1, paginas = 1, capaDeVideo = false, arte = null }) {
-  if (arte && !pecas.preco) {
+  // o cartão do pacote (Turismo) também segue essa composição, mesmo sem preço (Ocultar preço)
+  if (arte && !pecas.preco && !pecas.pacote) {
     const tipo = paginas > 1 ? 'car' : capaDeVideo ? 'capa' : H > W ? 'stories' : 'feed'
     desenharDaFamilia(ctx, { arte, estilo: nomeDoEstilo(look), pecas, cores, foto, logo, W, H, tipo, pagina, paginas })
   } else {

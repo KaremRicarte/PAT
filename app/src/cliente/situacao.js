@@ -4,6 +4,8 @@ import { t } from '../textos.js'
 import { daData } from '../../../supabase/functions/_shared/modelos/gerar.ts'
 import { diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
 import { indiceDoRevezamento } from '../../../supabase/functions/_shared/modelos/revezamento.ts'
+import { pacoteAtivo, linhasDoCartao } from '../../../supabase/functions/_shared/modelos/pacote.ts'
+import { formatarWhatsApp } from '../contato.js'
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
@@ -153,14 +155,38 @@ function precoDaArte(post, ramo) {
   return { de: post.preco_de != null ? dinheiro(post.preco_de) : null, por: dinheiro(post.preco_por) }
 }
 
+const UNIDADES = { pessoa: 'por pessoa', casal: 'por casal', noite: 'por noite', pacote: 'pacote completo' }
+
+// Cartão do pacote (Turismo, pacote marcado): nos posts com preço e, com "Ocultar preço", nos posts da data da
+// promoção (sem a parte do preço). null nos outros casos: a arte fica como antes.
+function cartaoDoPacote(post, negocio, ramo, produtos) {
+  if (ramo?.id !== 'turismo' || !post.produto_id) return null
+  const produto = (produtos ?? []).find((p) => p.id === post.produto_id)
+  const p = produto ? pacoteAtivo(produto.pacote) : null
+  if (!p) return null
+  const comPreco = post.preco_por != null
+  const daData = Boolean(produto.ocultar_preco) && (post.ocasiao?.fase === 'dia' || post.ocasiao?.fase === 'aquecimento')
+  if (!comPreco && !daData) return null
+  const unidade = [UNIDADES[p.preco_por], p.taxas ? 'taxas inclusas' : null].filter(Boolean).join(' · ')
+  return {
+    linhas: linhasDoCartao(p),
+    unidade: comPreco && unidade ? unidade : null,
+    parcelas: comPreco && p.parcelas ? `em até ${p.parcelas}x de ${dinheiro(Math.round(Number(post.preco_por) / p.parcelas * 100) / 100)} sem juros` : null,
+    pix: comPreco && p.pix ? `${p.pix}% de desconto no Pix` : null,
+    whatsapp: negocio?.whatsapp ? formatarWhatsApp(negocio.whatsapp) : null,
+  }
+}
+
 // Textos da arte. Legenda: gancho (1º), meio (2º) e convite (penúltimo; o último se houver até 3).
-export function pecasDaArte(post, negocio, ramo) {
+// produtos: os itens do cliente (para o cartão do pacote do Turismo).
+export function pecasDaArte(post, negocio, ramo, produtos = []) {
   const par = (post.legenda ?? '').split(/\n\n+/).map((x) => x.trim()).filter(Boolean)
   const convite = par.length < 2 ? '' : par.length <= 3 ? par[par.length - 1] : par[par.length - 2]
   const modo = negocio.assinatura
   // story em enquete: a pergunta é o título; a frase de apoio chama para o adesivo de enquete
   const enquete = post.tipo === 'stories' && /^Enquete: /m.test(post.legenda ?? '')
   const insta = (negocio.insta ?? '').trim()
+  const pacote = cartaoDoPacote(post, negocio, ramo, produtos)
   return {
     rotulo: (negocio.nome ?? '').toUpperCase(),
     titulo: post.titulo,
@@ -177,6 +203,8 @@ export function pecasDaArte(post, negocio, ramo) {
       texto: modo !== 'logo' && insta ? insta : null,
       logo: modo === 'logo' || modo === 'ambos',
     },
+    // pacote de viagem (Turismo): só quando há cartão, para as outras artes ficarem iguais
+    ...(pacote ? { pacote } : {}),
   }
 }
 

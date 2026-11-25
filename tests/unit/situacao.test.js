@@ -211,3 +211,39 @@ test('fotoDoPost: mesmo item, mesma ordem, meses diferentes -> fotos diferentes'
   const dez = fotoDoPostN({ produto_id: 's1', ordem: 2, data: '2026-12-20' }, produtos, loja)
   expect(nov).not.toBe(dez)
 })
+
+describe('pecasDaArte: cartão do pacote (Turismo)', () => {
+  const PACOTE = { ativo: true, hotel: 'Serra Azul', ida: '2026-12-12', volta: '2026-12-17', transporte: 'aviao', transfer: true,
+    refeicoes: { cafe: true, almoco: false, jantar: false }, preco_por: 'pessoa', parcelas: 10, taxas: true, pix: 5 }
+  const n = { nome: 'Malibu', insta: '@malibu', assinatura: 'insta', whatsapp: '83999990000' }
+  const produtos = [{ id: 'g', nome: 'Gramado', pacote: PACOTE, ocultar_preco: false }]
+  const comPreco = { titulo: 'T', produto_id: 'g', preco_de: 2800, preco_por: 2390 }
+
+  test('post com preço de um pacote ativo: linhas, condições e WhatsApp', () => {
+    const p = pecasDaArte(comPreco, n, RAMOS.turismo, produtos).pacote
+    expect(p.linhas[0]).toEqual({ icone: 'hotel', texto: 'Serra Azul' })
+    expect(p.linhas.map((l) => l.icone)).toEqual(['hotel', 'aviao', 'transfer', 'data', 'refeicao'])
+    expect(p.unidade).toBe('por pessoa · taxas inclusas')
+    expect(p.parcelas).toBe('em até 10x de R$ 239 sem juros')
+    expect(p.pix).toBe('5% de desconto no Pix')
+    expect(p.whatsapp).toBe('(83) 99999-0000')
+  })
+  test('outro ramo, pacote desmarcado ou post sem preço: sem cartão (as peças são as de antes)', () => {
+    expect(pecasDaArte(comPreco, n, RAMOS.beleza, produtos)).not.toHaveProperty('pacote')
+    expect(pecasDaArte(comPreco, n, RAMOS.turismo, [{ ...produtos[0], pacote: { ...PACOTE, ativo: false } }])).not.toHaveProperty('pacote')
+    expect(pecasDaArte({ ...comPreco, preco_de: null, preco_por: null }, n, RAMOS.turismo, produtos)).not.toHaveProperty('pacote')
+    expect(pecasDaArte(comPreco, n, RAMOS.turismo)).not.toHaveProperty('pacote')
+  })
+  test('Ocultar preço: no post da data da promoção, o cartão sai sem a parte do preço', () => {
+    const oculto = [{ ...produtos[0], ocultar_preco: true }]
+    const post = { titulo: 'T', produto_id: 'g', preco_de: null, preco_por: null, ocasiao: { nome: 'Natal', data: '2026-12-20', fase: 'dia' } }
+    const p = pecasDaArte(post, n, RAMOS.turismo, oculto).pacote
+    expect(p.linhas.length).toBe(5)
+    expect(p.parcelas).toBe(null)
+    expect(p.pix).toBe(null)
+    expect(p.unidade).toBe(null)
+  })
+  test('sem WhatsApp cadastrado: sem o selo', () => {
+    expect(pecasDaArte(comPreco, { ...n, whatsapp: null }, RAMOS.turismo, produtos).pacote.whatsapp).toBe(null)
+  })
+})

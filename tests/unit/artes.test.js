@@ -165,3 +165,50 @@ test('encaixarTexto: linha mais larga que o máximo também conta como "não cou
   expect(r.tamanho).toBeLessThan(10)
   for (const l of r.linhas) expect(l.length * r.tamanho / 10).toBeLessThanOrEqual(20)
 })
+
+test('desenharArte: cartão do pacote (Turismo) mostra detalhes, preço e WhatsApp, sem sair da arte, mesmo com hotel longo', async () => {
+  const { desenharArte } = await import('../../app/src/artes/desenho.js')
+  const linhas = [
+    { icone: 'hotel', texto: 'Hotel ' + 'Serra Azul Resort e Spa das Hortênsias '.repeat(2).slice(0, 74) },
+    { icone: 'aviao', texto: 'Aéreo' }, { icone: 'transfer', texto: 'Transfer incluso' },
+    { icone: 'data', texto: '12/12 a 17/12 · 5 noites' }, { icone: 'refeicao', texto: 'Pensão completa' },
+  ]
+  const pacote = { linhas, unidade: 'por pessoa · taxas inclusas', parcelas: 'em até 10x de R$ 239 sem juros', pix: '5% de desconto no Pix', whatsapp: '(83) 99999-0000' }
+  const base = { rotulo: 'MALIBU TURISMO', titulo: 'Oferta: Por que viver o Natal em Gramado pelo menos uma vez?', gancho: 'Que tal um Natal com cara de filme?', meio: '', convite: '', assinatura: { texto: '@malibu', logo: false } }
+  const formas = [{ W: 1080, H: 1350, paginas: 1 }, { W: 1080, H: 1350, paginas: 5 }, { W: 1080, H: 1920, paginas: 1 }, { W: 720, H: 1280, paginas: 1, capaDeVideo: true }]
+  for (const look of Object.values(LOOKS)) {
+    for (const forma of formas) {
+      for (const preco of [{ de: 'R$ 2.800', por: 'R$ 2.390' }, null]) {
+        const { ctx, textos, caixas } = canvasFalso()
+        const pc = preco ? pacote : { ...pacote, unidade: null, parcelas: null, pix: null }
+        // arte de família escolhida: o cartão ainda assim usa a composição de preço
+        desenharArte(ctx, { pecas: { ...base, preco, pacote: pc }, look, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, foto: null, logo: null, ...forma, pagina: 1, arte: 'a1' })
+        const tem = (s) => textos.some((x) => x.s.includes(s))
+        expect(tem('Aéreo')).toBe(true)
+        expect(tem('5 noites')).toBe(true)
+        expect(tem('Fale com a loja')).toBe(true)
+        expect(tem('(83) 99999-0000')).toBe(true)
+        expect(tem('R$ 2.390')).toBe(Boolean(preco))
+        expect(tem('em até 10x')).toBe(Boolean(preco))
+        expect(tem('5% de desconto no Pix')).toBe(Boolean(preco))
+        for (const tx of [...textos, ...caixas]) {
+          expect(tx.esq).toBeGreaterThanOrEqual(0); expect(tx.dir).toBeLessThanOrEqual(forma.W)
+          expect(tx.topo).toBeGreaterThanOrEqual(0); expect(tx.base).toBeLessThanOrEqual(forma.H)
+        }
+        // o cartão fica acima da assinatura
+        const assin = textos.find((x) => x.s === '@malibu')
+        const whats = textos.find((x) => x.s.includes('Fale com a loja'))
+        expect(whats.base).toBeLessThanOrEqual(assin.topo)
+      }
+    }
+  }
+})
+
+test('desenharArte: cartão sem WhatsApp não desenha o selo', async () => {
+  const { desenharArte } = await import('../../app/src/artes/desenho.js')
+  const { ctx, textos } = canvasFalso()
+  const pacote = { linhas: [{ icone: 'hotel', texto: 'Serra Azul' }], unidade: null, parcelas: null, pix: null, whatsapp: null }
+  desenharArte(ctx, { pecas: { rotulo: 'M', titulo: 'T', gancho: '', meio: '', convite: '', assinatura: { texto: '@m', logo: false }, preco: { de: null, por: 'R$ 99' }, pacote }, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, W: 1080, H: 1350 })
+  expect(textos.some((x) => x.s.includes('Serra Azul'))).toBe(true)
+  expect(textos.some((x) => x.s.includes('Fale com a loja'))).toBe(false)
+})
