@@ -14,10 +14,12 @@ export type PostQueFalta = {
   ordem: number, estado: string, postado_em: string | null, ano_mes: string, estrategia: string,
   // o que o post é hoje (para "Refazer este post" manter o mesmo item, pilar e fase da data)
   produto_id?: string | null, pilar?: PostGerado['pilar'], ocasiao?: Ocasiao | null, foto_path?: string | null, sem_foto?: boolean,
+  // título atual (vira titulo_anterior no "Refazer este post", para a IA não repetir)
+  titulo?: string | null,
 }
 export type CamposRefeitos = Pick<PostGerado, 'titulo' | 'legenda' | 'hashtags' | 'roteiro' | 'pilar' | 'produto_id' | 'preco_de' | 'preco_por' | 'ocasiao'> &
   // o post volta a ser de modelo e entra de novo na fila da IA (melhorar-posts)
-  { estado: 'gerado', foto_path: string | null, sem_foto: boolean, origem: 'modelo', ia_estado: 'fila' }
+  { estado: 'gerado', foto_path: string | null, sem_foto: boolean, origem: 'modelo', ia_estado: 'fila', titulo_anterior?: string | null }
 
 export type DepsRefazer = {
   cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null, frequencia?: string | null } | null>,
@@ -27,6 +29,8 @@ export type DepsRefazer = {
   // posts do cliente com data >= hoje e ainda não postados
   postsQueFaltam: (hoje: string) => Promise<PostQueFalta[]>,
   gravar: (mudancas: { id: string, campos: CamposRefeitos }[]) => Promise<void>,
+  // fotos que saíram dos posts refeitos: entram em fotos_usadas, para o revezamento da IA escolher outras
+  marcarUsadas: (paths: string[]) => Promise<void>,
 }
 
 export const MODOS = ['nao_aprovados', 'todos'] as const
@@ -59,26 +63,50 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
   const doCliente = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
 
   if (typeof postId === 'string') {
-    // só um post: dos que faltam (não postado, de hoje em diante) e deste cliente (postsQueFaltam já filtra)
-    const post = (await deps.postsQueFaltam(hoje)).find((p) => p.id === postId)
-    if (!post) return r(404, 'Este post não pode mais ser refeito: já foi postado ou o dia passou.')
-    const pacote: Pacote = { ramo: cliente.ramo, estrategia: post.estrategia as Estrategia, anoMes: post.ano_mes, inicio: `${post.ano_mes}-01`, negocio, produtos, frequencia: lerFrequencia(cliente.frequencia) }
-    const novo = refazerUmPost(pacote, { ...post, produto_id: post.produto_id ?? null, pilar: post.pilar ?? 'demo', ocasiao: post.ocasiao ?? null })
-    if (!novo) return r(422, 'Não encontrei como refazer este post.')
-    const problemas = validarPost(novo, ramo, doCliente)
-    if (problemas.length) {
-      console.error('refazer-posts: validação recusou o post', cliente.id, post.id, problemas)
-      return r(500, 'Não foi possível refazer este post.')
+    // "Refazer este post": a foto escolhida (foto_path; ausente = manter a atual) e, com dia, os outros posts do dia
+    const fotoEscolhida = e.foto_path
+    if (fotoEscolhida !== undefined && (typeof fotoEscolhida !== 'string' || !fotoEscolhida.startsWith(`${cliente.id}/`) || fotoEscolhida.includes('..'))) {
+      return r(400, 'Foto inválida.')
     }
-    // mesmo item: a foto que o cliente escolheu (ou o "sem foto") continua
-    const mesmo = (novo.produto_id ?? null) === (post.produto_id ?? null)
-    await deps.gravar([{ id: post.id, campos: {
-      titulo: novo.titulo, legenda: novo.legenda, hashtags: novo.hashtags, roteiro: novo.roteiro,
-      pilar: novo.pilar, produto_id: novo.produto_id, preco_de: novo.preco_de, preco_por: novo.preco_por, ocasiao: novo.ocasiao,
-      estado: 'gerado', foto_path: mesmo ? post.foto_path ?? null : null, sem_foto: mesmo ? Boolean(post.sem_foto) : false,
-      origem: 'modelo', ia_estado: 'fila',
-    } }])
-    return { status: 200, corpo: { refeitos: 1 } }
+    // só posts que faltam (não postados, de hoje em diante) e deste cliente (postsQueFaltam já filtra)
+    const faltam = await deps.postsQueFaltam(hoje)
+    const post = faltam.find((p) => p.id === postId)
+    if (!post) return r(404, 'Este post não pode mais ser refeito: já foi postado ou o dia passou.')
+    const alvos = e.dia === true ? [post, ...faltam.filter((p) => p.data === post.data && p.id !== post.id)] : [post]
+
+    const mudancas: { id: string, campos: CamposRefeitos }[] = []
+    const usadas: string[] = []
+    for (const alvo of alvos) {
+      const clicado = alvo.id === post.id
+      const pacote: Pacote = { ramo: cliente.ramo, estrategia: alvo.estrategia as Estrategia, anoMes: alvo.ano_mes, inicio: `${alvo.ano_mes}-01`, negocio, produtos, frequencia: lerFrequencia(cliente.frequencia) }
+      const novo = refazerUmPost(pacote, { ...alvo, produto_id: alvo.produto_id ?? null, pilar: alvo.pilar ?? 'demo', ocasiao: alvo.ocasiao ?? null })
+      const problemas = novo ? validarPost(novo, ramo, doCliente) : []
+      if (!novo || problemas.length) {
+        console.error('refazer-posts: não refiz o post', cliente.id, alvo.id, problemas)
+        // o post clicado precisa sair; os outros do dia que falharem ficam como estavam
+        if (clicado) return novo ? r(500, 'Não foi possível refazer este post.') : r(422, 'Não encontrei como refazer este post.')
+        continue
+      }
+      const mesmo = (novo.produto_id ?? null) === (alvo.produto_id ?? null)
+      const semFoto = mesmo ? Boolean(alvo.sem_foto) : false
+      let foto: string | null
+      if (clicado && typeof fotoEscolhida === 'string') foto = fotoEscolhida // a foto que o cliente escolheu
+      else if (clicado) foto = mesmo ? alvo.foto_path ?? null : null // manter a foto atual (mesmo item)
+      else foto = null // os outros do dia: a IA escolhe a próxima foto do revezamento
+      // a foto que sai fica marcada como usada agora: o revezamento da IA escolhe outra
+      if (alvo.foto_path && foto !== alvo.foto_path) usadas.push(alvo.foto_path)
+      mudancas.push({ id: alvo.id, campos: {
+        titulo: novo.titulo, legenda: novo.legenda, hashtags: novo.hashtags, roteiro: novo.roteiro,
+        pilar: novo.pilar, produto_id: novo.produto_id, preco_de: novo.preco_de, preco_por: novo.preco_por, ocasiao: novo.ocasiao,
+        estado: 'gerado', foto_path: semFoto ? null : foto, sem_foto: semFoto,
+        origem: 'modelo', ia_estado: 'fila', titulo_anterior: alvo.titulo ?? null,
+      } })
+    }
+    await deps.gravar(mudancas)
+    if (usadas.length) {
+      try { await deps.marcarUsadas([...new Set(usadas)]) } catch (erro) { console.error('refazer-posts: não marquei as fotos usadas', erro) }
+    }
+    return { status: 200, corpo: { refeitos: mudancas.length } }
   }
 
   const alvos = postsDoModo(await deps.postsQueFaltam(hoje), modo as string, hoje)

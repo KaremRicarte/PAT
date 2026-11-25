@@ -142,3 +142,80 @@ describe('Refazer este post (só um)', () => {
     expect((await refazerPostsDoCliente({ post_id: 'abc' }, deps())).status).toBe(404)
   })
 })
+
+describe('Refazer com versão nova: foto escolhida e o dia inteiro', () => {
+  const ITENS: Pacote['produtos'] = [
+    { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, promo_data: '2026-12-25' },
+    { id: 'p3', nome: 'Portugal', descricao: null, preco: 10299, preco_promo: null },
+  ]
+  const mes = gerarMes(pacote(ITENS))
+  const ID = '11111111-1111-4111-8111-111111111111'
+  // o dia com mais posts; o primeiro dele é o post clicado
+  const contagem = new Map<string, number>()
+  for (const p of mes) contagem.set(p.data, (contagem.get(p.data) ?? 0) + 1)
+  const DIA = [...contagem].sort((a, b) => b[1] - a[1])[0][0]
+  const noBanco: PostQueFalta[] = mes.map((p, i) => ({ id: `x${i}`, data: p.data, rede: p.rede, tipo: p.tipo, formato: p.formato,
+    horario: '08:00', ordem: p.ordem, estado: 'aprovado', postado_em: null, ano_mes: '2026-12', estrategia: 'vender',
+    titulo: `Título ${i}`, produto_id: p.produto_id, pilar: p.pilar, ocasiao: p.ocasiao,
+    foto_path: p.produto_id ? `c1/produtos/${p.produto_id}/f${i}.jpg` : `c1/banco/g${i}.jpg`, sem_foto: false }))
+  const iClicado = noBanco.findIndex((p) => p.data === DIA)
+  noBanco[iClicado] = { ...noBanco[iClicado], id: ID }
+  // um post geral (sem item) no mesmo dia, com imagem do banco
+  const iGeral = noBanco.findIndex((p, j) => p.data === DIA && j !== iClicado)
+  noBanco[iGeral] = { ...noBanco[iGeral], produto_id: null, foto_path: 'c1/banco/geral.jpg' }
+  const doDia = noBanco.filter((p) => p.data === DIA)
+  const deps = (extra: Partial<DepsRefazer> = {}): DepsRefazer => ({
+    cliente: async () => ({ id: 'c1', situacao: 'ativo', senha_provisoria: false, ramo: 'turismo' }),
+    negocio: async () => NEGOCIO, produtos: async () => ITENS, hoje: () => '2026-12-01',
+    postsQueFaltam: async () => noBanco, gravar: vi.fn(async () => {}), marcarUsadas: vi.fn(async () => {}), ...extra,
+  })
+  const gravados = (d: DepsRefazer) => (d.gravar as ReturnType<typeof vi.fn>).mock.calls[0][0] as { id: string, campos: Record<string, unknown> }[]
+
+  test('dia: refaz os posts do mesmo dia que faltam, com titulo_anterior, e volta para "para aprovar"', async () => {
+    expect(doDia.length).toBeGreaterThan(1)
+    const d = deps()
+    expect(await refazerPostsDoCliente({ post_id: ID, dia: true }, d)).toEqual({ status: 200, corpo: { refeitos: doDia.length } })
+    const g = gravados(d)
+    expect(g.map((x) => x.id).sort()).toEqual(doDia.map((p) => p.id).sort())
+    for (const x of g) {
+      const antes = doDia.find((p) => p.id === x.id)!
+      expect(x.campos).toMatchObject({ titulo_anterior: antes.titulo, estado: 'gerado', origem: 'modelo', ia_estado: 'fila' })
+    }
+  })
+  test('foto escolhida vai para o post clicado; os outros do dia ficam sem foto e as fotos antigas são marcadas como usadas', async () => {
+    const d = deps()
+    await refazerPostsDoCliente({ post_id: ID, dia: true, foto_path: 'c1/produtos/p2/nova.jpg' }, d)
+    const g = gravados(d)
+    expect(g.find((x) => x.id === ID)!.campos.foto_path).toBe('c1/produtos/p2/nova.jpg')
+    for (const x of g.filter((y) => y.id !== ID)) expect(x.campos.foto_path).toBeNull()
+    const marcadas = (d.marcarUsadas as ReturnType<typeof vi.fn>).mock.calls[0][0] as string[]
+    expect(marcadas.sort()).toEqual(doDia.map((p) => p.foto_path!).sort())
+  })
+  test('manter a foto (sem foto_path): o post clicado mantém a foto e não marca o uso dela', async () => {
+    const d = deps()
+    await refazerPostsDoCliente({ post_id: ID }, d)
+    const g = gravados(d)
+    expect(g).toHaveLength(1)
+    expect(g[0].campos).toMatchObject({ foto_path: noBanco[iClicado].foto_path, titulo_anterior: noBanco[iClicado].titulo })
+    expect(d.marcarUsadas).not.toHaveBeenCalled()
+  })
+  test('foto de outro cliente: 400 Foto inválida.', async () => {
+    const d = deps()
+    expect(await refazerPostsDoCliente({ post_id: ID, foto_path: 'c2/produtos/p2/x.jpg' }, d)).toEqual({ status: 400, corpo: { erro: 'Foto inválida.' } })
+    expect(d.gravar).not.toHaveBeenCalled()
+  })
+  test('post geral no modo dia: foto_path null e a imagem antiga marcada como usada', async () => {
+    const geral = doDia.find((p) => !p.produto_id && p.id !== ID)
+    expect(geral).toBeDefined() // o dia de teste tem post geral
+    const d = deps()
+    await refazerPostsDoCliente({ post_id: ID, dia: true }, d)
+    expect(gravados(d).find((x) => x.id === geral.id)!.campos.foto_path).toBeNull()
+    expect((d.marcarUsadas as ReturnType<typeof vi.fn>).mock.calls[0][0]).toContain(geral.foto_path)
+  })
+  test('erro ao marcar as fotos usadas não derruba o refazer', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const d = deps({ marcarUsadas: vi.fn(async () => { throw new Error('rede') }) })
+    expect((await refazerPostsDoCliente({ post_id: ID, dia: true }, d)).status).toBe(200)
+    log.mockRestore()
+  })
+})
