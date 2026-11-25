@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 vi.mock('../../app/src/artes/imagens.js', () => ({ esquecerImagem: vi.fn() }))
-import { itemParaGravar } from '../../app/src/cliente/refazerPost.js'
+import { itemParaGravar, fotoSugerida, postsDoDia, corpoDoRefazer } from '../../app/src/cliente/refazerPost.js'
 import { RAMOS } from '../../supabase/functions/_shared/modelos/ramos/index.ts'
 
 test('Refazer este post: os dados corrigidos do item no formato do banco', () => {
@@ -16,4 +16,23 @@ test('Refazer este post: a caixinha Ocultar preço vai para o banco (e nunca em 
   const item = { id: 'g', nome: 'Gramado', descricao: '', precoTexto: '2199', promoTexto: '', promoData: null, ocultarPreco: true, fotos: [] }
   expect(itemParaGravar(item, RAMOS.turismo)).toMatchObject({ preco: 2199, ocultar_preco: true })
   expect(itemParaGravar(item, RAMOS.psicologia)).toMatchObject({ ocultar_preco: false })
+})
+
+test('fotoSugerida: a próxima foto do item depois da atual, em ciclo', () => {
+  expect(fotoSugerida(['a', 'b', 'c'], 'b')).toBe('c')
+  expect(fotoSugerida(['a', 'b', 'c'], 'c')).toBe('a')
+  expect(fotoSugerida(['a'], 'a')).toBeNull()
+  expect(fotoSugerida(['a', 'b'], 'x')).toBe('a')
+  expect(fotoSugerida([], null)).toBeNull()
+})
+
+test('postsDoDia: os posts do mesmo dia que ainda não foram postados', () => {
+  const posts = [{ id: '1', data: '2026-11-25' }, { id: '2', data: '2026-11-25', postado_em: '2026-11-25T10:00:00Z' },
+    { id: '3', data: '2026-11-26' }, { id: '4', data: '2026-11-25', postado_em: null }]
+  expect(postsDoDia(posts, posts[0]).map((p) => p.id)).toEqual(['1', '4'])
+})
+
+test('corpoDoRefazer: a foto só vai quando foi escolhida; o dia só quando pedido', () => {
+  expect(corpoDoRefazer({ postId: 'p', foto: null, dia: false })).toEqual({ post_id: 'p' })
+  expect(corpoDoRefazer({ postId: 'p', foto: 'u/x.jpg', dia: true })).toEqual({ post_id: 'p', foto_path: 'u/x.jpg', dia: true })
 })

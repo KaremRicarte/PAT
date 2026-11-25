@@ -25,7 +25,7 @@ export function opcoesDeFoto(produtos, ramo, post, fotosInfo) {
 }
 
 // O quadradinho da foto, cortado no centro.
-async function desenharMini(supabase, path, caixa) {
+export async function desenharMini(supabase, path, caixa) {
   const soltar = prenderImagens([path])
   try {
     const img = await carregarImagem(supabase, path)

@@ -371,3 +371,13 @@ a.botao:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
 /* item com o nome repetido (dois itens iguais): borda vermelha e o aviso ao lado do número */
 .itens fieldset.repetido { border: 2px solid var(--bad); }
 .itens fieldset.repetido legend::after { content: ' · nome repetido'; color: var(--bad); font-weight: 700; }
+
+/* "Refazer este post": a foto sugerida (miniatura de 96 px) com os botões ao lado; em tela estreita, embaixo */
+.refazer-foto { margin: 16px 0 8px; }
+.refazer-foto h2 { font-size: 18px; margin: 0 0 8px; }
+.refazer-foto .foto-e-botoes { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.refazer-foto .mini-foto { width: 96px; height: 96px; border-radius: 12px; overflow: hidden; background: var(--line); flex: none; }
+.refazer-foto .mini-foto canvas, .refazer-foto .mini-foto img { width: 96px; height: 96px; object-fit: cover; display: block; }
+.refazer-foto .botoes { display: flex; flex-direction: column; gap: 8px; }
+.refazer-foto .aviso-foto { margin: 0 0 8px; }
+dialog.dialogo .acoes.coluna { display: flex; flex-direction: column; gap: 10px; }
