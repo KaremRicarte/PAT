@@ -98,3 +98,34 @@ Success means that a promotion post of a package shows the trip at a glance: ico
 - The meal text joins the ticked boxes ("Café da manhã", "Café e jantar", "Pensão completa" when all 3 are ticked).
 - Long text on the card (hotel name) shrinks down to the existing minimum and then wraps to 2 lines.
 - Layout details of the card (spacing, sizes, carousel page) are left to the builder, following the reference image and the existing art rules.
+
+## Revision 2026-11-25 (approved by Karem): the price lives inside "Detalhes do pacote"
+
+Why: in Turismo, a price only makes sense next to the package details, and "Ocultar preço" next to "Detalhes do pacote" was confusing. Portugal also had details and no price, so it never got a card.
+
+### Form (Turismo only)
+- No "Ocultar preço" checkbox.
+- "Preço normal" and "Preço promocional" move inside "Detalhes do pacote".
+- New choice "Preço nos posts": (•) "Mostrar o preço" / ( ) "Entrar em contato para as condições".
+  - It is stored in the existing `produtos.ocultar_preco` column (true = contato).
+- With "Entrar em contato", the fields O preço vale por / Parcelas / Taxas / Pix are hidden.
+- The other branches keep "Ocultar preço" exactly as today.
+
+### Rules
+- **Turismo price only with active details:** an item without "Detalhes do pacote" ticked has no price in posts (treated as no price).
+- **"Mostrar o preço":** behaves as before (offer days, de/por, full card).
+- **"Entrar em contato" (option 1):** the package keeps its offer days, as a vitrine item, even with no price typed.
+  - Those posts carry no value.
+  - The price paragraph becomes `Condições especiais: fale com a loja.`, followed by the package summary without the price part.
+  - The card shows the details, the line "Condições especiais: fale com a loja" in place of the price, and the WhatsApp button.
+  - The card appears on the package's "demo" posts (its offer days and the other posts that show the package) and on its promotion-date posts.
+- **Data migration:**
+  - Turismo items with a price and no active details get `pacote.ativo = true`, keeping any values already there.
+  - Turismo items with `ocultar_preco = true` get `pacote.ativo = true` too, so they become "Entrar em contato".
+
+### Builder's calls
+- `tratamentoDoItem` (gerar.ts) is the single place where the Turismo price rule lives.
+  - Turismo without an active package → null.
+  - Turismo "contato" → 'vitrine'.
+  - `precosVisiveis` still clears the price of "contato" items, so no value can leak into a post.
+- Card on "contato" packages: every demo post of the package, not only the offer days. There is no field on the post that marks an offer day, and a card on a post about the package is expected.
