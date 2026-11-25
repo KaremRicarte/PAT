@@ -32,7 +32,7 @@ export type PostDaFila = {
   estado: string, postado_em: string | null, ia_em: string | null,
 }
 
-export type ProdutoDoCliente = { id: string, nome: string, descricao: string | null, fotos: string[] | null, foto_path: string | null }
+export type ProdutoDoCliente = { id: string, nome: string, descricao: string | null, fotos: string[] | null, foto_path: string | null, pacote?: unknown }
 export type Contexto = {
   clienteId: string, situacao: string, ramo: string | null, estrategia: string,
   negocio: { nome: string, insta: string | null, tom: Tom, fotos: string[] | null } | null,

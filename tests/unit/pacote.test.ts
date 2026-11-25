@@ -56,7 +56,7 @@ test('textoDasRefeicoes', () => {
 })
 
 test('resumoDoPacote completo', () => {
-  expect(resumoDoPacote(lerPacote(completo)!)).toBe('Hotel Serra Azul; ida 12/12/2026, volta 17/12/2026 (5 noites); aéreo; transfer aeroporto–hotel incluso; café da manhã incluso; preço por pessoa; taxas inclusas; em até 10x; 5% de desconto no Pix')
+  expect(resumoDoPacote(lerPacote(completo)!)).toBe('Hotel Serra Azul; ida 12/12/2026, volta 17/12/2026 (5 noites); aéreo; transfer aeroporto–hotel incluso; café da manhã incluso; preço por pessoa; taxas inclusas; em até 10x; 5% a menos no Pix')
 })
 
 test('resumoDoPacote sem preço tira unidade, taxas, parcelas e Pix', () => {

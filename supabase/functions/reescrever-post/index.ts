@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       return { ...post, ...meses }
     },
     negocio: () => ler(db.from('negocios').select('nome, insta, tom').eq('cliente_id', quem.id).maybeSingle()),
-    produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, fotos, foto_path')
+    produtos: async () => (await ler(db.from('produtos').select('id, nome, descricao, pacote, fotos, foto_path')
       .eq('cliente_id', quem.id).order('ordem'))) ?? [],
     async gravar(lido, campos) {
       const { data, error } = await db.rpc('gravar_reescrita_ia', {

@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     cliente: () => ler(db.from('clientes').select('id, situacao, senha_provisoria, ramo, frequencia').eq('id', quem.id).maybeSingle()),
     mes: (id) => ler(db.from('meses').select('id, cliente_id, ano_mes, estrategia, redes').eq('id', id).maybeSingle()),
     negocio: () => ler(db.from('negocios').select('nome, insta, tom, horario').eq('cliente_id', quem.id).maybeSingle()),
-    produtos: async () => precosVisiveis((await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, ocultar_preco')
+    produtos: async () => precosVisiveis((await ler(db.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, ocultar_preco, pacote')
       .eq('cliente_id', quem.id).order('ordem'))) ?? []),
     hoje: () => hojeEmSaoPaulo(),
     async gravar(mesId, estrategia, desde, posts) {

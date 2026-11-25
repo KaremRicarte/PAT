@@ -4,13 +4,15 @@ import type { Aprox, Estrategia, Frequencia, Item, Pilar, Ramo, Rede, Tom } from
 import { ENGAJA_CTA, RAMOS, itemDoProduto } from './ramos/index.ts'
 import { agendaDoMes } from './calendario.ts'
 import { datasDoMes, diaMes } from './datas.ts'
+import { fraseDoPacote, resumoDoItem } from './pacote.ts'
 
 export type Pacote = {
   ramo: string, estrategia: Estrategia, anoMes: string, inicio: string,
   negocio: { nome: string, insta: string | null, tom: Tom, horario: string },
   // preco_promo: preço promocional (menor que o preço = promoção; igual ou vazio = vitrine de preço).
   // promo_data: a promoção vale só perto desta data (aquecimento nos 7 dias antes e o dia); null = o mês todo.
-  produtos: { id: string, nome: string, descricao: string | null, preco: number | null, preco_promo: number | null, promo_data?: string | null }[],
+  // pacote: detalhes do pacote de viagem (Turismo), como vêm do banco (modelos/pacote.ts)
+  produtos: { id: string, nome: string, descricao: string | null, preco: number | null, preco_promo: number | null, promo_data?: string | null, pacote?: unknown }[],
   // "Gerar outro": gira produtos e temas em n posições para sair um texto diferente no mesmo lugar.
   deslocamento?: number,
   // Redes escolhidas no quiz do mês; ausente = todas.
@@ -229,11 +231,20 @@ export function gerarMes(p: Pacote): PostGerado[] {
     agenda.feed.filter((d) => d < dia && pertoDaData(d, dia) && !vagas.has(d) && !temas.has(d)).slice(-2)
       .forEach((d) => vagas.set(d, { x: item, ocasiao: { nome, data: dia, fase: 'aquecimento' } }))
   }
+  // pacote de viagem (Turismo): os detalhes vão junto do preço; sem preço, no fim do meio
+  const comPacote = (pr: ItemDoMes['pr'], texto: string) => {
+    const r = resumoDoItem(p.ramo, pr.pacote, true)
+    return r ? `${texto} ${fraseDoPacote(r)}` : texto
+  }
   const montarOferta = ({ x, ocasiao }: { x: ItemDoMes & { trat: Tratamento | null }, ocasiao: Ocasiao }): Partes => {
     const titulo = `${tituloDaOferta(ocasiao)}: ${ramo.titulo(x.it)}`
-    if (!x.trat) return demo(x, titulo, SEM_PRECO)
+    if (!x.trat) {
+      const partes = demo(x, titulo, SEM_PRECO)
+      const r = resumoDoItem(p.ramo, x.pr.pacote, false)
+      return r ? { ...partes, meio: `${partes.meio} ${fraseDoPacote(r)}` } : partes
+    }
     const { texto, ...campos } = precoDoItem({ ...x, trat: x.trat }, ocasiao)
-    return demo(x, titulo, { preco: texto, ...campos })
+    return demo(x, titulo, { preco: comPacote(x.pr, texto), ...campos })
   }
 
   // A enquete do story do dia: a da oferta da data, a da data comemorativa ou a da pauta.
@@ -251,7 +262,7 @@ export function gerarMes(p: Pacote): PostGerado[] {
   const montarPreco = (x: ItemComPreco): Partes => {
     const { texto, ...campos } = precoDoItem(x)
     const titulo = x.trat === 'promo' ? 'Oferta: ' + ramo.titulo(x.it) : ramo.titulo(x.it)
-    return demo(x, titulo, { preco: texto, ...campos })
+    return demo(x, titulo, { preco: comPacote(x.pr, texto), ...campos })
   }
 
   // ---- Um conteúdo por dia de post (a pauta), adaptado para cada rede ----

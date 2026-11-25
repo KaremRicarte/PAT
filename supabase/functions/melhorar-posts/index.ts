@@ -51,7 +51,7 @@ function criarDeps(): { deps: DepsMelhorar, pegar: (n: number) => Promise<PostDa
       const [cliente, negocio, produtos] = await Promise.all([
         ler<{ situacao: string, ramo: string | null }>(db.from('clientes').select('situacao, ramo').eq('id', mes.cliente_id).maybeSingle()),
         ler(db.from('negocios').select('nome, insta, tom, fotos').eq('cliente_id', mes.cliente_id).maybeSingle()),
-        ler(db.from('produtos').select('id, nome, descricao, fotos, foto_path').eq('cliente_id', mes.cliente_id).order('ordem')),
+        ler(db.from('produtos').select('id, nome, descricao, pacote, fotos, foto_path').eq('cliente_id', mes.cliente_id).order('ordem')),
       ])
       if (!cliente) return null
       return {

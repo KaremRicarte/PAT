@@ -3,6 +3,7 @@
 import type { Estrategia, Pilar, Rede, Tom } from '../modelos/tipos.ts'
 import type { Ocasiao, PostGerado } from '../modelos/gerar.ts'
 import type { EntradaPost } from './escrever.ts'
+import { resumoDoItem } from '../modelos/pacote.ts'
 
 // descrição usada quando a foto ainda não foi descrita (a imagem vai anexada mesmo assim)
 export const SEM_DESCRICAO = 'Veja a foto anexada.'
@@ -36,7 +37,8 @@ export type DadosDoCliente = {
   estrategia: Estrategia,
   negocio: { nome: string, insta: string | null, tom: Tom },
   // todos os serviços do cliente (os textos dele não contam nas checagens)
-  produtos: { id: string, nome: string, descricao: string | null }[],
+  // pacote: detalhes do pacote de viagem (Turismo), como vêm do banco
+  produtos: { id: string, nome: string, descricao: string | null, pacote?: unknown }[],
 }
 export type LugarDoPost = {
   data: string, rede: Rede, tipo: PostGerado['tipo'], formato: PostGerado['formato'], pilar: Pilar,
@@ -59,7 +61,11 @@ export function montarEntradaPost(
       data: post.data, rede: post.rede, tipo: post.tipo, formato: post.formato, pilar: post.pilar,
       preco_de: numero(post.preco_de), preco_por: numero(post.preco_por), ocasiao: post.ocasiao ?? null,
     },
-    produto: produto ? { nome: produto.nome, descricao: produto.descricao } : null,
+    produto: produto
+      ? { nome: produto.nome, descricao: produto.descricao,
+        // pacote de viagem (Turismo): o resumo, com as condições do preço só quando o post tem preço
+        pacote: resumoDoItem(c.ramo, produto.pacote, numero(post.preco_por) != null) }
+      : null,
     foto,
     textoModelo: [post.titulo, post.legenda].filter(Boolean).join('\n\n'),
     evitar: post.titulo_anterior ?? null,

@@ -27,7 +27,7 @@ export type DepsReescrever = DepsNaHora & {
   cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null } | null>,
   post: (id: string) => Promise<PostParaReescrever | null>,
   negocio: () => Promise<{ nome: string, insta: string | null, tom: Tom } | null>,
-  produtos: () => Promise<{ id: string, nome: string, descricao: string | null, fotos: string[] | null, foto_path: string | null }[]>,
+  produtos: () => Promise<{ id: string, nome: string, descricao: string | null, fotos: string[] | null, foto_path: string | null, pacote?: unknown }[]>,
   // gravação condicional (gravar_reescrita_ia): true se o post ainda estava como foi lido
   gravar: (lido: PostParaReescrever, campos: CamposDaIA) => Promise<boolean>,
 }

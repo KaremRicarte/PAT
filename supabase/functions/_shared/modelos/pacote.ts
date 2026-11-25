@@ -97,7 +97,7 @@ export function resumoDoPacote(p: Pacote, { comPreco = true }: { comPreco?: bool
       p.preco_por === 'pacote' ? 'preço do pacote completo' : p.preco_por ? `preço por ${p.preco_por}` : null,
       p.taxas ? 'taxas inclusas' : null,
       p.parcelas ? `em até ${p.parcelas}x` : null,
-      p.pix ? `${p.pix}% de desconto no Pix` : null,
+      p.pix ? `${p.pix}% a menos no Pix` : null,
     )
   }
   return partes.filter(Boolean).join('; ')
@@ -126,4 +126,13 @@ export function validarPacote(p: unknown): string | null {
   if (p.parcelas != null && inteiroEntre(p.parcelas, PARCELAS.min, PARCELAS.max) == null) return 'quiz.item.pacote.erro.parcelas'
   if (p.pix != null && inteiroEntre(p.pix, PIX.min, PIX.max) == null) return 'quiz.item.pacote.erro.pix'
   return null
+}
+
+// O resumo como frase da legenda: "Hotel Serra Azul; ida ...; aéreo." (primeira letra maiúscula, ponto no fim).
+export const fraseDoPacote = (resumo: string) => (resumo ? `${resumo[0].toUpperCase()}${resumo.slice(1)}.` : '')
+
+// O resumo do pacote de um item, se o ramo é Turismo e o pacote está ativo; null nos outros casos.
+export function resumoDoItem(ramo: string, pacote: unknown, comPreco: boolean): string | null {
+  const p = ramo === 'turismo' ? pacoteAtivo(pacote) : null
+  return p ? resumoDoPacote(p, { comPreco }) || null : null
 }

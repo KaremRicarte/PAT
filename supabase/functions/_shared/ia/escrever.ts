@@ -6,6 +6,7 @@ import { brl, daData, paragrafos, textoDoPreco, type Ocasiao, type PostGerado } 
 import { diaMes } from '../modelos/datas.ts'
 import { MAX_HASHTAGS, ofertaDaData, semTextoDoCliente, temPromocao, validarPost } from '../modelos/validar.ts'
 import { INSTRUCOES_POST } from './instrucoes.ts'
+import { fraseDoPacote } from '../modelos/pacote.ts'
 
 export type ConteudoIA = { tipo: 'texto', texto: string } | { tipo: 'imagem', url: string }
 export type Esforco = 'low' | 'medium'
@@ -32,7 +33,8 @@ export type EntradaPost = {
     // data especial do post (tema, ou aquecimento/dia de uma promoção com data); ausente = post comum
     ocasiao?: Ocasiao | null,
   },
-  produto: { nome: string, descricao: string | null } | null,
+  // pacote: resumo dos detalhes do pacote de viagem (Turismo), já pronto (modelos/pacote.ts)
+  produto: { nome: string, descricao: string | null, pacote?: string | null } | null,
   foto: { url: string, descricao: string, ilustrativa?: boolean } | null,
   textoModelo: string,
   textosDoCliente: string[],
@@ -90,7 +92,9 @@ const semHashtags = (l: EntradaPost['lugar']) => l.rede === 'whatsapp' || l.tipo
 function precoDoPost(e: EntradaPost, noPromo: boolean) {
   const { preco_de, preco_por } = e.lugar
   if (noPromo || preco_por == null) return null
-  return { preco_de, preco_por, texto: textoDoPreco(preco_de, preco_por, e.lugar.ocasiao ?? null) }
+  // pacote de viagem: os detalhes vão no mesmo parágrafo do preço, exatos
+  const pacote = e.produto?.pacote ? ` ${fraseDoPacote(e.produto.pacote)}` : ''
+  return { preco_de, preco_por, texto: textoDoPreco(preco_de, preco_por, e.lugar.ocasiao ?? null) + pacote }
 }
 
 // Os dados deste post, em texto: tudo o que muda de um post para outro fica aqui, fora das instruções fixas.
@@ -113,6 +117,7 @@ function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
     e.produto
       ? `O post é sobre ${e.produto.nome}: se o texto de modelo abaixo citar outro lugar, produto ou serviço, ignore e fale só de ${e.produto.nome}.`
       : null,
+    e.produto?.pacote ? `Detalhes do pacote (use só estes fatos, não invente outros): ${e.produto.pacote}.` : null,
     e.foto
       ? `Foto do post (anexada${e.foto.ilustrativa ? '; imagem ilustrativa, não é do negócio: não diga que é o espaço, a equipe, o produto ou o trabalho do cliente' : ''}): ${e.foto.descricao}`
       : 'Este post não tem foto: escreva sem mencionar imagem.',
