@@ -7,6 +7,7 @@ import { datasParaPromocao, diaMes } from '../../../supabase/functions/_shared/m
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { MAX_ITENS, validarItens, MAX_FOTOS_NEGOCIO, itensRepetidos, textoDosRepetidos } from './negocio.js'
 import { montarImportacao, faixaDeFotos } from './importarTela.js'
+import { normalizarWhatsApp, formatarWhatsApp } from '../contato.js'
 import { lerPacote } from '../../../supabase/functions/_shared/modelos/pacote.ts'
 
 const HORARIOS = [['07:00', 'manha'], ['12:00', 'almoco'], ['19:00', 'noite']]
@@ -30,7 +31,10 @@ export function opcoes(nome, lista, atual, aoMudar) {
 export function estadoDoNegocio(negocio, produtos, ramo) {
   const n = negocio
   return {
-    nome: n?.nome ?? '', insta: n?.insta ?? '', assinatura: n?.assinatura ?? 'ambos',
+    nome: n?.nome ?? '', insta: n?.insta ?? '',
+    // WhatsApp como o cliente vê (formatado); salvarDadosNegocio guarda só os dígitos
+    whatsapp: n?.whatsapp ? formatarWhatsApp(n.whatsapp) : '',
+    assinatura: n?.assinatura ?? 'ambos',
     tom: n?.tom ?? 'proximo', horario: n?.horario ?? '19:00',
     cor1: n?.cor1 ?? ramo.cores.cor1, cor2: n?.cor2 ?? ramo.cores.cor2,
     logo_path: n?.logo_path ?? null,
@@ -52,7 +56,10 @@ export function estadoDoNegocio(negocio, produtos, ramo) {
 
 // Texto curto da resposta atual, para a página-resumo. Cores: a tela desenha os quadradinhos.
 export function resumoDaPergunta(chave, estado, ramo) {
-  if (chave === 'marca') return t(`quiz.assinatura.${estado.assinatura}`)
+  if (chave === 'marca') {
+    const w = normalizarWhatsApp(estado.whatsapp)
+    return [t(`quiz.assinatura.${estado.assinatura}`), w ? formatarWhatsApp(w) : null].filter(Boolean).join(' · ')
+  }
   if (chave === 'fotos') {
     const n = estado.fotosNegocio?.length ?? 0
     return n === 0 ? t('resumo.fotos.nenhuma') : n === 1 ? t('resumo.fotos.1') : t('resumo.fotos.n', { n })
@@ -170,6 +177,13 @@ function caixaDoPacote(item) {
     el('label', { class: 'caixinha', for: id }, marcar, el('span', { texto: t('quiz.item.pacote') })), detalhes)
 }
 
+// WhatsApp da empresa (opcional): aparece nas artes de pacote e nas legendas.
+function campoWhatsApp(estado) {
+  const [r, i] = campo(t('quiz.whatsapp'), { type: 'tel', inputmode: 'tel', autocomplete: 'tel', maxlength: 20, placeholder: '(83) 99999-0000', value: estado.whatsapp })
+  i.addEventListener('input', () => { estado.whatsapp = i.value })
+  return el('div', { class: 'campo-whatsapp' }, r, i, el('p', { class: 'muted pequeno', texto: t('quiz.whatsapp.dica') }))
+}
+
 const BLOCOS = {
   itens: ({ ramo, estado, supabase, fotosInfo }) => {
     const lista = el('div', { class: 'itens' })
@@ -266,7 +280,9 @@ const BLOCOS = {
         el('small', { class: 'muted', texto: t('meu.identidade.aviso') })),
       opcoes('assinatura', ASSINATURAS.map((v) => [v, t(`quiz.assinatura.${v}`)]), estado.assinatura,
         (v) => { estado.assinatura = v }),
+      campoWhatsApp(estado),
     ],
+    validar: () => (normalizarWhatsApp(estado.whatsapp) === undefined ? t('quiz.whatsapp.erro') : null),
   }),
   cores: ({ ramo, estado }) => {
     const previa = el('div', { class: 'previa-cores', texto: estado.nome || ramo.nome })

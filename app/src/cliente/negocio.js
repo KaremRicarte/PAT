@@ -43,6 +43,7 @@ export function medidaReduzida(largura, altura, maximo) {
 
 // Devolve a chave de texto do primeiro problema, ou null se a lista está boa.
 // Em ramos com regras de conselho (noPromo), nome e descrição não podem falar de preço/promoção.
+import { normalizarWhatsApp } from '../contato.js'
 import { lerPacote, validarPacote } from '../../../supabase/functions/_shared/modelos/pacote.ts'
 
 export function validarItens(itens, ramo = { noPromo: false }) {
@@ -143,6 +144,8 @@ function enviadorDeArquivos(supabase) {
 // questionário como respondido. Nome, Instagram e logo são da administração: não vão aqui.
 export async function salvarDadosNegocio(supabase, uid, dados) {
   const r1 = await supabase.from('negocios').update({
+    // WhatsApp da empresa (opcional): só dígitos; a tela já validou
+    whatsapp: normalizarWhatsApp(dados.whatsapp) ?? null,
     assinatura: dados.assinatura, tom: dados.tom, horario: dados.horario, cor1: dados.cor1, cor2: dados.cor2,
     pronto: true, atualizado_em: new Date().toISOString(),
   }).eq('cliente_id', uid).select('cliente_id')

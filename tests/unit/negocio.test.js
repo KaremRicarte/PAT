@@ -300,3 +300,13 @@ test('validarItens: no Turismo, a volta antes da ida não passa', async () => {
   expect(validarItens([{ ...item, pacote: { ...PACOTE, pix: 80 } }], RAMOS.turismo)).toBe('quiz.item.pacote.erro.pix')
   expect(validarItens([{ ...item, pacote: PACOTE }], RAMOS.turismo)).toBe(null)
 })
+
+test('salvarDadosNegocio grava o WhatsApp da empresa', async () => {
+  const { salvarDadosNegocio } = await import('../../app/src/cliente/negocio.js')
+  let chamadas = []
+  const dados = { assinatura: 'ambos', tom: 'proximo', horario: '12:00', cor1: '#000000', cor2: '#ffffff', whatsapp: '83999990000' }
+  await salvarDadosNegocio(fakeSimples(chamadas), 'u1', dados)
+  expect(chamadas.find(([t, v]) => t === 'negocios' && v)[1]).toMatchObject({ whatsapp: '83999990000' })
+  await salvarDadosNegocio(fakeSimples(chamadas = []), 'u1', { ...dados, whatsapp: '' })
+  expect(chamadas.find(([t, v]) => t === 'negocios' && v)[1]).toMatchObject({ whatsapp: null })
+})

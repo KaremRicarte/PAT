@@ -56,3 +56,10 @@ test('estadoDoNegocio lê os detalhes do pacote', () => {
   expect(e.itens[0].pacote).toMatchObject({ ativo: true, hotel: 'Serra Azul', transporte: 'onibus', transfer: false })
   expect(estadoDoNegocio(null, [{ id: 'b', nome: 'Corte', fotos: [] }], ramo).itens[0].pacote).toBe(null)
 })
+
+test('estadoDoNegocio e o resumo da marca levam o WhatsApp', () => {
+  const e = estadoDoNegocio({ nome: 'Ana', whatsapp: '83999990000' }, [], ramo)
+  expect(e.whatsapp).toBe('(83) 99999-0000')
+  expect(resumoDaPergunta('marca', e, ramo)).toBe('Logo e @ · (83) 99999-0000')
+  expect(estadoDoNegocio(null, [], ramo).whatsapp).toBe('')
+})
