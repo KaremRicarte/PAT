@@ -27,6 +27,8 @@ export type PostDaFila = {
   preco_de: number | string | null, preco_por: number | string | null,
   // data especial do post (jsonb): a IA liga o texto à data
   ocasiao?: Ocasiao | null,
+  // título de antes do "Refazer" (vem de pegar_posts_para_ia, que devolve a linha inteira de posts)
+  titulo_anterior?: string | null,
   estado: string, postado_em: string | null, ia_em: string | null,
 }
 

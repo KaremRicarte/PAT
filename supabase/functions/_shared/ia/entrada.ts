@@ -43,6 +43,8 @@ export type LugarDoPost = {
   titulo: string, legenda: string, produto_id: string | null,
   preco_de: number | string | null, preco_por: number | string | null,
   ocasiao?: Ocasiao | null,
+  // título de antes do "Refazer" (a IA não repete)
+  titulo_anterior?: string | null,
 }
 
 export function montarEntradaPost(
@@ -60,6 +62,7 @@ export function montarEntradaPost(
     produto: produto ? { nome: produto.nome, descricao: produto.descricao } : null,
     foto,
     textoModelo: [post.titulo, post.legenda].filter(Boolean).join('\n\n'),
+    evitar: post.titulo_anterior ?? null,
     // mesmos textos do cliente de gerar-mes (o que ele escreveu não conta nas checagens)
     textosDoCliente: [c.negocio.nome, ...c.produtos.flatMap((p) => [p.nome, p.descricao ?? ''])],
   }

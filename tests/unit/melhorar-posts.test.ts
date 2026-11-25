@@ -622,3 +622,10 @@ test('falha ao ler o uso das fotos: segue com o revezamento simples (não desist
   expect(m.gravados[0].campos.foto_path).toBe(a)
   log.mockRestore()
 })
+
+test('post refeito: o título anterior vai para a IA evitar', async () => {
+  const m = montar({ info: { [`${UID}/produtos/a.jpg`]: { descricao: 'A.', serve: true } } })
+  await melhorarUmPost(m.deps, post({ titulo_anterior: 'Título que já saiu' }))
+  const escrita = m.pedidos.find((p) => p.esquema === ESQUEMA_POST)!
+  expect(escrita.conteudo.map((c) => (c.tipo === 'texto' ? c.texto : '')).join('\n')).toContain('Título que já saiu')
+})

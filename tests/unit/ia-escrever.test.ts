@@ -293,3 +293,13 @@ test('story: a IA escreve uma enquete (pergunta + duas opções curtas); fora de
   expect(textoDo(pedidos[1])).toMatch(/não é uma pergunta curta/)
   expect(r!.post.legenda).toBe('Você já viu as piscinas naturais?\n\nEnquete: Já vi / Quero ver')
 })
+
+test('com evitar (título anterior), o pedido de escrita traz o título a evitar; sem ele, não', async () => {
+  const a = falsa(ok(resposta()))
+  await escreverPost(a.chamar, entrada({ evitar: 'Oferta de Black Friday para Gramado chega no dia 27/11' }))
+  expect(textoDo(a.pedidos[0])).toContain('não repita este título')
+  expect(textoDo(a.pedidos[0])).toContain('Oferta de Black Friday para Gramado chega no dia 27/11')
+  const b = falsa(ok(resposta()))
+  await escreverPost(b.chamar, entrada())
+  expect(textoDo(b.pedidos[0])).not.toContain('não repita este título')
+})

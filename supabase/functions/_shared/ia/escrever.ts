@@ -36,6 +36,8 @@ export type EntradaPost = {
   foto: { url: string, descricao: string, ilustrativa?: boolean } | null,
   textoModelo: string,
   textosDoCliente: string[],
+  // título que o post já teve ("Refazer"): a IA escreve outro, sem repetir o título nem a abertura
+  evitar?: string | null,
 }
 export type CamposDaIA = { titulo: string, legenda: string, hashtags: string[], roteiro: string | null }
 
@@ -145,6 +147,7 @@ function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
     linhas.push('Este story é uma ENQUETE sobre o assunto do dia (o mesmo dos outros posts do dia): o título e o gancho são a mesma pergunta, curta (até 80 caracteres) e terminando com "?"; o meio é exatamente "Enquete: opção 1 / opção 2", com duas opções curtas (até 20 caracteres cada) que respondem à pergunta; o convite fica vazio.')
   }
   linhas.push('', '# Texto de modelo que estava neste lugar (só referência de tema; não copie)', e.textoModelo)
+  if (e.evitar) linhas.push('', '# Título que este post já teve (escreva outro: não repita este título nem a mesma abertura)', e.evitar)
   return linhas.filter((x) => x !== null).join('\n')
 }
 
