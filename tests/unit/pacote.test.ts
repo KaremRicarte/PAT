@@ -107,3 +107,12 @@ test('bate-volta (ida = volta): sem "0 noites"', () => {
   expect(resumoDoPacote(p)).toBe('ida e volta 12/12/2026')
   expect(linhasDoCartao(p)).toEqual([{ icone: 'data', texto: '12/12 · bate-volta' }])
 })
+
+test('voltaAntesDaIda: aviso na hora, só com as duas datas e a volta antes', async () => {
+  const { voltaAntesDaIda } = await import('../../supabase/functions/_shared/modelos/pacote.ts')
+  expect(voltaAntesDaIda({ ida: '2026-12-12', volta: '2026-11-17' })).toBe(true)
+  expect(voltaAntesDaIda({ ida: '2026-12-12', volta: '2026-12-12' })).toBe(false)
+  expect(voltaAntesDaIda({ ida: '2026-12-12', volta: '2026-12-17' })).toBe(false)
+  expect(voltaAntesDaIda({ ida: '2026-12-12', volta: null })).toBe(false)
+  expect(voltaAntesDaIda({ ida: null, volta: '2026-11-17' })).toBe(false)
+})

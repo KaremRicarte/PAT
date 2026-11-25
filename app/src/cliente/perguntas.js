@@ -8,7 +8,7 @@ import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/cale
 import { MAX_ITENS, validarItens, MAX_FOTOS_NEGOCIO, itensRepetidos, textoDosRepetidos } from './negocio.js'
 import { montarImportacao, faixaDeFotos } from './importarTela.js'
 import { normalizarWhatsApp, formatarWhatsApp } from '../contato.js'
-import { lerPacote } from '../../../supabase/functions/_shared/modelos/pacote.ts'
+import { lerPacote, voltaAntesDaIda } from '../../../supabase/functions/_shared/modelos/pacote.ts'
 
 const HORARIOS = [['07:00', 'manha'], ['12:00', 'almoco'], ['19:00', 'noite']]
 const ASSINATURAS = ['ambos', 'logo', 'insta']
@@ -145,7 +145,17 @@ function caixaDoPacote(item) {
   const [rVolta, iVolta] = ligado('volta', t('quiz.item.pacote.volta'), { type: 'date' })
   const passou = el('p', { class: 'muted pequeno', texto: t('quiz.item.pacote.passou') })
   const verPassou = () => { passou.hidden = !(p.ativo && p.ida && p.ida < hojeEmSaoPaulo()) }
+  // volta antes da ida: aviso vermelho na hora, embaixo das datas (e a volta não deixa escolher dia antes da ida)
+  const datasErradas = el('p', { class: 'erro', role: 'alert', texto: t('quiz.item.pacote.erro.volta') })
+  const verDatas = () => {
+    const errado = voltaAntesDaIda(p)
+    datasErradas.hidden = !errado
+    iVolta.setAttribute('aria-invalid', String(errado))
+    if (p.ida) iVolta.min = p.ida; else iVolta.removeAttribute('min')
+  }
   iIda.addEventListener('change', verPassou)
+  for (const i of [iIda, iVolta]) for (const ev of ['input', 'change']) i.addEventListener(ev, verDatas)
+  verDatas()
   const transporte = el('fieldset', { class: 'opcoes-pacote' }, el('legend', { texto: t('quiz.item.pacote.transporte') }),
     ...[['aviao', 'aviao'], ['onibus', 'onibus'], ['', 'sohospedagem']].map(([valor, nome]) => {
       const r = el('input', { type: 'radio', name: `${id}-transporte`, value: valor, checked: (p.transporte ?? '') === valor })
@@ -163,7 +173,7 @@ function caixaDoPacote(item) {
   const [rPix, iPix] = ligado('pix', t('quiz.item.pacote.pix'), { type: 'number', min: 1, max: 50, inputmode: 'numeric' }, numero)
   const detalhes = el('div', { class: 'promo-data-detalhes pacote-detalhes' },
     rHotel, iHotel,
-    el('div', { class: 'precos' }, el('div', {}, rIda, iIda), el('div', {}, rVolta, iVolta)), passou,
+    el('div', { class: 'precos' }, el('div', {}, rIda, iIda), el('div', {}, rVolta, iVolta)), datasErradas, passou,
     transporte,
     caixinha('transfer', () => p.transfer, (v) => { p.transfer = v }),
     refeicoes,

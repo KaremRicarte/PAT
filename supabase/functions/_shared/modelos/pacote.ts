@@ -151,3 +151,7 @@ export function pacoteParaGravar(x: unknown): Pacote | null {
 // Textos do cliente num item (nome, descrição e o hotel do pacote): as checagens de palavras não valem para eles.
 export const textosDoItem = (p: { nome: string, descricao?: string | null, pacote?: unknown }): string[] =>
   [p.nome, p.descricao ?? '', lerPacote(p.pacote)?.hotel ?? '']
+
+// Volta antes da ida (o formulário avisa na hora; ao salvar, validarPacote barra).
+export const voltaAntesDaIda = (p: { ida?: string | null, volta?: string | null }) =>
+  Boolean(p.ida && p.volta && DATA.test(p.ida) && DATA.test(p.volta) && p.volta < p.ida)
