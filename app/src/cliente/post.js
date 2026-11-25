@@ -4,7 +4,7 @@ import { el, mostrar, aviso, filhosValidos } from '../comum.js'
 import { situacaoDoPost, diaPorExtenso, chaveFormato, rotuloOcasiao } from './situacao.js'
 import { aplicarAcao, gerarOutro, arquivosParaSalvar, trocasDoMes, LIMITE_TROCAS, rotuloDoBaixar } from './acoesPost.js'
 import { entregar, baixarArquivos, modoDoAparelho, aparelhoEnvia, enviarParaRede } from './salvarArquivo.js'
-import { textoParaCopiar } from './mes.js'
+import { textoParaCopiar, linhaDoWhatsApp } from './mes.js'
 import { medidaDaArte } from '../artes/texto.js'
 import { desenharPaginas, gerarImagens, gerarVideoDeFotos, previaDaMontagem, paraPng } from '../artes/imagens.js'
 import { codigoDoErro } from '../artes/video.js'
@@ -141,6 +141,8 @@ export function telaPost(ctx, post, aoVoltar) {
   function desenharTextos() {
     textos.replaceChildren(escrevendo, el('div', { class: 'texto-post' },
       el('p', { class: 'legenda', texto: post.legenda }),
+      // pacote de viagem: a chamada para o WhatsApp da empresa (vai junto ao copiar e ao enviar)
+      linhaDoWhatsApp(post, ctx) ? el('p', { class: 'legenda', texto: linhaDoWhatsApp(post, ctx) }) : null,
       post.hashtags?.length ? el('p', { class: 'muted hashtags', texto: post.hashtags.join(' ') }) : null,
       post.roteiro
         ? el('div', { class: 'roteiro' }, el('h2', { texto: t('mes.roteiro') }),
@@ -154,7 +156,7 @@ export function telaPost(ctx, post, aoVoltar) {
     type: 'button', class: 'secundario', 'data-acao': 'copiar', texto: t(ehLista ? 'post.copiar.lista' : 'post.copiar'),
     onclick: async () => {
       try {
-        await navigator.clipboard.writeText(textoParaCopiar(post))
+        await navigator.clipboard.writeText(textoParaCopiar(post, ctx))
         aviso(t(ehLista ? 'post.copiado.lista' : 'post.copiado'))
       } catch (e) {
         console.error(e)
@@ -186,7 +188,7 @@ export function telaPost(ctx, post, aoVoltar) {
     enviar.textContent = enviar.disabled ? t('post.baixando') : rotuloEnviar
   }
   enviar?.addEventListener('click', () => {
-    const texto = textoParaCopiar(post)
+    const texto = textoParaCopiar(post, ctx)
     // Tudo no mesmo toque, sem await antes: o compartilhar e o copiar pedem o gesto.
     const envio = enviarParaRede({ arquivos: ehLista ? null : ehMontagem ? videoPronto : arquivos, texto })
     const copia = ehLista ? Promise.resolve(false)

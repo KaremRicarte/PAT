@@ -8,6 +8,8 @@ import { opcoes, telaPassos } from './quiz.js'
 import { estadoDoNegocio } from './perguntas.js'
 import { depoisDeSalvar } from './refazer.js'
 import { salvarItens, itensParaSalvar, carregarNegocio } from './negocio.js'
+import { linkWhatsApp, formatarWhatsApp } from '../contato.js'
+import { pacoteAtivo } from '../../../supabase/functions/_shared/modelos/pacote.ts'
 
 const ESTRATEGIAS = ['vender', 'crescer', 'credibilidade', 'tempo']
 
@@ -35,8 +37,21 @@ let mesPreferido = null // guarda o mês recém-gerado ou escolhido nos botões
 export const mesMostrado = (meses, hoje) => escolherMes(meses, hoje, mesPreferido)
 export function preferirMes(anoMes) { mesPreferido = anoMes }
 
-export function textoParaCopiar(post) {
-  return post.hashtags.length ? `${post.legenda}\n\n${post.hashtags.join(' ')}` : post.legenda
+// Chamada para o WhatsApp da empresa nos posts de pacote de viagem (Turismo, com o pacote marcado).
+// Facebook e WhatsApp: link que abre a conversa com a mensagem pronta; Instagram e TikTok (link não abre): o número.
+export function linhaDoWhatsApp(post, { negocio, produtos, ramo } = {}) {
+  if (ramo?.id !== 'turismo' || !negocio?.whatsapp || !post.produto_id) return null
+  const produto = (produtos ?? []).find((p) => p.id === post.produto_id)
+  if (!produto || !pacoteAtivo(produto.pacote)) return null
+  return post.rede === 'facebook' || post.rede === 'whatsapp'
+    ? t('legenda.whats.link', { link: linkWhatsApp(`55${negocio.whatsapp}`, t('whats.mensagem', { nome: produto.nome })) })
+    : t('legenda.whats.numero', { numero: formatarWhatsApp(negocio.whatsapp) })
+}
+
+// Legenda + linha do WhatsApp (quando houver) + hashtags. contexto: { negocio, produtos, ramo } do post.
+export function textoParaCopiar(post, contexto) {
+  const whats = contexto ? linhaDoWhatsApp(post, contexto) : null
+  return [post.legenda, whats, post.hashtags?.length ? post.hashtags.join(' ') : null].filter(Boolean).join('\n\n')
 }
 
 // ---------- Quiz do mês ----------
