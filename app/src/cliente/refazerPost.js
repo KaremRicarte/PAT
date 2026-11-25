@@ -9,7 +9,7 @@ import { resumoDoArquivo } from './importar.js'
 import { fotoDoPost, fotosDoProduto } from './situacao.js'
 import { abrirTrocaDeFoto, desenharMini, caminhoDaFotoDoPost } from './trocarFoto.js'
 import { diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
-import { estadoDoNegocio, caixaDaData, caixaOcultarPreco } from './perguntas.js'
+import { estadoDoNegocio, camposDePrecoDoItem } from './perguntas.js'
 import { chamarFuncao } from './refazer.js'
 import { datasParaPromocao } from '../../../supabase/functions/_shared/modelos/datas.ts'
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
@@ -137,13 +137,7 @@ export function telaRefazerPost(ctx, post, { aoCancelar, aoRefeito }) {
     const [rDesc, iDesc] = campo(t('quiz.item.descricao'), { value: item.descricao, maxlength: 300 })
     iDesc.addEventListener('input', () => { item.descricao = iDesc.value })
     campos = [rNome, iNome, rDesc, iDesc]
-    if (!ramo.noPromo) {
-      const [rPreco, iPreco] = campo(t('quiz.item.preco'), { value: item.precoTexto, inputmode: 'decimal', placeholder: 'Ex.: 49,90' })
-      iPreco.addEventListener('input', () => { item.precoTexto = iPreco.value })
-      const [rPromo, iPromo] = campo(t('quiz.item.promo'), { value: item.promoTexto, inputmode: 'decimal', placeholder: 'Ex.: 39,90' })
-      iPromo.addEventListener('input', () => { item.promoTexto = iPromo.value })
-      campos.push(el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo)), caixaDaData(item, datasParaPromocao(hojeEmSaoPaulo(), ramo)), caixaOcultarPreco(item))
-    }
+    campos.push(...camposDePrecoDoItem(item, ramo, ramo.noPromo ? [] : datasParaPromocao(hojeEmSaoPaulo(), ramo)))
   }
 
   const form = el('form', { novalidate: true, class: 'quiz' },

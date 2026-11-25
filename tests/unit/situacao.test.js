@@ -247,3 +247,23 @@ describe('pecasDaArte: cartão do pacote (Turismo)', () => {
     expect(pecasDaArte(comPreco, { ...n, whatsapp: null }, RAMOS.turismo, produtos).pacote.whatsapp).toBe(null)
   })
 })
+
+describe('pecasDaArte: pacote com "Entrar em contato para as condições"', () => {
+  const PACOTE = { ativo: true, hotel: 'Serra Azul', transporte: 'aviao', parcelas: 10, pix: 5, preco_por: 'pessoa', taxas: true }
+  const n = { nome: 'Malibu', insta: '@malibu', assinatura: 'insta', whatsapp: '83999990000' }
+  const produtos = [{ id: 'g', nome: 'Gramado', pacote: PACOTE, ocultar_preco: true }]
+  test('post que mostra o pacote (demo): cartão com os detalhes e "Condições especiais", sem condições de preço', () => {
+    const p = pecasDaArte({ titulo: 'T', produto_id: 'g', pilar: 'demo', preco_de: null, preco_por: null }, n, RAMOS.turismo, produtos).pacote
+    expect(p.contato).toBe('Condições especiais: fale com a loja')
+    expect(p.linhas[0]).toEqual({ icone: 'hotel', texto: 'Serra Azul' })
+    expect([p.unidade, p.parcelas, p.pix]).toEqual([null, null, null])
+    expect(p.whatsapp).toBe('(83) 99999-0000')
+  })
+  test('post de dúvida ou de aproximação: sem cartão', () => {
+    expect(pecasDaArte({ titulo: 'T', produto_id: 'g', pilar: 'need', preco_por: null }, n, RAMOS.turismo, produtos)).not.toHaveProperty('pacote')
+  })
+  test('"Mostrar o preço": sem a linha de contato', () => {
+    const mostra = [{ ...produtos[0], ocultar_preco: false }]
+    expect(pecasDaArte({ titulo: 'T', produto_id: 'g', pilar: 'demo', preco_de: null, preco_por: 2390 }, n, RAMOS.turismo, mostra).pacote.contato).toBe(null)
+  })
+})

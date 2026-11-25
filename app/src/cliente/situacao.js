@@ -166,7 +166,9 @@ function cartaoDoPacote(post, negocio, ramo, produtos) {
   if (!p) return null
   const comPreco = post.preco_por != null
   const daData = Boolean(produto.ocultar_preco) && (post.ocasiao?.fase === 'dia' || post.ocasiao?.fase === 'aquecimento')
-  if (!comPreco && !daData) return null
+  // "Entrar em contato para as condições": o cartão vai nos posts que mostram o pacote, sem valor
+  const contato = Boolean(produto.ocultar_preco)
+  if (!comPreco && !daData && !(contato && post.pilar === 'demo')) return null
   const unidade = [UNIDADES[p.preco_por], p.taxas ? 'taxas inclusas' : null].filter(Boolean).join(' · ')
   return {
     linhas: linhasDoCartao(p),
@@ -174,6 +176,7 @@ function cartaoDoPacote(post, negocio, ramo, produtos) {
     parcelas: comPreco && p.parcelas ? `em até ${p.parcelas}x de ${dinheiro(Math.round(Number(post.preco_por) / p.parcelas * 100) / 100)} sem juros` : null,
     pix: comPreco && p.pix ? `${p.pix}% de desconto no Pix` : null,
     whatsapp: negocio?.whatsapp ? formatarWhatsApp(negocio.whatsapp) : null,
+    contato: contato && !comPreco ? t('arte.pacote.contato') : null,
   }
 }
 

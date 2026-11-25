@@ -225,3 +225,15 @@ test('cartão do pacote: hotel de 80 letras aparece inteiro (em até 2 linhas, l
     expect(daLinha.map((x) => x.s).join(' ')).toBe(hotel)
   }
 })
+
+test('cartão do pacote com "Entrar em contato": mostra "Condições especiais" no lugar do preço', async () => {
+  const { desenharArte } = await import('../../app/src/artes/desenho.js')
+  for (const forma of [{ W: 1080, H: 1350 }, { W: 1080, H: 1920 }]) {
+    const { ctx, textos } = canvasFalso()
+    const pacote = { linhas: [{ icone: 'hotel', texto: 'Serra Azul' }], unidade: null, parcelas: null, pix: null, whatsapp: '(83) 99999-0000', contato: 'Condições especiais: fale com a loja' }
+    desenharArte(ctx, { pecas: { rotulo: 'M', titulo: 'T', gancho: '', meio: '', convite: '', assinatura: { texto: '@m', logo: false }, preco: null, pacote }, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, ...forma, arte: 'a1' })
+    expect(textos.some((x) => x.s === 'Condições especiais: fale com a loja')).toBe(true)
+    expect(textos.some((x) => x.s.startsWith('R$'))).toBe(false)
+    for (const tx of textos) { expect(tx.base).toBeLessThanOrEqual(forma.H); expect(tx.dir).toBeLessThanOrEqual(forma.W) }
+  }
+})

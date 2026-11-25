@@ -123,7 +123,7 @@ export function caixaOcultarPreco(item) {
 
 // Caixinha "Detalhes do pacote" (só Turismo): hotel, datas, transporte, transfer, refeições e condições do preço.
 // Desmarcada, os valores ficam guardados (ativo: false) e os posts não usam.
-function caixaDoPacote(item) {
+function caixaDoPacote(item, precos) {
   const p = item.pacote ?? (item.pacote = lerPacote({}))
   const id = `pacote-${item.id}`
   const marcar = el('input', { type: 'checkbox', id, checked: p.ativo })
@@ -171,20 +171,48 @@ function caixaDoPacote(item) {
   precoPor.addEventListener('change', () => { p.preco_por = precoPor.value || null })
   const [rParc, iParc] = ligado('parcelas', t('quiz.item.pacote.parcelas'), { type: 'number', min: 2, max: 24, inputmode: 'numeric' }, numero)
   const [rPix, iPix] = ligado('pix', t('quiz.item.pacote.pix'), { type: 'number', min: 1, max: 50, inputmode: 'numeric' }, numero)
+  // "Preço nos posts": mostrar o preço ou "Entrar em contato para as condições" (guardado em ocultar_preco)
+  const condicoes = el('div', { class: 'pacote-condicoes' },
+    el('label', { for: idPor, texto: t('quiz.item.pacote.precopor') }), precoPor,
+    el('div', { class: 'precos' }, el('div', {}, rParc, iParc), el('div', {}, rPix, iPix)),
+    caixinha('taxas', () => p.taxas, (v) => { p.taxas = v }))
+  const verCondicoes = () => { condicoes.hidden = Boolean(item.ocultarPreco) }
+  const modoPreco = el('fieldset', { class: 'opcoes-pacote' }, el('legend', { texto: t('quiz.item.pacote.preconosposts') }),
+    ...[[false, 'mostrar'], [true, 'contato']].map(([oculto, nome]) => {
+      const r = el('input', { type: 'radio', name: `${id}-preco`, checked: Boolean(item.ocultarPreco) === oculto })
+      r.addEventListener('change', () => { item.ocultarPreco = oculto; verCondicoes() })
+      return el('label', { class: 'caixinha' }, r, el('span', { texto: t(`quiz.item.pacote.preco.${nome}`) }))
+    }))
+  verCondicoes()
   const detalhes = el('div', { class: 'promo-data-detalhes pacote-detalhes' },
     rHotel, iHotel,
     el('div', { class: 'precos' }, el('div', {}, rIda, iIda), el('div', {}, rVolta, iVolta)), datasErradas, passou,
     transporte,
     caixinha('transfer', () => p.transfer, (v) => { p.transfer = v }),
     refeicoes,
-    el('label', { for: idPor, texto: t('quiz.item.pacote.precopor') }), precoPor,
-    el('div', { class: 'precos' }, el('div', {}, rParc, iParc), el('div', {}, rPix, iPix)),
-    caixinha('taxas', () => p.taxas, (v) => { p.taxas = v }))
+    precos, modoPreco, condicoes)
   const mostrar = () => { detalhes.hidden = !p.ativo; verPassou() }
   marcar.addEventListener('change', () => { p.ativo = marcar.checked; mostrar() })
   mostrar()
   return el('div', { class: 'promo-data' },
     el('label', { class: 'caixinha', for: id }, marcar, el('span', { texto: t('quiz.item.pacote') })), detalhes)
+}
+
+// Preço normal e promocional do item.
+function camposDoPreco(item) {
+  const [rPreco, iPreco] = campo(t('quiz.item.preco'), { value: item.precoTexto, inputmode: 'decimal', placeholder: 'Ex.: 49,90' })
+  iPreco.addEventListener('input', () => { item.precoTexto = iPreco.value })
+  const [rPromo, iPromo] = campo(t('quiz.item.promo'), { value: item.promoTexto, inputmode: 'decimal', placeholder: 'Ex.: 39,90' })
+  iPromo.addEventListener('input', () => { item.promoTexto = iPromo.value })
+  return el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo))
+}
+
+// Preço, data da promoção e (Turismo) detalhes do pacote, com o preço dentro deles; nos outros ramos, "Ocultar preço".
+// Usado no cadastro dos itens e no "Refazer este post". Ramos sem preço: nada.
+export function camposDePrecoDoItem(item, ramo, datas) {
+  if (ramo.noPromo) return []
+  if (ramo.id === 'turismo') return [caixaDaData(item, datas), caixaDoPacote(item, camposDoPreco(item))]
+  return [camposDoPreco(item), caixaDaData(item, datas), caixaOcultarPreco(item)]
 }
 
 // WhatsApp da empresa (opcional): aparece nas artes de pacote e nas legendas.
@@ -212,15 +240,7 @@ const BLOCOS = {
       const desc = el('textarea', { id: idDesc, rows: 2, maxlength: 300 })
       desc.value = item.descricao
       desc.addEventListener('input', () => { item.descricao = desc.value })
-      let preco = null
-      if (!ramo.noPromo) {
-        const [rPreco, iPreco] = campo(t('quiz.item.preco'), { value: item.precoTexto, inputmode: 'decimal', placeholder: 'Ex.: 49,90' })
-        iPreco.addEventListener('input', () => { item.precoTexto = iPreco.value })
-        const [rPromo, iPromo] = campo(t('quiz.item.promo'), { value: item.promoTexto, inputmode: 'decimal', placeholder: 'Ex.: 39,90' })
-        iPromo.addEventListener('input', () => { item.promoTexto = iPromo.value })
-        preco = [el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo)),
-          caixaDaData(item, datas), caixaOcultarPreco(item), ramo.id === 'turismo' ? caixaDoPacote(item) : null]
-      }
+      const preco = camposDePrecoDoItem(item, ramo, datas)
       const selos = el('span', { class: 'selos-item' })
       const remover = el('button', { type: 'button', class: 'secundario pequeno', texto: t('quiz.item.remover') })
       remover.addEventListener('click', () => { estado.itens.splice(estado.itens.indexOf(item), 1); redesenhar() })

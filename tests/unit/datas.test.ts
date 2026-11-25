@@ -32,9 +32,9 @@ describe('datas especiais', () => {
 })
 
 const LISTA: Pacote['produtos'] = [
-  { id: 'g', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799 },
-  { id: 's', nome: 'Porto Seguro', descricao: null, preco: 1999, preco_promo: null },
-  { id: 'c', nome: 'Cruzeiro', descricao: null, preco: null, preco_promo: null },
+  { id: 'g', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, pacote: { ativo: true } },
+  { id: 's', nome: 'Porto Seguro', descricao: null, preco: 1999, preco_promo: null, pacote: { ativo: true } },
+  { id: 'c', nome: 'Cruzeiro', descricao: null, preco: null, preco_promo: null, pacote: { ativo: true } },
 ]
 const pacote = (extra: Partial<Pacote> = {}): Pacote => ({
   ramo: 'turismo', estrategia: 'vender', anoMes: '2026-12', inicio: '2026-12-01',

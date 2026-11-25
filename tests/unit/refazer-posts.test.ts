@@ -3,10 +3,10 @@ import { refazerPosts } from '../../supabase/functions/_shared/modelos/refazer.t
 import { gerarMes, type Pacote } from '../../supabase/functions/_shared/modelos/gerar.ts'
 
 const NEGOCIO = { nome: 'Viagens Teste', insta: null, tom: 'proximo' as const, horario: '19:00' }
-const ANTIGOS = [{ id: 'p1', nome: 'Bonito', descricao: null, preco: null, preco_promo: null }]
+const ANTIGOS = [{ id: 'p1', nome: 'Bonito', descricao: null, preco: null, preco_promo: null, pacote: { ativo: true } }]
 const NOVOS = [
-  { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799 },
-  { id: 'p3', nome: 'Portugal', descricao: null, preco: null, preco_promo: null },
+  { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, pacote: { ativo: true } },
+  { id: 'p3', nome: 'Portugal', descricao: null, preco: null, preco_promo: null, pacote: { ativo: true } },
 ]
 const pacote = (produtos: Pacote['produtos']): Pacote =>
   ({ ramo: 'turismo', estrategia: 'vender', anoMes: '2026-12', inicio: '2026-12-01', negocio: NEGOCIO, produtos })
@@ -104,8 +104,8 @@ describe('refazerPostsDoCliente', () => {
 describe('Refazer este post (só um)', () => {
   // o mês atual, gerado com Gramado em promoção para o Natal; o cliente corrige o preço promocional
   const ATUAIS: Pacote['produtos'] = [
-    { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, promo_data: '2026-12-25' },
-    { id: 'p3', nome: 'Portugal', descricao: null, preco: 10299, preco_promo: null },
+    { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, promo_data: '2026-12-25', pacote: { ativo: true } },
+    { id: 'p3', nome: 'Portugal', descricao: null, preco: 10299, preco_promo: null, pacote: { ativo: true } },
   ]
   const CORRIGIDOS = ATUAIS.map((p) => (p.id === 'p2' ? { ...p, preco_promo: 1599 } : p))
   const mes = gerarMes(pacote(ATUAIS))
@@ -145,8 +145,8 @@ describe('Refazer este post (só um)', () => {
 
 describe('Refazer com versão nova: foto escolhida e o dia inteiro', () => {
   const ITENS: Pacote['produtos'] = [
-    { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, promo_data: '2026-12-25' },
-    { id: 'p3', nome: 'Portugal', descricao: null, preco: 10299, preco_promo: null },
+    { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, promo_data: '2026-12-25', pacote: { ativo: true } },
+    { id: 'p3', nome: 'Portugal', descricao: null, preco: 10299, preco_promo: null, pacote: { ativo: true } },
   ]
   const mes = gerarMes(pacote(ITENS))
   const ID = '11111111-1111-4111-8111-111111111111'
@@ -222,8 +222,8 @@ describe('Refazer com versão nova: foto escolhida e o dia inteiro', () => {
 
 describe('Refazer com versão nova: correções da revisão', () => {
   const ITENS: Pacote['produtos'] = [
-    { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, promo_data: '2026-12-25' },
-    { id: 'p3', nome: 'Portugal', descricao: null, preco: 10299, preco_promo: null },
+    { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, promo_data: '2026-12-25', pacote: { ativo: true } },
+    { id: 'p3', nome: 'Portugal', descricao: null, preco: 10299, preco_promo: null, pacote: { ativo: true } },
   ]
   const mes = gerarMes(pacote(ITENS))
   const ID = '11111111-1111-4111-8111-111111111111'

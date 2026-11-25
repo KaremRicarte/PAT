@@ -103,3 +103,39 @@ test('hotel com palavra de promoção ("Pousada Off Road") é texto do cliente: 
   expect(r.status).toBe(201)
   expect(montarEntradaPost(dados(pacote), lugar(), null).textosDoCliente).toContain('Pousada Off Road')
 })
+
+describe('Turismo: o preço mora nos detalhes do pacote', () => {
+  test('pacote sem "Detalhes do pacote" marcado: nenhum post com preço', () => {
+    const posts = gerarMes(mes(null))
+    expect(posts.every((p) => p.preco_por == null && p.preco_de == null)).toBe(true)
+    expect(posts.some((p) => /R\$/.test(p.legenda))).toBe(false)
+  })
+  test('"Entrar em contato": o pacote tem os dias de oferta, sem valor, com "Condições especiais: fale com a loja."', async () => {
+    const { validarPost } = await import('../../supabase/functions/_shared/modelos/validar.ts')
+    const { RAMOS } = await import('../../supabase/functions/_shared/modelos/ramos/index.ts')
+    for (const preco of [2800, null]) {
+      const posts = gerarMes(mes(PACOTE, { preco, preco_promo: null, ocultar_preco: true } as never))
+      const oferta = posts.filter((p) => p.legenda.includes('Condições especiais: fale com a loja.'))
+      expect(oferta.length).toBeGreaterThan(0)
+      for (const p of oferta) expect(p.legenda).toContain('Hotel Serra Azul')
+      expect(posts.every((p) => p.preco_por == null)).toBe(true)
+      expect(posts.some((p) => /R\$|em até \d/.test(p.legenda))).toBe(false)
+      expect(posts.flatMap((p) => validarPost(p, RAMOS.turismo, ['Malibu', 'Gramado']))).toEqual([])
+    }
+  })
+  test('outros ramos: "Ocultar preço" continua como antes (sem dias de oferta)', () => {
+    const posts = gerarMes({ ...mes(null, { ocultar_preco: true } as never), ramo: 'ferramentas' })
+    expect(posts.some((p) => p.legenda.includes('Condições especiais'))).toBe(false)
+  })
+})
+
+test('IA: pacote com "Entrar em contato" — o post do pacote leva "Condições especiais: fale com a loja." e nenhum valor', async () => {
+  const pedidos: Parameters<ChamarIA>[0][] = []
+  const chamar: ChamarIA = async (p) => { pedidos.push(p); return { ok: true, dados: { ...resposta, titulo: 'Gramado no Natal com tudo organizado' }, uso: { entrada: 1, saida: 1 } } as never }
+  const c = { ...dados(PACOTE), produtos: [{ id: 'g', nome: 'Gramado', descricao: null, pacote: PACOTE, ocultar_preco: true }] }
+  const e = montarEntradaPost(c, lugar({ preco_de: null, preco_por: null }), null)
+  const r = await escreverPost(chamar, e)
+  expect(r!.post.legenda).toContain('Condições especiais: fale com a loja. Hotel Serra Azul')
+  expect(r!.post.legenda).not.toMatch(/R\$|em até \d/)
+  expect(textoDo(pedidos[0])).toContain('Condições especiais: fale com a loja.')
+})

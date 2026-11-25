@@ -286,6 +286,7 @@ function medidasDoCartao(f, pecas, e) {
     if (pc.parcelas) h += m.peq * 1.4
     if (pc.pix) h += m.gap + m.pilula * 1.9
   }
+  if (!preco && pc.contato) h += m.gap + m.de * 1.5
   if (pc.whatsapp) h += m.gap + m.whats * 2.2
   m.h = h + m.pad
   return m
@@ -372,6 +373,15 @@ function desenharCartao(f, pecas, m, y) {
       pilula(f, pc.pix, ix, cy, w, m.pilula * 1.9, m.pilula, { fundo: VERDE, tinta: '#0B2E13' })
       cy += m.pilula * 1.9
     }
+  }
+  // "Entrar em contato para as condições": a frase no lugar do preço
+  if (!preco && pc.contato) {
+    cy += m.gap
+    ctx.font = `800 ${m.de}px ${look.fd}`
+    ctx.fillStyle = branco
+    ctx.textBaseline = 'middle'
+    ctx.fillText(pc.contato, ix, cy + m.de * 0.75, largura)
+    cy += m.de * 1.5
   }
   if (pc.whatsapp) {
     cy += m.gap

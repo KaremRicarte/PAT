@@ -2,7 +2,7 @@
 // (o adaptador com o SDK fica na função Edge); aqui só montamos o pedido, juntamos a resposta e checamos.
 import type { Estrategia, Pilar, Rede, Tom } from '../modelos/tipos.ts'
 import { RAMOS } from '../modelos/ramos/index.ts'
-import { brl, daData, paragrafos, textoDoPreco, type Ocasiao, type PostGerado } from '../modelos/gerar.ts'
+import { brl, daData, paragrafos, textoDoPreco, TEXTO_CONTATO, type Ocasiao, type PostGerado } from '../modelos/gerar.ts'
 import { diaMes } from '../modelos/datas.ts'
 import { MAX_HASHTAGS, ofertaDaData, semTextoDoCliente, temPromocao, validarPost } from '../modelos/validar.ts'
 import { INSTRUCOES_POST } from './instrucoes.ts'
@@ -34,7 +34,8 @@ export type EntradaPost = {
     ocasiao?: Ocasiao | null,
   },
   // pacote: resumo dos detalhes do pacote de viagem (Turismo), já pronto (modelos/pacote.ts)
-  produto: { nome: string, descricao: string | null, pacote?: string | null } | null,
+  // contato: pacote com "Entrar em contato para as condições" (Turismo): o post do pacote sai sem valor
+  produto: { nome: string, descricao: string | null, pacote?: string | null, contato?: boolean } | null,
   foto: { url: string, descricao: string, ilustrativa?: boolean } | null,
   textoModelo: string,
   textosDoCliente: string[],
@@ -97,6 +98,12 @@ function precoDoPost(e: EntradaPost, noPromo: boolean) {
   return { preco_de, preco_por, texto: textoDoPreco(preco_de, preco_por, e.lugar.ocasiao ?? null) + pacote }
 }
 
+// Pacote com "Entrar em contato": nos posts que mostram o pacote, o parágrafo das condições no lugar do preço.
+function paragrafoDeContato(e: EntradaPost): string | null {
+  if (e.lugar.preco_por != null || !e.produto?.contato || e.lugar.pilar !== 'demo') return null
+  return e.produto.pacote ? `${TEXTO_CONTATO} ${fraseDoPacote(e.produto.pacote)}` : TEXTO_CONTATO
+}
+
 // Os dados deste post, em texto: tudo o que muda de um post para outro fica aqui, fora das instruções fixas.
 function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
   const ramo = RAMOS[e.ramo]
@@ -127,6 +134,8 @@ function dadosDoPost(e: EntradaPost, noPromo: boolean): string {
       ? `Post de promoção: de ${brl(preco.preco_de)} por ${brl(preco.preco_por)}. O app coloca, entre o meio e o convite, exatamente este parágrafo: "${preco.texto}"`
       : `Post de vitrine com valor: ${brl(preco.preco_por)}. O app coloca, entre o meio e o convite, exatamente este parágrafo: "${preco.texto}"`)
   }
+  const contato = paragrafoDeContato(e)
+  if (contato) linhas.push(`Pacote sem valor nos posts (o cliente pede contato): não cite preço nem condições de pagamento. O app coloca, entre o meio e o convite, exatamente este parágrafo: "${contato}"`)
   if (ofertaDaData(l) && !preco) {
     linhas.push('O cliente não informou preço para esta oferta: não cite valores; fale da oferta da data e chame para pedir as condições.')
   }
@@ -189,7 +198,7 @@ function montar(e: EntradaPost, p: Partes, noPromo: boolean): { post: CamposDaIA
     .slice(0, MAX_HASHTAGS[e.lugar.rede])
   const post: CamposDaIA = {
     titulo: p.titulo,
-    legenda: paragrafos(p.gancho, p.meio, preco?.texto, p.convite, assinatura),
+    legenda: paragrafos(p.gancho, p.meio, preco?.texto ?? paragrafoDeContato(e), p.convite, assinatura),
     hashtags,
     roteiro: e.lugar.rede === 'whatsapp' ? null : p.roteiro,
   }

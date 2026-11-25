@@ -4,7 +4,7 @@ import type { Aprox, Estrategia, Frequencia, Item, Pilar, Ramo, Rede, Tom } from
 import { ENGAJA_CTA, RAMOS, itemDoProduto } from './ramos/index.ts'
 import { agendaDoMes } from './calendario.ts'
 import { datasDoMes, diaMes } from './datas.ts'
-import { fraseDoPacote, resumoDoItem } from './pacote.ts'
+import { fraseDoPacote, pacoteAtivo, resumoDoItem } from './pacote.ts'
 
 export type Pacote = {
   ramo: string, estrategia: Estrategia, anoMes: string, inicio: string,
@@ -12,7 +12,9 @@ export type Pacote = {
   // preco_promo: preço promocional (menor que o preço = promoção; igual ou vazio = vitrine de preço).
   // promo_data: a promoção vale só perto desta data (aquecimento nos 7 dias antes e o dia); null = o mês todo.
   // pacote: detalhes do pacote de viagem (Turismo), como vêm do banco (modelos/pacote.ts)
-  produtos: { id: string, nome: string, descricao: string | null, preco: number | null, preco_promo: number | null, promo_data?: string | null, pacote?: unknown }[],
+  produtos: { id: string, nome: string, descricao: string | null, preco: number | null, preco_promo: number | null, promo_data?: string | null, pacote?: unknown,
+    // Turismo: com o pacote marcado, true = "Entrar em contato para as condições" (sem valor nos posts)
+    ocultar_preco?: boolean | null }[],
   // "Gerar outro": gira produtos e temas em n posições para sair um texto diferente no mesmo lugar.
   deslocamento?: number,
   // Redes escolhidas no quiz do mês; ausente = todas.
@@ -76,8 +78,15 @@ export const pertoDaData = (data: string, alvo: string) =>
 
 // Como o preço do item aparece nos posts. Produto antigo sem preco_promo, com preço, é vitrine.
 // Promoção com data: só é promoção perto da data (em `data`); sem `data` ou longe dela, vitrine.
-export function tratamentoDoItem(pr: Pick<Produto, 'preco' | 'preco_promo' | 'promo_data'>, ramo: Ramo, data?: string | null): Tratamento | null {
-  if (ramo.noPromo || !pr.preco) return null
+// Turismo: o preço mora nos detalhes do pacote. Sem o pacote marcado, o item não tem preço nos posts; com
+// "Entrar em contato", tem os dias de oferta (vitrine), sem valor.
+export function tratamentoDoItem(pr: Pick<Produto, 'preco' | 'preco_promo' | 'promo_data' | 'pacote' | 'ocultar_preco'>, ramo: Ramo, data?: string | null): Tratamento | null {
+  if (ramo.noPromo) return null
+  if (ramo.id === 'turismo') {
+    if (!pacoteAtivo(pr.pacote)) return null
+    if (pr.ocultar_preco) return 'vitrine'
+  }
+  if (!pr.preco) return null
   if (pr.preco_promo == null || pr.preco_promo >= pr.preco) return 'vitrine'
   if (!pr.promo_data) return 'promo'
   return data && pertoDaData(data, pr.promo_data) ? 'promo' : 'vitrine'
@@ -133,7 +142,12 @@ export const tituloDaOferta = (o: Ocasiao) =>
   o.fase === 'aquecimento' ? `Vem aí a ${nomeDaOferta(o).replace(/^O/, 'o')}` : nomeDaOferta(o)
 
 // O parágrafo e os campos de preço de um item com tratamento.
+// Pacote de viagem com "Entrar em contato para as condições": o dia de oferta sai sem valor.
+export const TEXTO_CONTATO = 'Condições especiais: fale com a loja.'
+const pedeContato = (pr: Produto) => Boolean(pr.ocultar_preco) && pacoteAtivo(pr.pacote) != null
+
 function precoDoItem({ pr, trat }: ItemComPreco, ocasiao: Ocasiao | null = null) {
+  if (pedeContato(pr)) return { texto: TEXTO_CONTATO, preco_de: null, preco_por: null }
   const preco = pr.preco!
   return trat === 'promo'
     ? { texto: textoDoPreco(preco, pr.preco_promo!, ocasiao), preco_de: preco, preco_por: pr.preco_promo! }
@@ -233,7 +247,7 @@ export function gerarMes(p: Pacote): PostGerado[] {
   }
   // pacote de viagem (Turismo): os detalhes vão junto do preço; sem preço, no fim do meio
   const comPacote = (pr: ItemDoMes['pr'], texto: string) => {
-    const r = resumoDoItem(p.ramo, pr.pacote, true)
+    const r = resumoDoItem(p.ramo, pr.pacote, !pr.ocultar_preco)
     return r ? `${texto} ${fraseDoPacote(r)}` : texto
   }
   const montarOferta = ({ x, ocasiao }: { x: ItemDoMes & { trat: Tratamento | null }, ocasiao: Ocasiao }): Partes => {

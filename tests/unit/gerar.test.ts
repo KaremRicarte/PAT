@@ -23,7 +23,8 @@ const LISTA_SPEC: Pacote['produtos'] = [
   { id: 's', nome: 'Porto Seguro', descricao: null, preco: 1999, preco_promo: 1999 },
   { id: 'p', nome: 'Portugal', descricao: null, preco: null, preco_promo: null },
 ]
-const turismo = (extra: Partial<Pacote> = {}) => base({ ramo: 'turismo', produtos: LISTA_SPEC, ...extra })
+// Turismo: o preço só vale com "Detalhes do pacote" marcado
+const turismo = (extra: Partial<Pacote> = {}) => base({ ramo: 'turismo', produtos: LISTA_SPEC.map((p) => ({ ...p, pacote: { ativo: true } })), ...extra })
 const feedDePreco = (posts: PostGerado[], rede = 'instagram') =>
   posts.filter((p) => p.rede === rede && p.tipo === 'feed' && p.preco_por !== null)
 const PALAVRAS_PROMO = /(?<!\p{L})(promo(ção|ções|cional|cionais|s)?|descontos?|off)(?!\p{L})|black friday/iu
