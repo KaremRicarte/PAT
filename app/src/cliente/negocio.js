@@ -44,7 +44,7 @@ export function medidaReduzida(largura, altura, maximo) {
 // Devolve a chave de texto do primeiro problema, ou null se a lista está boa.
 // Em ramos com regras de conselho (noPromo), nome e descrição não podem falar de preço/promoção.
 import { normalizarWhatsApp } from '../contato.js'
-import { lerPacote, validarPacote } from '../../../supabase/functions/_shared/modelos/pacote.ts'
+import { pacoteParaGravar, validarPacote } from '../../../supabase/functions/_shared/modelos/pacote.ts'
 
 export function validarItens(itens, ramo = { noPromo: false }) {
   if (!itens.length) return 'quiz.itens.min'
@@ -166,7 +166,7 @@ export function itensParaSalvar(itens, ramo) {
       // caixinha "Ocultar preço" (ramos noPromo não têm preço)
       ocultar_preco: !ramo.noPromo && Boolean(i.ocultarPreco),
       // detalhes do pacote de viagem (só Turismo)
-      pacote: ramo.id === 'turismo' ? lerPacote(i.pacote) : null, fotos: i.fotos }
+      pacote: ramo.id === 'turismo' ? pacoteParaGravar(i.pacote) : null, fotos: i.fotos }
   })
 }
 

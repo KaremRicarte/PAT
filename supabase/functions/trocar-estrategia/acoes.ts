@@ -7,6 +7,7 @@ import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import { agendaDoPacote, gerarMes, type Pacote, type PostGerado } from '../_shared/modelos/gerar.ts'
 import { validarMes, validarPost } from '../_shared/modelos/validar.ts'
 import { lerRedes } from '../gerar-mes/acoes.ts'
+import { textosDoItem } from '../_shared/modelos/pacote.ts'
 
 export type MesParaTrocar = { id: string, cliente_id: string, ano_mes: string, estrategia: string, redes: string[] | null }
 
@@ -50,7 +51,7 @@ export async function trocarEstrategiaDoMes(entrada: unknown, deps: DepsTrocaEst
   const redes: Rede[] = lerRedes(mes.redes)
   const est = estrategia as Estrategia
   const ramo = RAMOS[cliente.ramo]
-  const doCliente = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
+  const doCliente = [negocio.nome, ...produtos.flatMap(textosDoItem)]
   const frequencia = lerFrequencia(cliente.frequencia)
   const posts = gerarMes({ ramo: cliente.ramo, estrategia: est, anoMes: mes.ano_mes, inicio: desde, negocio, produtos, redes, frequencia })
   const problemas = [

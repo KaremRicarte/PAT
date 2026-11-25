@@ -310,3 +310,11 @@ test('salvarDadosNegocio grava o WhatsApp da empresa', async () => {
   await salvarDadosNegocio(fakeSimples(chamadas = []), 'u1', { ...dados, whatsapp: '' })
   expect(chamadas.find(([t, v]) => t === 'negocios' && v)[1]).toMatchObject({ whatsapp: null })
 })
+
+test('itensParaSalvar: pacote desmarcado e vazio é gravado como null', async () => {
+  const { itensParaSalvar } = await import('../../app/src/cliente/negocio.js')
+  const { RAMOS } = await import('../../supabase/functions/_shared/modelos/ramos/index.ts')
+  const it = { id: 'g', nome: 'Gramado', descricao: '', precoTexto: '', promoTexto: '', fotos: [], pacote: { ativo: false } }
+  expect(itensParaSalvar([it], RAMOS.turismo)[0].pacote).toBe(null)
+  expect(itensParaSalvar([{ ...it, pacote: { ativo: false, hotel: 'X' } }], RAMOS.turismo)[0].pacote).toMatchObject({ ativo: false, hotel: 'X' })
+})

@@ -10,6 +10,7 @@ import { validarPost } from '../_shared/modelos/validar.ts'
 import { daPastaDoCliente, fotoEnviadaParaOPost, fotosDoProduto } from '../_shared/ia/entrada.ts'
 import { fotoDoLugar, type FotosInfo } from '../_shared/ia/imagens.ts'
 import { escreverNaHora, type DepsNaHora, type InfoFoto } from '../_shared/ia/naHora.ts'
+import { textosDoItem } from '../_shared/modelos/pacote.ts'
 
 export type PostDoMes = {
   id: string, mes_id: string, data: string, rede: string, tipo: string, formato: string, horario: string,
@@ -70,7 +71,7 @@ export async function trocarPostDoCliente(entrada: unknown, deps: DepsTroca): Pr
   const novo = gerarTroca(pacote, alvo, post.trocas + 1)
   // Nenhum texto que o cliente ainda não viu: não grava e não conta a troca.
   if (!novo) return r(422, 'Não encontrei outro texto diferente para este post. Você pode usar "Só descartar".')
-  const doCliente = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
+  const doCliente = [negocio.nome, ...produtos.flatMap(textosDoItem)]
   const problemas = validarPost(novo, RAMOS[cliente.ramo], doCliente)
   if (problemas.length) {
     console.error('trocar-post: validação recusou o post', cliente.id, post.id, problemas)

@@ -142,7 +142,7 @@ export function telaPost(ctx, post, aoVoltar) {
     textos.replaceChildren(escrevendo, el('div', { class: 'texto-post' },
       el('p', { class: 'legenda', texto: post.legenda }),
       // pacote de viagem: a chamada para o WhatsApp da empresa (vai junto ao copiar e ao enviar)
-      linhaDoWhatsApp(post, ctx) ? el('p', { class: 'legenda', texto: linhaDoWhatsApp(post, ctx) }) : null,
+      ...[linhaDoWhatsApp(post, ctx)].filter(Boolean).map((linha) => el('p', { class: 'legenda', texto: linha })),
       post.hashtags?.length ? el('p', { class: 'muted hashtags', texto: post.hashtags.join(' ') }) : null,
       post.roteiro
         ? el('div', { class: 'roteiro' }, el('h2', { texto: t('mes.roteiro') }),

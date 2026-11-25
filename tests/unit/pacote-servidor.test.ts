@@ -90,3 +90,16 @@ test('gerarMes: post de vitrine (sem promoção) com Pix passa na validação (s
   expect(posts.some((p) => p.legenda.includes('5% a menos no Pix'))).toBe(true)
   expect(posts.flatMap((p) => validarPost(p, RAMOS.turismo, ['Malibu', 'Gramado']))).toEqual([])
 })
+
+test('hotel com palavra de promoção ("Pousada Off Road") é texto do cliente: o mês sai e a IA recebe o hotel como texto dele', async () => {
+  const { gerarMesDoCliente } = await import('../../supabase/functions/gerar-mes/acoes.ts')
+  const pacote = { ...PACOTE, hotel: 'Pousada Off Road' }
+  const r = await gerarMesDoCliente({ estrategia: 'vender' }, {
+    cliente: async () => ({ id: 'c1', situacao: 'ativo', senha_provisoria: false, ramo: 'turismo' }),
+    negocio: async () => ({ nome: 'Malibu', insta: null, tom: 'proximo', horario: '19:00' }),
+    produtos: async () => [{ id: 'g', nome: 'Gramado', descricao: null, preco: 2800, preco_promo: null, pacote }],
+    mesesGerados: async () => [], hoje: () => '2026-11-16', salvar: async () => ({ id: 'm1' }),
+  } as never)
+  expect(r.status).toBe(201)
+  expect(montarEntradaPost(dados(pacote), lugar(), null).textosDoCliente).toContain('Pousada Off Road')
+})

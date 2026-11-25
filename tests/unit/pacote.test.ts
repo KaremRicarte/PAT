@@ -101,3 +101,9 @@ test('resumoDoPacote: nome sem o tipo ganha "Hotel"', () => {
   expect(resumoDoPacote(lerPacote({ hotel: 'Serra Azul' })!)).toBe('Hotel Serra Azul')
   expect(resumoDoPacote(lerPacote({ hotel: 'Pousada do Sol' })!)).toBe('Pousada do Sol')
 })
+
+test('bate-volta (ida = volta): sem "0 noites"', () => {
+  const p = lerPacote({ ida: '2026-12-12', volta: '2026-12-12' })!
+  expect(resumoDoPacote(p)).toBe('ida e volta 12/12/2026')
+  expect(linhasDoCartao(p)).toEqual([{ icone: 'data', texto: '12/12 · bate-volta' }])
+})

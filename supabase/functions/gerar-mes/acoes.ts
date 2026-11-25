@@ -7,6 +7,7 @@ import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import { mesAlvo } from '../_shared/modelos/calendario.ts'
 import { agendaDoPacote, gerarMes, type Pacote, type PostGerado } from '../_shared/modelos/gerar.ts'
 import { temPromocao, validarMes, validarPost } from '../_shared/modelos/validar.ts'
+import { textosDoItem } from '../_shared/modelos/pacote.ts'
 
 export type DepsMes = {
   cliente: () => Promise<{ id: string, situacao: string, senha_provisoria: boolean, ramo: string | null, redes?: string[] | null, frequencia?: string | null } | null>,
@@ -48,7 +49,7 @@ export async function gerarMesDoCliente(entrada: unknown, deps: DepsMes): Promis
   // Em ramos com regras de conselho, o texto escrito pelo cliente também não pode falar de preço/promoção.
   const ramo = RAMOS[cliente.ramo]
   if (ramo.noPromo) {
-    const textos = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
+    const textos = [negocio.nome, ...produtos.flatMap(textosDoItem)]
     const ruim = textos.find(temPromocao)
     if (ruim) return r(400, `Revise "${ruim}": em ${ramo.nome} os textos não podem falar de preço nem de promoção.`)
   }
@@ -57,7 +58,7 @@ export async function gerarMesDoCliente(entrada: unknown, deps: DepsMes): Promis
   if (!alvo) return r(409, 'O próximo mês fica disponível a partir do dia 21.')
 
   const est = estrategia as Estrategia
-  const doCliente = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
+  const doCliente = [negocio.nome, ...produtos.flatMap(textosDoItem)]
   const frequencia = lerFrequencia(cliente.frequencia)
   const posts = gerarMes({ ramo: cliente.ramo, estrategia: est, ...alvo, negocio, produtos, redes, frequencia })
   const problemas = [

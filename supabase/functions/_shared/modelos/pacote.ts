@@ -87,7 +87,8 @@ export function resumoDoPacote(p: Pacote, { comPreco = true }: { comPreco?: bool
   const refeicoes = textoDasRefeicoes(p.refeicoes)
   const partes = [
     p.hotel ? (JA_DIZ_O_TIPO.test(p.hotel) ? p.hotel : `Hotel ${p.hotel}`) : null,
-    p.ida && p.volta ? `ida ${dataBR(p.ida)}, volta ${dataBR(p.volta)} (${noites(n!)})` : p.ida ? `ida ${dataBR(p.ida)}` : null,
+    p.ida && p.volta ? (n === 0 ? `ida e volta ${dataBR(p.ida)}` : `ida ${dataBR(p.ida)}, volta ${dataBR(p.volta)} (${noites(n!)})`)
+      : p.ida ? `ida ${dataBR(p.ida)}` : null,
     p.transporte === 'aviao' ? 'aéreo' : p.transporte === 'onibus' ? 'rodoviário' : null,
     p.transfer ? 'transfer aeroporto–hotel incluso' : null,
     refeicoes ? `${refeicoes === 'Pensão completa' ? 'pensão completa' : refeicoes.toLowerCase()} incluso` : null,
@@ -111,7 +112,7 @@ export function linhasDoCartao(p: Pacote): LinhaDoCartao[] {
     p.hotel ? { icone: 'hotel', texto: p.hotel } : null,
     p.transporte === 'aviao' ? { icone: 'aviao', texto: 'Aéreo' } : p.transporte === 'onibus' ? { icone: 'onibus', texto: 'Rodoviário' } : null,
     p.transfer ? { icone: 'transfer', texto: 'Transfer incluso' } : null,
-    p.ida && p.volta ? { icone: 'data', texto: `${diaMes(p.ida)} a ${diaMes(p.volta)} · ${noites(n!)}` }
+    p.ida && p.volta ? { icone: 'data', texto: n === 0 ? `${diaMes(p.ida)} · bate-volta` : `${diaMes(p.ida)} a ${diaMes(p.volta)} · ${noites(n!)}` }
       : p.ida ? { icone: 'data', texto: `Ida ${diaMes(p.ida)}` } : null,
     refeicoes ? { icone: 'refeicao', texto: refeicoes } : null,
   ]
@@ -136,3 +137,17 @@ export function resumoDoItem(ramo: string, pacote: unknown, comPreco: boolean): 
   const p = ramo === 'turismo' ? pacoteAtivo(pacote) : null
   return p ? resumoDoPacote(p, { comPreco }) || null : null
 }
+
+// O que gravar no banco: null quando a caixinha está desmarcada e nada foi preenchido (abrir o formulário não muda o item).
+export function pacoteParaGravar(x: unknown): Pacote | null {
+  const p = lerPacote(x)
+  if (!p) return null
+  const r = p.refeicoes
+  const temValor = Boolean(p.hotel || p.ida || p.volta || p.transporte || p.transfer || r.cafe || r.almoco || r.jantar ||
+    p.preco_por || p.parcelas || p.taxas || p.pix)
+  return p.ativo || temValor ? p : null
+}
+
+// Textos do cliente num item (nome, descrição e o hotel do pacote): as checagens de palavras não valem para eles.
+export const textosDoItem = (p: { nome: string, descricao?: string | null, pacote?: unknown }): string[] =>
+  [p.nome, p.descricao ?? '', lerPacote(p.pacote)?.hotel ?? '']

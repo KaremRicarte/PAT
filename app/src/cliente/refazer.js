@@ -4,10 +4,11 @@ import { t } from '../textos.js'
 import { el, logo, mostrar, aviso, invocar } from '../comum.js'
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { carregarNegocio } from './negocio.js'
+import { pacoteParaGravar } from '../../../supabase/functions/_shared/modelos/pacote.ts'
 
 // O que, nos itens, muda os posts: ordem, nome, descrição, preços, data da promoção, "Ocultar preço", pacote e fotos.
 const resumoDosItens = (produtos) => JSON.stringify((produtos ?? []).map((p) => [
-  p.id, p.nome, p.descricao ?? '', p.preco ?? null, p.preco_promo ?? null, p.promo_data ?? null, Boolean(p.ocultar_preco), p.pacote ?? null,
+  p.id, p.nome, p.descricao ?? '', p.preco ?? null, p.preco_promo ?? null, p.promo_data ?? null, Boolean(p.ocultar_preco), pacoteParaGravar(p.pacote),
   p.fotos?.length ? p.fotos : p.foto_path ? [p.foto_path] : [],
 ]))
 export const itensMudaram = (antes, depois) => resumoDosItens(antes) !== resumoDosItens(depois)

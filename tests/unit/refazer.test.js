@@ -73,3 +73,13 @@ test('itensMudaram: só marcar ou desmarcar "Ocultar preço" já conta como muda
   expect(itensMudaram([A], [{ ...A, ocultar_preco: true }])).toBe(true)
   expect(itensMudaram([{ ...A, ocultar_preco: false }], [A])).toBe(false)
 })
+
+test('itensMudaram: pacote desmarcado e vazio vale o mesmo que nenhum pacote', async () => {
+  const { itensMudaram } = await import('../../app/src/cliente/refazer.js')
+  const vazio = { ativo: false, hotel: null, ida: null, volta: null, transporte: null, transfer: false,
+    refeicoes: { cafe: false, almoco: false, jantar: false }, preco_por: null, parcelas: null, taxas: false, pix: null }
+  const item = { id: 'g', nome: 'Gramado', fotos: [] }
+  expect(itensMudaram([{ ...item, pacote: null }], [{ ...item, pacote: vazio }])).toBe(false)
+  expect(itensMudaram([{ ...item, pacote: null }], [{ ...item, pacote: { ...vazio, ativo: true, hotel: 'X' } }])).toBe(true)
+})
+

@@ -212,3 +212,16 @@ test('desenharArte: cartão sem WhatsApp não desenha o selo', async () => {
   expect(textos.some((x) => x.s.includes('Serra Azul'))).toBe(true)
   expect(textos.some((x) => x.s.includes('Fale com a loja'))).toBe(false)
 })
+
+test('cartão do pacote: hotel de 80 letras aparece inteiro (em até 2 linhas, letra menor), em stories e feed', async () => {
+  const { desenharArte } = await import('../../app/src/artes/desenho.js')
+  const hotel = 'Hotel Fazenda Recanto das Hortênsias e Araucárias da Serra Gaúcha Resort e Spa X'.slice(0, 80)
+  for (const forma of [{ W: 1080, H: 1920 }, { W: 1080, H: 1350 }]) {
+    const { ctx, textos } = canvasFalso()
+    const pacote = { linhas: [{ icone: 'hotel', texto: hotel }, { icone: 'aviao', texto: 'Aéreo' }], unidade: null, parcelas: null, pix: null, whatsapp: null }
+    desenharArte(ctx, { pecas: { rotulo: 'M', titulo: 'T', gancho: '', meio: '', convite: '', assinatura: { texto: '@m', logo: false }, preco: { de: null, por: 'R$ 99' }, pacote }, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, ...forma })
+    const daLinha = textos.filter((x) => hotel.includes(x.s) && x.s.length > 3)
+    expect(daLinha.length).toBeLessThanOrEqual(2)
+    expect(daLinha.map((x) => x.s).join(' ')).toBe(hotel)
+  }
+})

@@ -3,7 +3,7 @@
 import type { Estrategia, Pilar, Rede, Tom } from '../modelos/tipos.ts'
 import type { Ocasiao, PostGerado } from '../modelos/gerar.ts'
 import type { EntradaPost } from './escrever.ts'
-import { resumoDoItem } from '../modelos/pacote.ts'
+import { resumoDoItem, textosDoItem } from '../modelos/pacote.ts'
 
 // descrição usada quando a foto ainda não foi descrita (a imagem vai anexada mesmo assim)
 export const SEM_DESCRICAO = 'Veja a foto anexada.'
@@ -70,6 +70,6 @@ export function montarEntradaPost(
     textoModelo: [post.titulo, post.legenda].filter(Boolean).join('\n\n'),
     evitar: post.titulo_anterior ?? null,
     // mesmos textos do cliente de gerar-mes (o que ele escreveu não conta nas checagens)
-    textosDoCliente: [c.negocio.nome, ...c.produtos.flatMap((p) => [p.nome, p.descricao ?? ''])],
+    textosDoCliente: [c.negocio.nome, ...c.produtos.flatMap(textosDoItem)],
   }
 }

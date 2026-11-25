@@ -264,7 +264,17 @@ function medidasDoCartao(f, pecas, e) {
   const larguraTexto = mw - m.pad * 2 - m.icone - 2 * u * e
   ctx.font = `600 ${m.linha}px ${look.fb ?? look.fd}`
   // cada linha cabe em até 2 linhas de texto (o hotel longo quebra; além disso, a fonte comprime no fillText)
-  m.linhas = pc.linhas.map((l) => ({ ...l, partes: quebrarLinhas(l.texto, larguraTexto, medidor(ctx)).slice(0, 2) }))
+  m.linhas = pc.linhas.map((l) => {
+    let tam = m.linha, partes
+    for (let i = 0; i < 12; i++) {
+      ctx.font = `600 ${tam}px ${look.fb ?? look.fd}`
+      partes = quebrarLinhas(l.texto, larguraTexto, medidor(ctx))
+      if (partes.length <= 2) break
+      tam *= 0.93
+    }
+    if (partes.length > 2) partes = [partes[0], partes.slice(1).join(' ')]
+    return { ...l, tam, partes }
+  })
   m.larguraTexto = larguraTexto
   let h = m.pad
   h += m.linhas.reduce((s, l) => s + l.partes.length * m.linha * m.entre, 0)
@@ -324,7 +334,7 @@ function desenharCartao(f, pecas, m, y) {
   for (const l of m.linhas) {
     const alto = m.linha * m.entre
     desenharIcone(ctx, l.icone, ix, cy + (alto - m.icone) / 2, m.icone, branco)
-    ctx.font = `600 ${m.linha}px ${look.fb ?? look.fd}`
+    ctx.font = `600 ${l.tam}px ${look.fb ?? look.fd}`
     ctx.fillStyle = branco
     l.partes.forEach((p, i) => ctx.fillText(p, tx, cy + alto * i + alto / 2, m.larguraTexto))
     cy += alto * l.partes.length

@@ -9,6 +9,7 @@ import type { Ocasiao, Pacote, PostGerado } from '../_shared/modelos/gerar.ts'
 import { refazerPosts, refazerUmPost } from '../_shared/modelos/refazer.ts'
 import { validarPost } from '../_shared/modelos/validar.ts'
 import { daPastaDoCliente } from '../_shared/ia/entrada.ts'
+import { textosDoItem } from '../_shared/modelos/pacote.ts'
 
 export type PostQueFalta = {
   id: string, data: string, rede: Rede, tipo: PostGerado['tipo'], formato: PostGerado['formato'], horario: string,
@@ -61,7 +62,7 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
 
   const hoje = deps.hoje()
   const ramo = RAMOS[cliente.ramo]
-  const doCliente = [negocio.nome, ...produtos.flatMap((p) => [p.nome, p.descricao ?? ''])]
+  const doCliente = [negocio.nome, ...produtos.flatMap(textosDoItem)]
 
   if (typeof postId === 'string') {
     // "Refazer este post": a foto escolhida (foto_path; ausente = manter a atual) e, com dia, os outros posts do dia
