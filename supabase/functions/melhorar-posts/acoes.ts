@@ -83,6 +83,10 @@ export type DepsMelhorar = Omit<DepsImagens, 'escolher' | 'palavras' | 'gerar'> 
 }
 
 const ESTRATEGIAS: readonly string[] = ['vender', 'crescer', 'credibilidade', 'tempo']
+// post de tema geral: foto do cliente usada há menos que isso não volta (o "Refazer" troca a imagem de verdade)
+const DIAS_SEM_REPETIR_DO_CLIENTE = 7
+// a data (AAAA-MM-DD) de n dias antes de hoje
+const desdeDias = (hoje: string, n: number) => new Date(Date.parse(`${hoje}T12:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10)
 // fotos do cliente ainda sem descrição que um post de tema geral descreve na hora (as outras ficam para os próximos)
 const DESCREVER_POR_POST = 2
 
@@ -280,7 +284,12 @@ async function melhorarComPrazo(
       descrever--
       await descrita(p)
     }
-    const fotosDoCliente = candidatas.filter((p) => info[p]?.descricao)
+    // fotos do cliente usadas há poucos dias (num post ou tiradas de um post refeito) ficam de fora: a IA escolhe outra
+    const usoGeral = candidatas.length
+      ? await deps.ultimoUso(clienteId, candidatas).catch((e) => { console.error('melhorar-posts: não consegui ler o uso das fotos', e); return {} as Record<string, string> })
+      : {}
+    const recente = (p: string) => Boolean(usoGeral[p]) && usoGeral[p].slice(0, 10) >= desdeDias(deps.hoje(), DIAS_SEM_REPETIR_DO_CLIENTE)
+    const fotosDoCliente = candidatas.filter((p) => info[p]?.descricao && !recente(p))
       .map((p) => ({ path: p, descricao: info[p].descricao as string, serve: info[p].serve !== false, doNegocio: minhasFotos.includes(p) }))
     const palavras = criarPalavras(chamarImagem)
     const escolhida = await escolherImagemGeral({

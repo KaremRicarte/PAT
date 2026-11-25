@@ -189,7 +189,7 @@ describe('Refazer com versão nova: foto escolhida e o dia inteiro', () => {
     expect(g.find((x) => x.id === ID)!.campos.foto_path).toBe('c1/produtos/p2/nova.jpg')
     for (const x of g.filter((y) => y.id !== ID)) expect(x.campos.foto_path).toBeNull()
     const marcadas = (d.marcarUsadas as ReturnType<typeof vi.fn>).mock.calls[0][0] as string[]
-    expect(marcadas.sort()).toEqual(doDia.map((p) => p.foto_path!).sort())
+    expect(marcadas.sort()).toEqual([...doDia.map((p) => p.foto_path!), 'c1/produtos/p2/nova.jpg'].sort())
   })
   test('manter a foto (sem foto_path): o post clicado mantém a foto e não marca o uso dela', async () => {
     const d = deps()
@@ -217,5 +217,44 @@ describe('Refazer com versão nova: foto escolhida e o dia inteiro', () => {
     const d = deps({ marcarUsadas: vi.fn(async () => { throw new Error('rede') }) })
     expect((await refazerPostsDoCliente({ post_id: ID, dia: true }, d)).status).toBe(200)
     log.mockRestore()
+  })
+})
+
+describe('Refazer com versão nova: correções da revisão', () => {
+  const ITENS: Pacote['produtos'] = [
+    { id: 'p2', nome: 'Gramado', descricao: null, preco: 2199, preco_promo: 1799, promo_data: '2026-12-25' },
+    { id: 'p3', nome: 'Portugal', descricao: null, preco: 10299, preco_promo: null },
+  ]
+  const mes = gerarMes(pacote(ITENS))
+  const ID = '11111111-1111-4111-8111-111111111111'
+  const i = mes.findIndex((p) => p.produto_id)
+  const base: PostQueFalta = { id: ID, data: mes[i].data, rede: mes[i].rede, tipo: mes[i].tipo, formato: mes[i].formato, horario: '08:00',
+    ordem: mes[i].ordem, estado: 'gerado', postado_em: null, ano_mes: '2026-12', estrategia: 'vender', titulo: 'T',
+    produto_id: mes[i].produto_id, pilar: mes[i].pilar, ocasiao: mes[i].ocasiao, foto_path: `c1/produtos/${mes[i].produto_id}/a.jpg`, sem_foto: false }
+  const deps = (post: PostQueFalta, extra: Partial<DepsRefazer> = {}): DepsRefazer => ({
+    cliente: async () => ({ id: 'c1', situacao: 'ativo', senha_provisoria: false, ramo: 'turismo' }),
+    negocio: async () => NEGOCIO, produtos: async () => ITENS, hoje: () => '2026-12-01',
+    postsQueFaltam: async () => [post], gravar: vi.fn(async () => {}), marcarUsadas: vi.fn(async () => {}), ...extra,
+  })
+
+  test('a foto escolhida também é marcada como usada (outro post do dia não pega a mesma), antes de gravar', async () => {
+    const ordem: string[] = []
+    const d = deps(base, { gravar: vi.fn(async () => { ordem.push('gravar') }), marcarUsadas: vi.fn(async () => { ordem.push('marcar') }) })
+    await refazerPostsDoCliente({ post_id: ID, foto_path: `c1/produtos/${base.produto_id}/b.jpg` }, d)
+    const marcadas = (d.marcarUsadas as ReturnType<typeof vi.fn>).mock.calls[0][0] as string[]
+    expect(marcadas).toContain(`c1/produtos/${base.produto_id}/b.jpg`)
+    expect(marcadas).toContain(base.foto_path)
+    expect(ordem).toEqual(['marcar', 'gravar'])
+  })
+  test('foto escolhida tira o "sem foto"', async () => {
+    const d = deps({ ...base, sem_foto: true })
+    await refazerPostsDoCliente({ post_id: ID, foto_path: `c1/produtos/${base.produto_id}/b.jpg` }, d)
+    const [[[m]]] = (d.gravar as ReturnType<typeof vi.fn>).mock.calls
+    expect(m.campos).toMatchObject({ foto_path: `c1/produtos/${base.produto_id}/b.jpg`, sem_foto: false })
+  })
+  test('caminho torto dentro da pasta do cliente também é recusado', async () => {
+    for (const p of ['c1//x.jpg', 'c1/./x.jpg', 'c1/../c2/x.jpg']) {
+      expect((await refazerPostsDoCliente({ post_id: ID, foto_path: p }, deps(base))).status).toBe(400)
+    }
   })
 })

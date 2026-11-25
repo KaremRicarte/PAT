@@ -629,3 +629,15 @@ test('post refeito: o título anterior vai para a IA evitar', async () => {
   const escrita = m.pedidos.find((p) => p.esquema === ESQUEMA_POST)!
   expect(escrita.conteudo.map((c) => (c.tipo === 'texto' ? c.texto : '')).join('\n')).toContain('Título que já saiu')
 })
+
+test('post geral: foto do cliente usada há poucos dias fica de fora da escolha', async () => {
+  const a = `${UID}/produtos/a.jpg`, b = `${UID}/produtos/b.jpg`
+  const ctx = contexto({ produtos: [{ id: 's1', nome: 'Escova progressiva', descricao: null, fotos: [a, b], foto_path: null }] })
+  const vistas: string[][] = []
+  const m = montar({ ctx, info: { [a]: { descricao: 'A.', serve: true }, [b]: { descricao: 'B.', serve: true } },
+    ultimoUso: { [a]: '2026-11-17T08:00:00Z' },
+    escolher: (p) => { vistas.push(p.conteudo.map((c) => (c.tipo === 'texto' ? c.texto : '')).join('\n').match(/produtos\/[ab]\.jpg/g) ?? []); return ok({ id: b }) } })
+  await melhorarUmPost(m.deps, post({ produto_id: null }))
+  expect(vistas.flat()).toContain('produtos/b.jpg')
+  expect(vistas.flat()).not.toContain('produtos/a.jpg')
+})

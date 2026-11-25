@@ -8,6 +8,7 @@ import { RAMOS, ramoValido } from '../_shared/modelos/ramos/index.ts'
 import type { Ocasiao, Pacote, PostGerado } from '../_shared/modelos/gerar.ts'
 import { refazerPosts, refazerUmPost } from '../_shared/modelos/refazer.ts'
 import { validarPost } from '../_shared/modelos/validar.ts'
+import { daPastaDoCliente } from '../_shared/ia/entrada.ts'
 
 export type PostQueFalta = {
   id: string, data: string, rede: Rede, tipo: PostGerado['tipo'], formato: PostGerado['formato'], horario: string,
@@ -65,7 +66,7 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
   if (typeof postId === 'string') {
     // "Refazer este post": a foto escolhida (foto_path; ausente = manter a atual) e, com dia, os outros posts do dia
     const fotoEscolhida = e.foto_path
-    if (fotoEscolhida !== undefined && (typeof fotoEscolhida !== 'string' || !fotoEscolhida.startsWith(`${cliente.id}/`) || fotoEscolhida.includes('..'))) {
+    if (fotoEscolhida !== undefined && (typeof fotoEscolhida !== 'string' || !daPastaDoCliente(cliente.id)(fotoEscolhida))) {
       return r(400, 'Foto inválida.')
     }
     // só posts que faltam (não postados, de hoje em diante) e deste cliente (postsQueFaltam já filtra)
@@ -88,13 +89,17 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
         continue
       }
       const mesmo = (novo.produto_id ?? null) === (alvo.produto_id ?? null)
-      const semFoto = mesmo ? Boolean(alvo.sem_foto) : false
+      // foto escolhida para o post clicado (só se o item continua o mesmo: a foto é dele); ela tira o "sem foto"
+      const escolhida = clicado && mesmo && typeof fotoEscolhida === 'string' ? fotoEscolhida : null
+      const semFoto = escolhida ? false : mesmo ? Boolean(alvo.sem_foto) : false
       let foto: string | null
-      if (clicado && typeof fotoEscolhida === 'string') foto = fotoEscolhida // a foto que o cliente escolheu
+      if (escolhida) foto = escolhida // a foto que o cliente escolheu
       else if (clicado) foto = mesmo ? alvo.foto_path ?? null : null // manter a foto atual (mesmo item)
       else foto = null // os outros do dia: a IA escolhe a próxima foto do revezamento
       // a foto que sai fica marcada como usada agora: o revezamento da IA escolhe outra
       if (alvo.foto_path && foto !== alvo.foto_path) usadas.push(alvo.foto_path)
+      // a foto escolhida entra no post agora: marcada como usada, para outro post do dia não pegar a mesma
+      if (escolhida && escolhida !== alvo.foto_path) usadas.push(escolhida)
       mudancas.push({ id: alvo.id, campos: {
         titulo: novo.titulo, legenda: novo.legenda, hashtags: novo.hashtags, roteiro: novo.roteiro,
         pilar: novo.pilar, produto_id: novo.produto_id, preco_de: novo.preco_de, preco_por: novo.preco_por, ocasiao: novo.ocasiao,
@@ -102,10 +107,11 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
         origem: 'modelo', ia_estado: 'fila', titulo_anterior: alvo.titulo ?? null,
       } })
     }
-    await deps.gravar(mudancas)
+    // marca antes de gravar: quando a fila da IA pegar os posts, o uso já está registrado
     if (usadas.length) {
       try { await deps.marcarUsadas([...new Set(usadas)]) } catch (erro) { console.error('refazer-posts: não marquei as fotos usadas', erro) }
     }
+    await deps.gravar(mudancas)
     return { status: 200, corpo: { refeitos: mudancas.length } }
   }
 
