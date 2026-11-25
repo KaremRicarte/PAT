@@ -318,3 +318,24 @@ test('itensParaSalvar: pacote desmarcado e vazio é gravado como null', async ()
   expect(itensParaSalvar([it], RAMOS.turismo)[0].pacote).toBe(null)
   expect(itensParaSalvar([{ ...it, pacote: { ativo: false, hotel: 'X' } }], RAMOS.turismo)[0].pacote).toMatchObject({ ativo: false, hotel: 'X' })
 })
+
+test('validarItens Turismo: campos escondidos não barram o salvar', async () => {
+  const { validarItens } = await import('../../app/src/cliente/negocio.js')
+  const { RAMOS } = await import('../../supabase/functions/_shared/modelos/ramos/index.ts')
+  const item = { id: 'a', nome: 'Gramado', descricao: '', promoData: null, fotos: [] }
+  // pacote desmarcado: o preço fica escondido junto
+  expect(validarItens([{ ...item, precoTexto: 'abc', promoTexto: '', pacote: { ativo: false } }], RAMOS.turismo)).toBe(null)
+  expect(validarItens([{ ...item, precoTexto: 'abc', promoTexto: '', pacote: { ativo: true } }], RAMOS.turismo)).toBe('quiz.itens.precoinvalido')
+  // "Entrar em contato": parcelas e Pix ficam escondidos
+  expect(validarItens([{ ...item, precoTexto: '', promoTexto: '', ocultarPreco: true, pacote: { ativo: true, parcelas: 99, pix: 90 } }], RAMOS.turismo)).toBe(null)
+  expect(validarItens([{ ...item, precoTexto: '', promoTexto: '', ocultarPreco: false, pacote: { ativo: true, parcelas: 99 } }], RAMOS.turismo)).toBe('quiz.item.pacote.erro.parcelas')
+  // outros ramos: igual a antes
+  expect(validarItens([{ ...item, precoTexto: 'abc', promoTexto: '' }], RAMOS.ferramentas)).toBe('quiz.itens.precoinvalido')
+})
+
+test('validarItens Turismo: a data da promoção (fora do pacote) continua conferida com o pacote desmarcado', async () => {
+  const { validarItens } = await import('../../app/src/cliente/negocio.js')
+  const { RAMOS } = await import('../../supabase/functions/_shared/modelos/ramos/index.ts')
+  const item = { id: 'a', nome: 'Gramado', descricao: '', precoTexto: '', promoTexto: '', fotos: [], pacote: { ativo: false } }
+  expect(validarItens([{ ...item, promoData: '' }], RAMOS.turismo)).toBe('quiz.itens.datainvalida')
+})

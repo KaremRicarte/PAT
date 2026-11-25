@@ -54,17 +54,22 @@ export function validarItens(itens, ramo = { noPromo: false }) {
   if (ramo.noPromo && itens.some((i) => temPromocao(`${i.nome} ${i.descricao ?? ''}`))) return 'quiz.itens.promo'
   if (!ramo.noPromo) {
     for (const i of itens) {
+      // Turismo: o preço mora nos detalhes do pacote; pacote desmarcado esconde (e não confere) o preço
+      const confereOPreco = !(ramo.id === 'turismo' && !i.pacote?.ativo)
       const normal = precoDoTexto(i.precoTexto), promo = precoDoTexto(i.promoTexto)
-      if ((String(i.precoTexto ?? '').trim() && normal === null) || (String(i.promoTexto ?? '').trim() && promo === null)) return 'quiz.itens.precoinvalido'
-      if (promo !== null && normal === null) return 'quiz.itens.semnormal'
-      if (promo !== null && promo > normal) return 'quiz.itens.promomaior'
+      if (confereOPreco) {
+        if ((String(i.precoTexto ?? '').trim() && normal === null) || (String(i.promoTexto ?? '').trim() && promo === null)) return 'quiz.itens.precoinvalido'
+        if (promo !== null && normal === null) return 'quiz.itens.semnormal'
+        if (promo !== null && promo > normal) return 'quiz.itens.promomaior'
+      }
       // caixinha da data marcada: precisa de um dia escolhido (o preço é opcional; sem preço, o post sai sem valor)
       if (i.promoData != null && !/^\d{4}-\d{2}-\d{2}$/.test(i.promoData)) return 'quiz.itens.datainvalida'
     }
   }
   // Turismo: detalhes do pacote (datas, parcelas, Pix)
   if (ramo.id === 'turismo') {
-    for (const i of itens) { const k = validarPacote(i.pacote); if (k) return k }
+    // "Entrar em contato": parcelas e Pix ficam escondidos e não são conferidos
+    for (const i of itens) { const k = validarPacote(i.ocultarPreco ? { ...i.pacote, parcelas: null, pix: null } : i.pacote); if (k) return k }
   }
   if (itens.some((i) => (i.fotos?.length ?? 0) > MAX_FOTOS)) return 'quiz.itens.fotos'
   return null

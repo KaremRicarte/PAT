@@ -176,7 +176,8 @@ function caixaDoPacote(item, precos) {
     el('label', { for: idPor, texto: t('quiz.item.pacote.precopor') }), precoPor,
     el('div', { class: 'precos' }, el('div', {}, rParc, iParc), el('div', {}, rPix, iPix)),
     caixinha('taxas', () => p.taxas, (v) => { p.taxas = v }))
-  const verCondicoes = () => { condicoes.hidden = Boolean(item.ocultarPreco) }
+  const guardado = el('p', { class: 'muted pequeno', texto: t('quiz.item.pacote.preco.guardado') })
+  const verCondicoes = () => { condicoes.hidden = Boolean(item.ocultarPreco); guardado.hidden = !item.ocultarPreco }
   const modoPreco = el('fieldset', { class: 'opcoes-pacote' }, el('legend', { texto: t('quiz.item.pacote.preconosposts') }),
     ...[[false, 'mostrar'], [true, 'contato']].map(([oculto, nome]) => {
       const r = el('input', { type: 'radio', name: `${id}-preco`, checked: Boolean(item.ocultarPreco) === oculto })
@@ -190,7 +191,7 @@ function caixaDoPacote(item, precos) {
     transporte,
     caixinha('transfer', () => p.transfer, (v) => { p.transfer = v }),
     refeicoes,
-    precos, modoPreco, condicoes)
+    precos, modoPreco, guardado, condicoes)
   const mostrar = () => { detalhes.hidden = !p.ativo; verPassou() }
   marcar.addEventListener('change', () => { p.ativo = marcar.checked; mostrar() })
   mostrar()

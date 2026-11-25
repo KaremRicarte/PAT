@@ -253,6 +253,7 @@ const pt = {
   'quiz.item.pacote.preconosposts': 'Preço nos posts',
   'quiz.item.pacote.preco.mostrar': 'Mostrar o preço',
   'quiz.item.pacote.preco.contato': 'Entrar em contato para as condições',
+  'quiz.item.pacote.preco.guardado': 'O valor fica guardado, mas não aparece nos posts.',
   'quiz.item.pacote.erro.volta': 'A volta precisa ser depois da ida.',
   'quiz.item.pacote.erro.parcelas': 'Parcelas: de 2 a 24.',
   'quiz.item.pacote.erro.pix': 'Desconto no Pix: de 1 a 50%.',
