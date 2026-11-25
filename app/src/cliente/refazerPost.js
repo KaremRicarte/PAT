@@ -18,7 +18,7 @@ import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/cale
 export function itemParaGravar(item, ramo) {
   const [salvo] = itensParaSalvar([item], ramo)
   return { nome: salvo.nome.trim(), descricao: salvo.descricao?.trim() || null, preco: salvo.preco,
-    preco_promo: salvo.preco_promo, promo_data: salvo.promo_data, ocultar_preco: salvo.ocultar_preco }
+    preco_promo: salvo.preco_promo, promo_data: salvo.promo_data, ocultar_preco: salvo.ocultar_preco, pacote: salvo.pacote }
 }
 
 // Foto sugerida: a próxima foto do item depois da atual (em ciclo); null se não há outra.

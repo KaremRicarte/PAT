@@ -166,7 +166,7 @@ test('itensParaSalvar: converte preços do texto; promo só com preço; ramos no
   const itens = [{ id: 'a', nome: 'Corte', descricao: 'd', precoTexto: '50', promoTexto: '40', fotos: [] },
     { id: 'b', nome: 'X', descricao: '', precoTexto: '', promoTexto: '30', fotos: [] }]
   const [a, b] = itensParaSalvar(itens, { noPromo: false })
-  expect(a).toEqual({ id: 'a', nome: 'Corte', descricao: 'd', preco: 50, preco_promo: 40, promo_data: null, ocultar_preco: false, fotos: [] })
+  expect(a).toEqual({ id: 'a', nome: 'Corte', descricao: 'd', preco: 50, preco_promo: 40, promo_data: null, ocultar_preco: false, pacote: null, fotos: [] })
   expect(b.preco).toBeNull()
   expect(b.preco_promo).toBeNull()
   const [c] = itensParaSalvar(itens, { noPromo: true })
@@ -276,4 +276,27 @@ test('itensParaSalvar e salvarItens levam a caixinha Ocultar preço', async () =
   const chamadas = []
   await salvarItens(fakeSimples(chamadas), 'u1', itensParaSalvar(itens, { noPromo: false }))
   expect(chamadas.find(([t, v]) => t === 'produtos' && v)[1][0]).toMatchObject({ ocultar_preco: true, preco: 50 })
+})
+
+const PACOTE = { ativo: true, hotel: 'Serra Azul', ida: '2026-12-12', volta: '2026-12-17', transporte: 'aviao', transfer: true,
+  refeicoes: { cafe: true, almoco: false, jantar: false }, preco_por: 'pessoa', parcelas: 10, taxas: true, pix: 5 }
+
+test('itensParaSalvar e salvarItens levam os detalhes do pacote (só Turismo)', async () => {
+  const { itensParaSalvar, salvarItens } = await import('../../app/src/cliente/negocio.js')
+  const { RAMOS } = await import('../../supabase/functions/_shared/modelos/ramos/index.ts')
+  const itens = [{ id: 'a', nome: 'Gramado', descricao: '', precoTexto: '2800', promoTexto: '2390', pacote: { ...PACOTE, foo: 1 }, fotos: [] }]
+  expect(itensParaSalvar(itens, RAMOS.turismo)[0].pacote).toEqual(PACOTE)
+  expect(itensParaSalvar(itens, RAMOS.beleza)[0].pacote).toBe(null)
+  const chamadas = []
+  await salvarItens(fakeSimples(chamadas), 'u1', itensParaSalvar(itens, RAMOS.turismo))
+  expect(chamadas.find(([t, v]) => t === 'produtos' && v)[1][0]).toMatchObject({ pacote: PACOTE })
+})
+
+test('validarItens: no Turismo, a volta antes da ida não passa', async () => {
+  const { validarItens } = await import('../../app/src/cliente/negocio.js')
+  const { RAMOS } = await import('../../supabase/functions/_shared/modelos/ramos/index.ts')
+  const item = { id: 'a', nome: 'Gramado', descricao: '', precoTexto: '', promoTexto: '', promoData: null, fotos: [] }
+  expect(validarItens([{ ...item, pacote: { ...PACOTE, volta: '2026-12-01' } }], RAMOS.turismo)).toBe('quiz.item.pacote.erro.volta')
+  expect(validarItens([{ ...item, pacote: { ...PACOTE, pix: 80 } }], RAMOS.turismo)).toBe('quiz.item.pacote.erro.pix')
+  expect(validarItens([{ ...item, pacote: PACOTE }], RAMOS.turismo)).toBe(null)
 })

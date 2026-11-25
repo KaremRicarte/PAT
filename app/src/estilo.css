@@ -289,6 +289,11 @@ button.dia-btn { position: relative; }
 .datas-mes .itens-data summary { cursor: pointer; font-weight: 700; color: var(--pri); font-size: 14px; }
 .promo-data-detalhes { margin: 8px 0 0 28px; }
 .promo-data-detalhes select { width: 100%; }
+/* Detalhes do pacote (Turismo): grupos de opções sem a borda de fieldset */
+.opcoes-pacote { border: 0; padding: 0; margin: 12px 0 0; }
+.opcoes-pacote legend { font-weight: 600; color: var(--ink); padding: 0; }
+.opcoes-pacote .caixinha { margin: 8px 16px 0 0 !important; display: inline-flex !important; font-weight: 400 !important; }
+.pacote-detalhes > label { display: block; margin-top: 12px; }
 .aviso-fila-ia { background: var(--sunk); border-radius: 12px; padding: 10px 14px; margin: 8px 0; font-size: 14px; }
 .aviso-foto { flex: 1 0 100%; margin: 0; font-size: 13px; color: var(--bad); }
 .lembrete-aviso p { margin: 0 0 12px; font-weight: 700; }

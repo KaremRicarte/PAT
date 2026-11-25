@@ -7,6 +7,7 @@ import { datasParaPromocao, diaMes } from '../../../supabase/functions/_shared/m
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { MAX_ITENS, validarItens, MAX_FOTOS_NEGOCIO, itensRepetidos, textoDosRepetidos } from './negocio.js'
 import { montarImportacao, faixaDeFotos } from './importarTela.js'
+import { lerPacote } from '../../../supabase/functions/_shared/modelos/pacote.ts'
 
 const HORARIOS = [['07:00', 'manha'], ['12:00', 'almoco'], ['19:00', 'noite']]
 const ASSINATURAS = ['ambos', 'logo', 'insta']
@@ -42,6 +43,8 @@ export function estadoDoNegocio(negocio, produtos, ramo) {
       promoData: p.promo_data ?? null,
       // caixinha "Ocultar preço": o preço fica salvo, mas os posts saem sem valor
       ocultarPreco: Boolean(p.ocultar_preco),
+      // detalhes do pacote de viagem (Turismo); null = nunca preenchido
+      pacote: lerPacote(p.pacote),
       fotos: p.fotos?.length ? p.fotos.map((path) => ({ path })) : p.foto_path ? [{ path: p.foto_path }] : [],
     })),
   }
@@ -111,6 +114,62 @@ export function caixaOcultarPreco(item) {
     el('p', { class: 'muted pequeno', texto: t('quiz.item.ocultarpreco.dica') }))
 }
 
+// Caixinha "Detalhes do pacote" (só Turismo): hotel, datas, transporte, transfer, refeições e condições do preço.
+// Desmarcada, os valores ficam guardados (ativo: false) e os posts não usam.
+function caixaDoPacote(item) {
+  const p = item.pacote ?? (item.pacote = lerPacote({}))
+  const id = `pacote-${item.id}`
+  const marcar = el('input', { type: 'checkbox', id, checked: p.ativo })
+  const numero = (v) => (String(v).trim() === '' ? null : Number(v))
+  // campo ligado a uma chave do pacote
+  const ligado = (chave, rotulo, attrs, ler = (v) => v || null) => {
+    const [r, i] = campo(rotulo, { ...attrs, value: p[chave] ?? '' })
+    i.addEventListener('input', () => { p[chave] = ler(i.value) })
+    return [r, i]
+  }
+  const caixinha = (nome, ler, gravar) => {
+    const idc = `${id}-${nome}`
+    const c = el('input', { type: 'checkbox', id: idc, checked: ler() })
+    c.addEventListener('change', () => gravar(c.checked))
+    return el('label', { class: 'caixinha', for: idc }, c, el('span', { texto: t(`quiz.item.pacote.${nome}`) }))
+  }
+  const [rHotel, iHotel] = ligado('hotel', t('quiz.item.pacote.hotel'), { maxlength: 80 })
+  const [rIda, iIda] = ligado('ida', t('quiz.item.pacote.ida'), { type: 'date' })
+  const [rVolta, iVolta] = ligado('volta', t('quiz.item.pacote.volta'), { type: 'date' })
+  const passou = el('p', { class: 'muted pequeno', texto: t('quiz.item.pacote.passou') })
+  const verPassou = () => { passou.hidden = !(p.ativo && p.ida && p.ida < hojeEmSaoPaulo()) }
+  iIda.addEventListener('change', verPassou)
+  const transporte = el('fieldset', { class: 'opcoes-pacote' }, el('legend', { texto: t('quiz.item.pacote.transporte') }),
+    ...[['aviao', 'aviao'], ['onibus', 'onibus'], ['', 'sohospedagem']].map(([valor, nome]) => {
+      const r = el('input', { type: 'radio', name: `${id}-transporte`, value: valor, checked: (p.transporte ?? '') === valor })
+      r.addEventListener('change', () => { p.transporte = valor || null })
+      return el('label', { class: 'caixinha' }, r, el('span', { texto: t(`quiz.item.pacote.${nome}`) }))
+    }))
+  const refeicoes = el('fieldset', { class: 'opcoes-pacote' }, el('legend', { texto: t('quiz.item.pacote.inclui') }),
+    ...['cafe', 'almoco', 'jantar'].map((r) => caixinha(r, () => p.refeicoes[r], (v) => { p.refeicoes[r] = v })))
+  const idPor = `${id}-precopor`
+  const precoPor = el('select', { id: idPor },
+    el('option', { value: '', texto: '—' }),
+    ...['pessoa', 'casal', 'noite', 'pacote'].map((v) => el('option', { value: v, texto: t(`quiz.item.pacote.precopor.${v}`), selected: p.preco_por === v })))
+  precoPor.addEventListener('change', () => { p.preco_por = precoPor.value || null })
+  const [rParc, iParc] = ligado('parcelas', t('quiz.item.pacote.parcelas'), { type: 'number', min: 2, max: 24, inputmode: 'numeric' }, numero)
+  const [rPix, iPix] = ligado('pix', t('quiz.item.pacote.pix'), { type: 'number', min: 1, max: 50, inputmode: 'numeric' }, numero)
+  const detalhes = el('div', { class: 'promo-data-detalhes pacote-detalhes' },
+    rHotel, iHotel,
+    el('div', { class: 'precos' }, el('div', {}, rIda, iIda), el('div', {}, rVolta, iVolta)), passou,
+    transporte,
+    caixinha('transfer', () => p.transfer, (v) => { p.transfer = v }),
+    refeicoes,
+    el('label', { for: idPor, texto: t('quiz.item.pacote.precopor') }), precoPor,
+    el('div', { class: 'precos' }, el('div', {}, rParc, iParc), el('div', {}, rPix, iPix)),
+    caixinha('taxas', () => p.taxas, (v) => { p.taxas = v }))
+  const mostrar = () => { detalhes.hidden = !p.ativo; verPassou() }
+  marcar.addEventListener('change', () => { p.ativo = marcar.checked; mostrar() })
+  mostrar()
+  return el('div', { class: 'promo-data' },
+    el('label', { class: 'caixinha', for: id }, marcar, el('span', { texto: t('quiz.item.pacote') })), detalhes)
+}
+
 const BLOCOS = {
   itens: ({ ramo, estado, supabase, fotosInfo }) => {
     const lista = el('div', { class: 'itens' })
@@ -136,7 +195,7 @@ const BLOCOS = {
         const [rPromo, iPromo] = campo(t('quiz.item.promo'), { value: item.promoTexto, inputmode: 'decimal', placeholder: 'Ex.: 39,90' })
         iPromo.addEventListener('input', () => { item.promoTexto = iPromo.value })
         preco = [el('div', { class: 'precos' }, el('div', {}, rPreco, iPreco), el('div', {}, rPromo, iPromo)),
-          caixaDaData(item, datas), caixaOcultarPreco(item)]
+          caixaDaData(item, datas), caixaOcultarPreco(item), ramo.id === 'turismo' ? caixaDoPacote(item) : null]
       }
       const selos = el('span', { class: 'selos-item' })
       const remover = el('button', { type: 'button', class: 'secundario pequeno', texto: t('quiz.item.remover') })

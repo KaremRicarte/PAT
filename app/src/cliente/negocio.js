@@ -43,6 +43,8 @@ export function medidaReduzida(largura, altura, maximo) {
 
 // Devolve a chave de texto do primeiro problema, ou null se a lista está boa.
 // Em ramos com regras de conselho (noPromo), nome e descrição não podem falar de preço/promoção.
+import { lerPacote, validarPacote } from '../../../supabase/functions/_shared/modelos/pacote.ts'
+
 export function validarItens(itens, ramo = { noPromo: false }) {
   if (!itens.length) return 'quiz.itens.min'
   if (itens.length > MAX_ITENS) return 'quiz.itens.max'
@@ -58,6 +60,10 @@ export function validarItens(itens, ramo = { noPromo: false }) {
       // caixinha da data marcada: precisa de um dia escolhido (o preço é opcional; sem preço, o post sai sem valor)
       if (i.promoData != null && !/^\d{4}-\d{2}-\d{2}$/.test(i.promoData)) return 'quiz.itens.datainvalida'
     }
+  }
+  // Turismo: detalhes do pacote (datas, parcelas, Pix)
+  if (ramo.id === 'turismo') {
+    for (const i of itens) { const k = validarPacote(i.pacote); if (k) return k }
   }
   if (itens.some((i) => (i.fotos?.length ?? 0) > MAX_FOTOS)) return 'quiz.itens.fotos'
   return null
@@ -97,9 +103,9 @@ export async function reduzirFoto(arquivo, maximo, tipo) {
 
 export async function carregarNegocio(supabase, uid) {
   const [n, p] = await Promise.all([
-    supabase.from('negocios').select('nome, insta, assinatura, tom, horario, cor1, cor2, logo_path, fotos, pronto')
+    supabase.from('negocios').select('nome, insta, whatsapp, assinatura, tom, horario, cor1, cor2, logo_path, fotos, pronto')
       .eq('cliente_id', uid).maybeSingle(),
-    supabase.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, ocultar_preco, fotos, foto_path').eq('cliente_id', uid).order('ordem'),
+    supabase.from('produtos').select('id, nome, descricao, preco, preco_promo, promo_data, ocultar_preco, pacote, fotos, foto_path').eq('cliente_id', uid).order('ordem'),
   ])
   if (n.error) throw n.error
   if (p.error) throw p.error
@@ -155,7 +161,9 @@ export function itensParaSalvar(itens, ramo) {
     return { id: i.id, nome: i.nome, descricao: i.descricao, preco, preco_promo,
       promo_data: !ramo.noPromo && i.promoData ? i.promoData : null,
       // caixinha "Ocultar preço" (ramos noPromo não têm preço)
-      ocultar_preco: !ramo.noPromo && Boolean(i.ocultarPreco), fotos: i.fotos }
+      ocultar_preco: !ramo.noPromo && Boolean(i.ocultarPreco),
+      // detalhes do pacote de viagem (só Turismo)
+      pacote: ramo.id === 'turismo' ? lerPacote(i.pacote) : null, fotos: i.fotos }
   })
 }
 
@@ -196,7 +204,7 @@ export async function salvarItens(supabase, uid, itens, aoProgredir, opcoes = {}
       const preco = i.preco ?? null
       linhas.push({ id: i.id, cliente_id: uid, nome: i.nome.trim(), descricao: i.descricao?.trim() || null,
         preco, preco_promo: preco === null ? null : i.preco_promo ?? null,
-        promo_data: i.promo_data ?? null, ocultar_preco: i.ocultar_preco ?? false, fotos, foto_path: fotos[0] ?? null, ordem })
+        promo_data: i.promo_data ?? null, ocultar_preco: i.ocultar_preco ?? false, pacote: i.pacote ?? null, fotos, foto_path: fotos[0] ?? null, ordem })
     }
     const r3 = await supabase.from('produtos').upsert(linhas)
     if (r3.error) throw r3.error

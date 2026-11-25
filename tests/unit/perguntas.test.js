@@ -21,7 +21,7 @@ test('estadoDoNegocio: itens com fotos e foto_path antigo', () => {
     { id: 'c', nome: 'Pé', fotos: [] },
   ], ramo)
   expect(e.nome).toBe('Ana')
-  expect(e.itens[0]).toEqual({ id: 'a', nome: 'Corte', descricao: '', precoTexto: '49,9', promoTexto: '39,9', promoData: null, ocultarPreco: false,
+  expect(e.itens[0]).toEqual({ id: 'a', nome: 'Corte', descricao: '', precoTexto: '49,9', promoTexto: '39,9', promoData: null, ocultarPreco: false, pacote: null,
     fotos: [{ path: 'x/1.jpg' }, { path: 'x/2.jpg' }] })
   expect(e.itens[1].fotos).toEqual([{ path: 'x/b.jpg' }])
   expect(e.itens[2].fotos).toEqual([])
@@ -48,4 +48,11 @@ test('nomesDasRedes na ordem de REDES', () => {
 test('estadoDoNegocio lê a caixinha Ocultar preço', () => {
   const e = estadoDoNegocio(null, [{ id: 'a', nome: 'Corte', preco: 50, preco_promo: null, ocultar_preco: true, fotos: [] }], ramo)
   expect(e.itens[0].ocultarPreco).toBe(true)
+})
+
+test('estadoDoNegocio lê os detalhes do pacote', () => {
+  const pacote = { ativo: true, hotel: 'Serra Azul', transporte: 'onibus' }
+  const e = estadoDoNegocio(null, [{ id: 'a', nome: 'Gramado', preco: 50, pacote, fotos: [] }], RAMOS.turismo)
+  expect(e.itens[0].pacote).toMatchObject({ ativo: true, hotel: 'Serra Azul', transporte: 'onibus', transfer: false })
+  expect(estadoDoNegocio(null, [{ id: 'b', nome: 'Corte', fotos: [] }], ramo).itens[0].pacote).toBe(null)
 })
