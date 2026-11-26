@@ -11,6 +11,7 @@ import { codigoDoErro } from '../artes/video.js'
 import { abrirTrocaDeFoto, gravarEscolhaDeFoto } from './trocarFoto.js'
 import { criarEnvioDeVideo } from './enviarVideo.js'
 import { telaRefazerPost } from './refazerPost.js'
+import { telaEditarPacote, temEditarPacote } from './editarPacote.js'
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 
 const movimentoReduzido = () => Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
@@ -349,6 +350,12 @@ export function telaPost(ctx, post, aoVoltar) {
     aoRefeito: () => { ctx.mesDosPosts = null; aoVoltar() },
   })
 
+  // ✏️ Editar pacote (Turismo): o mesmo cadastro do Editar/Importar, direto do post
+  const editarPacote = () => telaEditarPacote(ctx, post, {
+    aoCancelar: () => telaPost(ctx, post, aoVoltar),
+    aoSalvo: () => { ctx.mesDosPosts = null; aoVoltar() },
+  })
+
   function desenharAcoes() {
     const naTela = (no) => acoes.contains(no) || extras.contains(no)
     const focoAntes = naTela(document.activeElement) ? document.activeElement.dataset?.acao : null
@@ -395,7 +402,9 @@ export function telaPost(ctx, post, aoVoltar) {
     // Logo abaixo da arte, o que decide; os textos vêm depois; baixar e "Mais opções" por último.
     acoes.replaceChildren(...filhosValidos(principais)) // o replaceChildren nativo escreveria "null"
     copiar.hidden = sit === 'reprovado'
-    extras.replaceChildren(...filhosValidos([sit === 'reprovado' ? null : [enviar, sobreEnviar, baixar, progresso, sobreBaixar], mais]))
+    // ✏️ Editar pacote fica à vista (não dentro de "Mais opções")
+    const pacote = temEditarPacote(post, ctx.ramo, ctx.produtos) ? botao('editarpacote', t('post.editarpacote'), editarPacote, { class: 'secundario' }) : null
+    extras.replaceChildren(...filhosValidos([sit === 'reprovado' ? null : [enviar, sobreEnviar, baixar, progresso, sobreBaixar, pacote], mais]))
     atualizarEnviar()
     extras.hidden = !extras.childElementCount
     if (focoAntes) {

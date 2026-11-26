@@ -1,6 +1,7 @@
 // Regras da função refazer-posts, sem nenhuma API do Deno (o Vitest importa este arquivo).
 // Depois de editar os itens, refaz os posts que ainda não foram postados e cujo dia não passou.
-// Com { post_id }: refaz só aquele post ("Refazer este post"), com a estratégia do mês dele.
+// Com { post_id }: refaz só aquele post ("Refazer este post"), com a estratégia do mês dele; com dia: true, os posts
+// do dia; com item: true ("Editar pacote"), os posts do mesmo item que faltam.
 import type { Resposta } from '../admin-clientes/acoes.ts'
 import type { Estrategia, Rede, Tom } from '../_shared/modelos/tipos.ts'
 import { lerFrequencia } from '../_shared/modelos/tipos.ts'
@@ -74,7 +75,10 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
     const faltam = await deps.postsQueFaltam(hoje)
     const post = faltam.find((p) => p.id === postId)
     if (!post) return r(404, 'Este post não pode mais ser refeito: já foi postado ou o dia passou.')
-    const alvos = e.dia === true ? [post, ...faltam.filter((p) => p.data === post.data && p.id !== post.id)] : [post]
+    // dia: os posts do mesmo dia; item ("Editar pacote" → todos): os posts do mesmo item que faltam (só o texto muda)
+    const doItem = e.item === true && Boolean(post.produto_id)
+    const alvos = e.dia === true ? [post, ...faltam.filter((p) => p.data === post.data && p.id !== post.id)]
+      : doItem ? [post, ...faltam.filter((p) => p.produto_id === post.produto_id && p.id !== post.id)] : [post]
 
     const mudancas: { id: string, campos: CamposRefeitos }[] = []
     const usadas: string[] = []
@@ -96,6 +100,7 @@ export async function refazerPostsDoCliente(entrada: unknown, deps: DepsRefazer)
       let foto: string | null
       if (escolhida) foto = escolhida // a foto que o cliente escolheu
       else if (clicado) foto = mesmo ? alvo.foto_path ?? null : null // manter a foto atual (mesmo item)
+      else if (doItem) foto = mesmo ? alvo.foto_path ?? null : null // os outros posts do item: mantêm a foto
       else foto = null // os outros do dia: a IA escolhe a próxima foto do revezamento
       // a foto que sai fica marcada como usada agora: o revezamento da IA escolhe outra
       if (alvo.foto_path && foto !== alvo.foto_path) usadas.push(alvo.foto_path)

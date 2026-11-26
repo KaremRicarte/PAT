@@ -212,6 +212,28 @@ describe('Refazer com versão nova: foto escolhida e o dia inteiro', () => {
     expect(gravados(d).find((x) => x.id === geral.id)!.campos.foto_path).toBeNull()
     expect((d.marcarUsadas as ReturnType<typeof vi.fn>).mock.calls[0][0]).toContain(geral.foto_path)
   })
+  test('item (Editar pacote → todos): refaz o texto de todos os posts do pacote que faltam, mantendo as fotos', async () => {
+    const clicado = noBanco[iClicado]
+    const doItem = noBanco.filter((p) => p.produto_id && p.produto_id === clicado.produto_id)
+    expect(doItem.length).toBeGreaterThan(1)
+    const d = deps()
+    expect(await refazerPostsDoCliente({ post_id: ID, item: true }, d)).toEqual({ status: 200, corpo: { refeitos: doItem.length } })
+    const g = gravados(d)
+    expect(g.map((x) => x.id).sort()).toEqual(doItem.map((p) => p.id).sort())
+    for (const x of g) {
+      const antes = doItem.find((p) => p.id === x.id)!
+      expect(x.campos).toMatchObject({ foto_path: antes.foto_path, titulo_anterior: antes.titulo, estado: 'gerado' })
+    }
+    expect(d.marcarUsadas).not.toHaveBeenCalled()
+  })
+  test('item num post geral (sem pacote): igual a refazer só o post', async () => {
+    const geral = noBanco[iGeral]
+    const a = deps(), b = deps()
+    const ra = await refazerPostsDoCliente({ post_id: geral.id, item: true }, a)
+    const rb = await refazerPostsDoCliente({ post_id: geral.id }, b)
+    expect(ra).toEqual(rb)
+    expect((a.gravar as ReturnType<typeof vi.fn>).mock.calls).toEqual((b.gravar as ReturnType<typeof vi.fn>).mock.calls)
+  })
   test('erro ao marcar as fotos usadas não derruba o refazer', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     const d = deps({ marcarUsadas: vi.fn(async () => { throw new Error('rede') }) })
