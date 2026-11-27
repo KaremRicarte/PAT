@@ -87,24 +87,17 @@ ol.passos li.feito::before { background: var(--pri); border-color: var(--pri); }
 .sino:empty { display: none; }
 .resumo { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 20px 0 16px; font-weight: 700; }
 .resumo .item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-/* Cada situação tem a sua bolinha (forma e cor diferentes), igual no calendário e na legenda:
-   para aprovar = branca com contorno verde; aprovado = preta com ✓ verde; postado = verde com ↑; descartado = vermelha com ✕ */
-.resumo .item::before, .bolinha {
-  flex: none; width: 20px; height: 20px; border-radius: 50%; box-sizing: border-box;
+/* Cada dia é uma caixinha com a cor e o símbolo da situação que pede atenção primeiro:
+   para aprovar = branca com contorno verde e relógio; aprovado = preta com setinha verde;
+   postado = verde com P; descartado = vermelho-clara com X. A legenda usa as mesmas caixinhas. */
+.resumo .item::before {
+  flex: none; width: 22px; height: 22px; border-radius: 6px; box-sizing: border-box;
   display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; line-height: 1;
 }
-/* no calendário: uma bolinha pequena por situação do dia, lado a lado */
-.bolinhas { display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; max-width: 100%; }
-.bolinhas .bolinha { width: 14px; height: 14px; font-size: 9px; }
-.bolinhas .bolinha.pendente { border-width: 1.5px; }
-.resumo .item.pendente::before { content: "…"; }
-.resumo .item.aprovado::before { content: "✓"; }
-.resumo .item.postado::before { content: "↑"; }
-.resumo .item.reprovado::before { content: "✕"; }
-.resumo .item.pendente::before, .bolinha.pendente { background: var(--bg); color: var(--ink); border: 2px solid var(--pri); }
-.resumo .item.aprovado::before, .bolinha.aprovado { background: var(--escuro); color: var(--escuro-ink); }
-.resumo .item.postado::before, .bolinha.postado { background: var(--pri); color: var(--pri-ink); }
-.resumo .item.reprovado::before, .bolinha.reprovado { background: var(--st-reprovado); color: #FFFFFF; }
+.resumo .item.pendente::before { content: "🕒"; }
+.resumo .item.aprovado::before { content: "➜"; }
+.resumo .item.postado::before { content: "P"; }
+.resumo .item.reprovado::before { content: "X"; }
 .postado { --cor: var(--st-postado); } .aprovado { --cor: var(--st-aprovado); }
 .pendente { --cor: var(--st-pendente); } .reprovado { --cor: var(--st-reprovado); }
 .grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 24px; }
@@ -114,10 +107,15 @@ button.dia-btn {
   border: 2px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
 }
 button.dia-btn.sem-post { background: transparent; color: var(--muted); font-weight: 600; }
-button.dia-btn.hoje { border-color: var(--ink); }
-button.dia-btn[aria-pressed=true] { background: var(--pri); color: var(--pri-ink); border-color: var(--pri); }
-button.dia-btn.hoje[aria-pressed=true] { box-shadow: inset 0 0 0 2px var(--pri-ink); }
-button.dia-btn[aria-pressed=true] .bolinha { box-shadow: 0 0 0 1px var(--pri-ink); }
+.simbolo { font-size: 15px; font-weight: 800; line-height: 1; }
+.resumo .item.pendente::before, button.dia-btn.pendente { background: var(--bg); color: var(--ink); border-color: var(--pri); }
+.resumo .item.pendente::before { border: 2px solid var(--pri); }
+.resumo .item.aprovado::before, button.dia-btn.aprovado { background: var(--escuro); color: var(--escuro-ink); border-color: var(--escuro); }
+.resumo .item.postado::before, button.dia-btn.postado { background: var(--pri); color: var(--pri-ink); border-color: var(--pri); }
+.resumo .item.reprovado::before, button.dia-btn.reprovado { background: var(--bad-soft); color: var(--bad); border-color: var(--bad-soft); }
+button.dia-btn.hoje .num { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+/* o dia escolhido: borda preta grossa por fora (não confunde com a cor das situações) */
+button.dia-btn[aria-pressed=true] { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ink); }
 .lista-dia h2 { font-size: 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .cartao-post { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 10px; overflow: hidden; }
 .cartao-post button.abrir {

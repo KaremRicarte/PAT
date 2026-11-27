@@ -5,7 +5,7 @@ import { el, logo, mostrar, botaoSair, carregando, aviso, filhosValidos } from '
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { carregarFotosInfo } from './negocio.js'
-import { situacaoDoPost, corDoDia, situacoesDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto, progressoIA, estadoIA, diaEsperandoPAT, rotuloOcasiao } from './situacao.js'
+import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto, progressoIA, estadoIA, diaEsperandoPAT, rotuloOcasiao } from './situacao.js'
 import { miniatura } from '../artes/imagens.js'
 import { telaQuizMes, mesMostrado, preferirMes } from './mes.js'
 import { aplicarAcao } from './acoesPost.js'
@@ -17,7 +17,8 @@ const SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'S�
 const ORDEM_REDE = { instagram: 0, facebook: 1, tiktok: 2, whatsapp: 3 }
 const SITUACOES = ['pendente', 'aprovado', 'reprovado', 'postado'] // ordem no rótulo do dia
 const RESUMO = ['postado', 'aprovado', 'pendente', 'reprovado'] // ordem do resumo (spec §3.1)
-const ICONE = { postado: '↑', aprovado: '✓', pendente: '…', reprovado: '✕' } // dentro da bolinha: a cor nunca vem sozinha
+// símbolo de cada situação na caixinha do dia (a cor nunca vem sozinha)
+const ICONE = { postado: 'P', aprovado: '➜', pendente: '🕒', reprovado: 'X' }
 const CHAVE_DICAS = 'pat.dicas.vistas'
 const CHAVE_FOTOS_ADIADO = 'pat.fotos.adiado' // quando o cliente tocou "Agora não" no aviso das fotos
 const DIAS_FOTOS_ADIADO = 7
@@ -149,11 +150,10 @@ export async function telaCalendario(ctx, diaEscolhido) {
     b.setAttribute('aria-label', esperando ? `${rotuloDoDia(data, doDia)}, ${t('cal.ia.dia')}` : rotuloDoDia(data, doDia))
     b.setAttribute('aria-pressed', String(data === escolhido))
     b.classList.toggle('sem-post', !cor)
-    // uma bolinha pequena para cada situação que o dia tem (pendente, aprovado, postado, descartado)
-    const situacoes = situacoesDoDia(doDia)
+    // a caixinha do dia na cor da situação que pede atenção primeiro, com o símbolo dela
+    for (const s of Object.keys(ICONE)) b.classList.toggle(s, s === cor)
     b.replaceChildren(...filhosValidos([el('span', { class: 'num', texto: String(Number(data.slice(8))) }),
-      situacoes.length ? el('span', { class: 'bolinhas', 'aria-hidden': 'true' },
-        ...situacoes.map((s) => el('span', { class: `bolinha ${s}`, texto: ICONE[s] }))) : null, // o nativo escreveria "null"
+      cor ? el('span', { class: 'simbolo', 'aria-hidden': 'true', texto: ICONE[cor] }) : null, // o nativo escreveria "null"
       esperando ? el('span', { class: 'ampulheta', 'aria-hidden': 'true', texto: '⏳' }) : null]))
   }
   const pintarGrade = () => botoesDia.forEach((b, data) => pintarDia(data, b))
@@ -175,7 +175,7 @@ export async function telaCalendario(ctx, diaEscolhido) {
     desenharLista() // os posts não são recarregados
   }
 
-  // Depois de uma ação: resumo, bolinhas e lista; o foco volta para o cartão do post.
+  // Depois de uma ação: resumo, caixinhas dos dias e lista; o foco volta para o cartão do post.
   function redesenhar(post) {
     if (!lista.isConnected) return // o cliente já saiu desta tela
     const tinhaFoco = lista.contains(document.activeElement) || document.activeElement === document.body
