@@ -244,7 +244,7 @@ describe('marca d\'água da logo (todos os ramos)', () => {
         expect(desenhos.length).toBeGreaterThan(0)
         for (const o of desenhos) expect([o.x, o.y, o.w, o.h]).toEqual([desenhos[0].x, desenhos[0].y, desenhos[0].w, desenhos[0].h])
         const d = desenhos[0]
-        expect(d.w).toBeLessThanOrEqual(forma.W * 0.14)
+        expect(d.w).toBeLessThanOrEqual(forma.W * 0.16)
         expect(d.alfa).toBeLessThan(1)
         expect(d.x + d.w).toBeGreaterThan(forma.W * 0.85)
         expect(d.y + d.h).toBeGreaterThan(forma.H * 0.9)
@@ -256,7 +256,7 @@ describe('marca d\'água da logo (todos os ramos)', () => {
     const pacote = { nome: 'Gramado', chamada: 'PACOTE EXCLUSIVO', dias: null, icones: [], linha: null, de: null, total: null, caixa: null, pix: null, contato: null, whatsapp: null }
     const { ctx, desenhos } = comLogo()
     desenharArte(ctx, { pecas: { ...pecas(true), preco: { de: null, por: 'R$ 99' }, pacote }, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, logo, W: 1080, H: 1350 })
-    expect(desenhos[0].w).toBeLessThanOrEqual(1080 * 0.14)
+    expect(desenhos[0].w).toBeLessThanOrEqual(1080 * 0.16)
     expect(desenhos[0].alfa).toBeLessThan(1)
   })
 })

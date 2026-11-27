@@ -213,10 +213,11 @@ const dimensoes = (img) => [img.naturalWidth || img.width, img.naturalHeight || 
 
 // Logo como marca d'água: pequena, branca e transparente, com o canto de baixo à direita em (dir, base). Devolve a largura.
 export function marcaDagua(ctx, logo, dir, base, u) {
-  const [lw, lh] = dimensoes(logo)
-  if (!lw || !lh) return 0
-  const k = Math.min(12 * u / lw, 5.5 * u / lh), w = lw * k, h = lh * k
+  // a logo branca, recortada em volta do nome: o tamanho vem dela
   const branca = logoBranca(logo)
+  const [lw, lh] = dimensoes(branca)
+  if (!lw || !lh) return 0
+  const k = Math.min(15 * u / lw, 6 * u / lh), w = lw * k, h = lh * k
   ctx.save()
   // branca e forte (mesmo que a logo seja colorida): uma sombra fininha para destacar em fundo claro
   // e, por cima, um brilho branco suave
