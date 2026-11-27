@@ -260,3 +260,12 @@ describe('pecasDaArte: arte do pacote no estilo agência (Turismo)', () => {
   })
 })
 
+
+test('situacoesDoDia: todas as situações do dia, sem repetir, na ordem pendente, aprovado, postado, descartado', async () => {
+  const { situacoesDoDia } = await import('../../app/src/cliente/situacao.js')
+  const p = (estado, postado_em = null) => ({ estado, postado_em })
+  expect(situacoesDoDia([])).toEqual([])
+  expect(situacoesDoDia([p('aprovado'), p('gerado'), p('aprovado', '2026-11-27T10:00:00Z'), p('reprovado'), p('gerado')]))
+    .toEqual(['pendente', 'aprovado', 'postado', 'reprovado'])
+  expect(situacoesDoDia([p('aprovado'), p('aprovado')])).toEqual(['aprovado'])
+})

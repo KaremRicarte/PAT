@@ -38,6 +38,13 @@ export function corDoDia(posts) {
   return 'aprovado'
 }
 
+// Todas as situações dos posts do dia, sem repetir, na ordem do que pede atenção primeiro (bolinhas do calendário).
+const ORDEM_DO_DIA = ['pendente', 'aprovado', 'postado', 'reprovado']
+export function situacoesDoDia(posts) {
+  const tem = new Set(posts.map(situacaoDoPost))
+  return ORDEM_DO_DIA.filter((s) => tem.has(s))
+}
+
 export function resumoDoMes(posts) {
   const r = { postado: 0, aprovado: 0, pendente: 0, reprovado: 0 }
   for (const p of posts) r[situacaoDoPost(p)]++

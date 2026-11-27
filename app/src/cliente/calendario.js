@@ -5,7 +5,7 @@ import { el, logo, mostrar, botaoSair, carregando, aviso, filhosValidos } from '
 import { RAMOS } from '../../../supabase/functions/_shared/modelos/ramos/index.ts'
 import { mesAlvo, hojeEmSaoPaulo, nomeDoMes } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { carregarFotosInfo } from './negocio.js'
-import { situacaoDoPost, corDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto, progressoIA, estadoIA, diaEsperandoPAT, rotuloOcasiao } from './situacao.js'
+import { situacaoDoPost, corDoDia, situacoesDoDia, resumoDoMes, diaInicial, gradeDoMes, diaPorExtenso, chaveFormato, servicosSemFoto, progressoIA, estadoIA, diaEsperandoPAT, rotuloOcasiao } from './situacao.js'
 import { miniatura } from '../artes/imagens.js'
 import { telaQuizMes, mesMostrado, preferirMes } from './mes.js'
 import { aplicarAcao } from './acoesPost.js'
@@ -149,8 +149,11 @@ export async function telaCalendario(ctx, diaEscolhido) {
     b.setAttribute('aria-label', esperando ? `${rotuloDoDia(data, doDia)}, ${t('cal.ia.dia')}` : rotuloDoDia(data, doDia))
     b.setAttribute('aria-pressed', String(data === escolhido))
     b.classList.toggle('sem-post', !cor)
+    // uma bolinha pequena para cada situação que o dia tem (pendente, aprovado, postado, descartado)
+    const situacoes = situacoesDoDia(doDia)
     b.replaceChildren(...filhosValidos([el('span', { class: 'num', texto: String(Number(data.slice(8))) }),
-      cor ? el('span', { class: `bolinha ${cor}`, 'aria-hidden': 'true', texto: ICONE[cor] }) : null, // o nativo escreveria "null"
+      situacoes.length ? el('span', { class: 'bolinhas', 'aria-hidden': 'true' },
+        ...situacoes.map((s) => el('span', { class: `bolinha ${s}`, texto: ICONE[s] }))) : null, // o nativo escreveria "null"
       esperando ? el('span', { class: 'ampulheta', 'aria-hidden': 'true', texto: '⏳' }) : null]))
   }
   const pintarGrade = () => botoesDia.forEach((b, data) => pintarDia(data, b))
