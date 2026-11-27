@@ -27,7 +27,8 @@ export function pixelsDaLogoBranca(px, w, h) {
   const contraste = max - min >= 0.15
   let peso
   if (fundoTransparente) {
-    peso = contraste && claros / Math.max(1, opacos) >= 0.03 ? (l) => nitido((l - min) / (max - min)) : () => 1
+    // só o branco de verdade (todas as cores altas): faixas e formas coloridas, mesmo claras, saem
+    peso = contraste && claros / Math.max(1, opacos) >= 0.03 ? (_l, branco) => Math.min(1, Math.max(0, (branco - 0.6) / 0.3)) : () => 1
   } else if (mediaDaBorda >= 0.5) {
     peso = contraste ? (l) => nitido((mediaDaBorda - l) / Math.max(0.01, mediaDaBorda - min)) : () => 1
   } else {
@@ -36,7 +37,7 @@ export function pixelsDaLogoBranca(px, w, h) {
   const out = new Uint8ClampedArray(px.length)
   for (let i = 0; i < px.length; i += 4) {
     out[i] = out[i + 1] = out[i + 2] = 255
-    out[i + 3] = Math.round((px[i + 3] / 255) * peso(luz(px[i], px[i + 1], px[i + 2])) * 255)
+    out[i + 3] = Math.round((px[i + 3] / 255) * peso(luz(px[i], px[i + 1], px[i + 2]), Math.min(px[i], px[i + 1], px[i + 2]) / 255) * 255)
   }
   return out
 }

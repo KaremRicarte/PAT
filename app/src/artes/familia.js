@@ -221,9 +221,12 @@ export function marcaDagua(ctx, logo, dir, base, u) {
   // branca e forte (mesmo que a logo seja colorida): uma sombra fininha para destacar em fundo claro
   // e, por cima, um brilho branco suave
   ctx.globalAlpha = 0.95
+  // relevo: sombra suave logo abaixo, como uma logo em alto-relevo
   ctx.shadowColor = 'rgba(0,0,0,.45)'
-  ctx.shadowBlur = 0.8 * u
+  ctx.shadowBlur = 0.7 * u
+  ctx.shadowOffsetY = 0.25 * u
   ctx.drawImage(branca, dir - w, base - h, w, h)
+  ctx.shadowOffsetY = 0
   ctx.shadowColor = 'rgba(255,255,255,.7)'
   ctx.shadowBlur = 1.6 * u
   ctx.drawImage(branca, dir - w, base - h, w, h)

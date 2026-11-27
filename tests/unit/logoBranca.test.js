@@ -32,3 +32,9 @@ test('logo colorida sem partes brancas em fundo transparente (ex.: ícone azul e
   const a = alfas([[T, T, T, T], [T, AZUL, PRETO, T], [T, T, T, T]])
   expect([a[5], a[6]]).toEqual([255, 255])
 })
+
+test('nome branco numa forma colorida com faixas claras (turquesa): só o branco de verdade fica', () => {
+  const TURQUESA = [24, 224, 200, 255]
+  const a = alfas([[T, T, T, T, T], [T, AZUL, TURQUESA, BRANCO, T], [T, T, T, T, T]])
+  expect([a[6], a[7], a[8]]).toEqual([0, 0, 255])
+})
