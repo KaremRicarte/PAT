@@ -158,7 +158,10 @@ function telaEstrategia({ ctx, ramo, alvo, antes, voltar: aoVoltar }) {
     el('h1', { texto: t('mesq.titulo') }),
     el('p', { class: 'muted', texto: t('mesq.dica', { mes: nomeDoMes(alvo.anoMes) }) }),
     cartoesEstrategia(ramo, escolhida, (v) => { escolhida = v }, sugerida),
-    datas.corpo, erro,
+    datas.corpo,
+    // depois de gerar, a estratégia do mês não muda
+    el('p', { class: 'aviso-foto', texto: t('mesq.aviso', { mes: nomeDoMes(alvo.anoMes) }) }),
+    erro,
     el('div', { class: 'acoes' }, gerar, voltar, botaoSair(supabase)))
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault()

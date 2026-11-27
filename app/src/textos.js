@@ -61,7 +61,8 @@ const pt = {
   // quiz do mês e geração
   'mesq.seumes': 'Seu mês',
   'mesq.titulo': 'O que você quer este mês?',
-  'mesq.dica': 'Escolha a estratégia de {mes}. Dá para mudar no mês seguinte.',
+  'mesq.dica': 'Escolha a estratégia de {mes}. No mês seguinte você escolhe de novo.',
+  'mesq.aviso': 'Atenção: depois de gerar, a estratégia de {mes} não poderá ser trocada.',
   'mesq.sugerido': 'Sugerido',
   'mesq.gerar': 'Gerar meu mês de {mes}',
   'mesq.datas.titulo': 'Datas para aproveitar em {mes}',
@@ -122,6 +123,7 @@ const pt = {
   'este.titulo': 'Este mês',
   'este.estrategia': 'Estratégia',
   'este.trocar': 'Trocar',
+  'este.estrategia.fixa': 'Definida ao gerar o mês.',
   'este.editar': 'Editar/Importar',
   'este.redes': 'Redes: {redes}',
   'este.itens.um': '1 item',
