@@ -1,12 +1,13 @@
-/* Identidade PAT: tema único escuro (copiado de bancada/index.html) */
+/* Identidade PAT: tema claro, moderno e leve (fundo branco, preto e verde vibrante, menta nas seções,
+   botões em pílula e letra arredondada). */
 :root {
-  color-scheme: dark;
-  --bg: #000000; --surface: #141414; --sunk: #1F1F1F; --ink: #FFFFFF; --muted: #A3A3A3; --line: #2E2E2E;
-  --pri: #CEFB14; --pri-ink: #000000; --pri-soft: rgba(206, 251, 20, .14);
-  --st-postado: #4DA3FF; --st-aprovado: #3CCB78; --st-pendente: #FFC93C; --st-reprovado: #FF6B70;
-  --ok: #3CCB78; --ok-soft: #163723; --bad: #FF6B70; --bad-soft: #3D1D21;
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+  --bg: #FFFFFF; --surface: #F5F7F4; --sunk: #ECEFEA; --ink: #0B0B0B; --muted: #5F665F; --line: #E2E6E0;
+  --pri: #0AF700; --pri-ink: #000000; --pri-texto: #087A00; --pri-soft: #E8FDE3; --menta: #C4FDBA; --escuro: #0B0B0B; --escuro-ink: #0AF700;
+  --st-postado: #1F7AE0; --st-aprovado: #12A150; --st-pendente: #D99A00; --st-reprovado: #E5484D;
+  --ok: #12A150; --ok-soft: #E3F8EA; --bad: #D93036; --bad-soft: #FDE8E9;
+  --display: "Quicksand", "Nunito Sans", system-ui, sans-serif;
+  --body: "Quicksand", "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
@@ -15,7 +16,7 @@ body {
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-h1, h2, h3 { font-family: var(--display); font-weight: 800; line-height: 1.1; margin: 0 0 .5em; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.1; margin: 0 0 .5em; }
 main { max-width: 440px; margin: 0 auto; padding: 32px 0 48px; }
 .logo { display: block; height: 40px; width: auto; margin-bottom: 32px; }
 label { display: block; font-size: 14px; color: var(--muted); margin: 16px 0 6px; }
@@ -23,7 +24,7 @@ input, select {
   width: 100%; font: inherit; color: var(--ink); background: var(--surface);
   border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
 }
-input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 button {
   font: inherit; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 12px 20px;
   border: 1px solid transparent; background: var(--pri); color: var(--pri-ink);
@@ -41,7 +42,7 @@ textarea {
   width: 100%; font: inherit; color: var(--ink); background: var(--surface);
   border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; resize: vertical;
 }
-textarea:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
+textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .quiz .passo { margin: 0 0 8px; font-size: 14px; }
 .quiz .selo { margin-bottom: 16px; }
 .quiz h1 { font-size: 26px; }
@@ -132,10 +133,10 @@ button.dia-btn[aria-pressed=true] .bolinha { box-shadow: 0 0 0 2px var(--pri-ink
   position: fixed; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom, 0px));
   width: min(440px, calc(100% - 32px)); z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px;
   background: var(--ink); color: var(--bg); border-radius: 14px; padding: 12px 16px; font-weight: 700;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, .5);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .12);
 }
 .aviso-rodape:empty { opacity: 0; transform: translate(-50%, 200%); pointer-events: none; }
-.aviso-rodape button { flex: none; min-height: 48px; background: var(--bg); color: var(--pri); }
+.aviso-rodape button { flex: none; min-height: 48px; background: var(--bg); color: var(--pri-texto); }
 
 /* ===== Tela do post ===== */
 button.voltar { min-height: 48px; margin-bottom: 20px; }
@@ -160,7 +161,7 @@ button.voltar { min-height: 48px; margin-bottom: 20px; }
   scrollbar-width: none; overscroll-behavior-x: contain;
 }
 .carrossel::-webkit-scrollbar { display: none; }
-.carrossel:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
+.carrossel:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .carrossel .pagina { flex: 0 0 100%; scroll-snap-align: start; display: flex; justify-content: center; }
 .carrossel .pagina canvas { border-radius: 0; }
 .carrossel-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
@@ -183,14 +184,14 @@ details.mais summary {
 details.mais summary::-webkit-details-marker { display: none; }
 details.mais summary::after { content: "▾"; margin-left: auto; }
 details.mais[open] summary::after { content: "▴"; }
-details.mais summary:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; border-radius: 16px; }
+details.mais summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 16px; }
 .mais-lista { display: flex; flex-direction: column; gap: 10px; padding: 0 12px 12px; }
 button.perigo { color: var(--bad); border-color: var(--bad); }
 dialog.dialogo {
   width: min(400px, calc(100% - 32px)); background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-radius: 20px; padding: 20px;
 }
-dialog.dialogo::backdrop { background: rgba(0, 0, 0, .7); }
+dialog.dialogo::backdrop { background: rgba(0, 0, 0, .45); }
 dialog.dialogo h2 { font-size: 20px; }
 dialog.dialogo button { width: 100%; min-height: 48px; }
 dialog.dialogo .opcao { margin-bottom: 14px; }
@@ -234,7 +235,7 @@ form.novo h2 { font-size: 20px; }
 .aviso { margin-bottom: 16px; }
 .quadro-senha { background: var(--pri-soft); border: 1px solid var(--pri); border-radius: 16px; padding: 16px 20px; }
 .quadro-senha .senha { margin: 0 0 4px; font-size: 18px; }
-.quadro-senha strong { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .06em; color: var(--pri); }
+.quadro-senha strong { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .06em; color: var(--pri-texto); }
 .quadro-senha .muted { margin: 0 0 12px; }
 button.pequeno { padding: 8px 14px; font-size: 14px; }
 .selo { display: inline-block; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 2px 10px; margin: 2px 6px 2px 0; white-space: nowrap; }
@@ -272,12 +273,12 @@ dialog.janela-ia button.link { margin-top: 8px; }
 .selo-ia { font-weight: 700; }
 .selo-ia.pronto { color: var(--ok); }
 .selo-ia.fila { color: var(--muted); }
-.selo-ia.trabalhando { color: var(--pri); animation: pisca-ia 1.6s ease-in-out infinite; }
+.selo-ia.trabalhando { color: var(--pri-texto); animation: pisca-ia 1.6s ease-in-out infinite; }
 @keyframes pisca-ia { 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .selo-ia.trabalhando { animation: none; } }
 button.dia-btn { position: relative; }
 .ampulheta { position: absolute; top: 2px; right: 3px; font-size: 11px; line-height: 1; }
-.ocasiao { display: block; font-size: 13px; font-weight: 700; color: var(--pri); margin: 2px 0; }
+.ocasiao { display: block; font-size: 13px; font-weight: 700; color: var(--pri-texto); margin: 2px 0; }
 .datas-mes { margin: 8px 0 20px; padding: 0; list-style: none; }
 .datas-mes li { background: var(--sunk); border-radius: 12px; padding: 10px 14px; margin: 0 0 8px; }
 .datas-mes small { display: block; color: var(--muted); margin-top: 2px; }
@@ -286,7 +287,7 @@ button.dia-btn { position: relative; }
 .promo-data .caixinha input, .datas-mes .caixinha input { width: auto; margin: 0; }
 .datas-mes .caixinha { margin: 8px 0 0; font-weight: 600; font-size: 15px; }
 .datas-mes .itens-data { margin-top: 8px; }
-.datas-mes .itens-data summary { cursor: pointer; font-weight: 700; color: var(--pri); font-size: 14px; }
+.datas-mes .itens-data summary { cursor: pointer; font-weight: 700; color: var(--pri-texto); font-size: 14px; }
 .promo-data-detalhes { margin: 8px 0 0 28px; }
 .promo-data-detalhes select { width: 100%; }
 /* Detalhes do pacote (Turismo): grupos de opções sem a borda de fieldset */
@@ -310,16 +311,16 @@ button.dia-btn { position: relative; }
   position: absolute; top: 0; right: 0; width: 52px; height: 100%; min-height: 48px; padding: 0;
   display: grid; place-items: center; background: transparent; color: var(--muted); border-radius: 12px;
 }
-.campo-senha .olho[aria-pressed="true"] { color: var(--pri); }
+.campo-senha .olho[aria-pressed="true"] { color: var(--pri-texto); }
 button.link {
   display: block; margin: 16px auto 0; min-height: 48px; padding: 12px 8px; background: transparent;
-  color: var(--pri); font-weight: 700; text-decoration: underline; text-underline-offset: 3px;
+  color: var(--pri-texto); font-weight: 700; text-decoration: underline; text-underline-offset: 3px;
 }
 a.botao {
   display: inline-flex; align-items: center; justify-content: center; flex: 1 1 auto; min-height: 48px;
   padding: 12px 20px; border-radius: 999px; background: var(--pri); color: var(--pri-ink); font-weight: 700; text-decoration: none;
 }
-a.botao:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
+a.botao:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .contato { font-family: var(--display); font-size: 24px; font-weight: 800; margin: 8px 0 0; letter-spacing: .02em; }
 
 /* ===== Importar lista e fotos, faixa de fotos ===== */
@@ -335,7 +336,7 @@ a.botao:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
 .zona-soltar { border: 2px dashed var(--pri); border-radius: 16px; padding: 32px 16px; margin: 12px 0; text-align: center; font-weight: 700; background: var(--pri-soft); }
 .zona-soltar[hidden], .faixa-fotos [hidden] { display: none; }
 .como-montar { margin: 8px 0 12px; }
-.como-montar summary { cursor: pointer; min-height: 48px; display: flex; align-items: center; color: var(--pri); font-weight: 700; }
+.como-montar summary { cursor: pointer; min-height: 48px; display: flex; align-items: center; color: var(--pri-texto); font-weight: 700; }
 .como-montar pre { background: var(--sunk); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow-x: auto; user-select: all; margin: 8px 0; }
 .resumo-importacao:empty { display: none; }
 .resumo-importacao { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 8px 16px; margin: 12px 0; }

@@ -20,7 +20,7 @@ export function el(tag, atributos = {}, ...filhos) {
   return n
 }
 
-export const logo = () => el('img', { class: 'logo', src: '/img/pat-logo.png', alt: 'PAT' })
+export const logo = () => el('img', { class: 'logo', src: '/img/pat-logo-claro.png', alt: 'PAT' })
 
 let contador = 0
 export function campo(rotulo, atributos) {
