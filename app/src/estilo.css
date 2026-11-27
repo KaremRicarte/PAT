@@ -4,7 +4,7 @@
   color-scheme: light;
   --bg: #FFFFFF; --surface: #F5F7F4; --sunk: #ECEFEA; --ink: #0B0B0B; --muted: #5F665F; --line: #E2E6E0;
   --pri: #0AF700; --pri-ink: #000000; --pri-soft: #E8FDE3; --menta: #C4FDBA; --escuro: #0B0B0B; --escuro-ink: #0AF700;
-  --st-postado: #1F7AE0; --st-aprovado: #0AF700; --st-pendente: #D99A00; --st-reprovado: #E5484D;
+  --st-postado: #1F7AE0; --st-aprovado: #0AF700; --st-pendente: #0B0B0B; --st-reprovado: #E5484D;
   --ok: #0AF700; --ok-soft: #E8FDE3; --bad: #D93036; --bad-soft: #FDE8E9;
   --display: "Quicksand", "Nunito Sans", system-ui, sans-serif;
   --body: "Quicksand", "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -147,6 +147,8 @@ button.voltar { min-height: 48px; margin-bottom: 20px; }
 .cabecalho-post .situacao { font-weight: 700; color: var(--cor); }
 /* aprovado: o verde da marca em pílula (em letra fina ele não se lê no branco) */
 .situacao.aprovado { background: var(--escuro); color: var(--escuro-ink); border-radius: 999px; padding: 1px 10px; }
+/* para aprovar: pílula branca com contorno verde (diferente do aprovado, nas mesmas cores) */
+.situacao.pendente { background: var(--bg); color: var(--ink); border: 2px solid var(--pri); border-radius: 999px; padding: 0 10px; }
 .arte-grande { margin-bottom: 20px; }
 /* A arte ocupa no máximo 55% da altura da tela, sem distorcer: as ações principais ficam à vista logo abaixo. */
 .arte-grande canvas {
