@@ -89,3 +89,11 @@ test('com foto ou sem a palavra (outros ramos): a arte é a de sempre', async ()
   desenharArte(b.ctx, { pecas: semPalavra, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, foto: null, W: 1080, H: 1350, arte: 'arco' })
   expect(b.textos.filter((x) => x.s === 'lembrete').length).toBe(0)
 })
+
+test('palavraDoFundo: os temas novos do Turismo', () => {
+  expect(palavraDoFundo({ pilar: 'aprox', titulo: 'Checklist: o que levar na sua bagagem?' })).toBe('checklist')
+  expect(palavraDoFundo({ pilar: 'aprox', titulo: '5 destinos para viajar sem passaporte' })).toBe('lista')
+  expect(palavraDoFundo({ pilar: 'aprox', titulo: 'Qual o peso ideal da bagagem?' })).toBe('dica')
+  expect(palavraDoFundo({ pilar: 'aprox', titulo: 'Motivos para viajar com uma agência' })).toBe('motivos')
+  expect(palavraDoFundo({ pilar: 'aprox', titulo: 'Viajou com a gente? Conta como foi!' })).toBe('clientes')
+})

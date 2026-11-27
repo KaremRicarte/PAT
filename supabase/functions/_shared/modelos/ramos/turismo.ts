@@ -140,6 +140,287 @@ const ramo: Ramo = {
     }
   ],
   aprox: [
+    // temas de conteúdo do Turismo (checklists, listas, dicas, lembretes, perguntas, motivos, convite a depoimento e inspiração)
+    {
+      "tema": "Checklist",
+      "fmt": "Carrossel",
+      "t": "Checklist: o que levar na sua bagagem?",
+      "f": [
+        [
+          "Gancho",
+          "\"Já começou a arrumar a mala? Confere essa lista antes de fechar.\""
+        ],
+        [
+          "Conteúdo",
+          "Um slide por item: documentos e cartões, carregador e adaptador de tomada, remédios de uso contínuo, roupa para frio e calor e uma muda de roupa na mala de mão."
+        ],
+        [
+          "Conexão",
+          "Documentos, carregador, remédios, roupa para frio e calor e uma muda de roupa na mala de mão: com isso você embarca tranquilo."
+        ],
+        [
+          "Convite",
+          "\"Salva esse post para conferir antes da próxima viagem.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Lista",
+      "fmt": "Carrossel",
+      "t": "5 destinos para viajar sem passaporte",
+      "f": [
+        [
+          "Gancho",
+          "\"Sabia que dá para viajar para fora do Brasil só com o RG?\""
+        ],
+        [
+          "Conteúdo",
+          "Um slide por país do Mercosul e associados que aceitam o RG: Argentina, Uruguai, Chile, Paraguai e Colômbia, com uma foto de cada um."
+        ],
+        [
+          "Conexão",
+          "Argentina, Uruguai, Chile, Paraguai e Colômbia aceitam a carteira de identidade em bom estado. Confira as regras de entrada antes de embarcar."
+        ],
+        [
+          "Convite",
+          "\"Qual deles você quer conhecer primeiro? Conta nos comentários.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Checklist",
+      "fmt": "Carrossel",
+      "t": "Documentos que você precisa antes de embarcar",
+      "f": [
+        [
+          "Gancho",
+          "\"Esquecer um documento pode acabar com a viagem antes do embarque.\""
+        ],
+        [
+          "Conteúdo",
+          "Um slide por documento: identidade ou passaporte válido, cartão de embarque, vacinas exigidas no destino, seguro viagem e, para menores, a autorização de viagem."
+        ],
+        [
+          "Conexão",
+          "Identidade ou passaporte, cartão de embarque, vacinas exigidas, seguro viagem e autorização para menores: confira tudo com antecedência."
+        ],
+        [
+          "Convite",
+          "\"Ficou com dúvida sobre algum documento? Chama a nossa equipe.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Lista",
+      "fmt": "Carrossel",
+      "t": "5 erros que encarecem a sua viagem",
+      "f": [
+        [
+          "Gancho",
+          "\"Tem viagem que fica cara por detalhes que dava para evitar.\""
+        ],
+        [
+          "Conteúdo",
+          "Um slide por erro: comprar em cima da hora, viajar na alta temporada sem planejar, esquecer as taxas, não comparar a bagagem incluída e ficar sem seguro viagem."
+        ],
+        [
+          "Conexão",
+          "Comprar em cima da hora, não planejar a alta temporada, esquecer as taxas, não olhar a bagagem incluída e viajar sem seguro: tudo isso pesa no bolso."
+        ],
+        [
+          "Convite",
+          "\"Quer planejar a próxima sem esses erros? Chama a gente.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Dica da equipe",
+      "fmt": "Carrossel",
+      "t": "Qual o peso ideal da bagagem?",
+      "f": [
+        [
+          "Gancho",
+          "\"Pagar excesso de bagagem é dinheiro que podia virar passeio.\""
+        ],
+        [
+          "Conteúdo",
+          "Slides: a franquia muda conforme a companhia e a tarifa; a mala de mão nos voos nacionais costuma ter até 10 kg; pese a mala em casa antes de sair."
+        ],
+        [
+          "Conexão",
+          "A franquia de bagagem muda conforme a companhia e a tarifa. Confira o que está incluso na sua passagem e pese a mala antes de sair de casa."
+        ],
+        [
+          "Convite",
+          "\"Na dúvida sobre a sua bagagem, pergunta para a nossa equipe.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Lembrete",
+      "fmt": "Post",
+      "t": "Lembrete: não se atrase para o embarque!",
+      "f": [
+        [
+          "Gancho",
+          "\"Viagem boa começa com tempo de sobra no aeroporto.\""
+        ],
+        [
+          "Conteúdo",
+          "Arte com o lembrete em destaque e a recomendação de antecedência para voos nacionais e internacionais."
+        ],
+        [
+          "Conexão",
+          "Chegue cerca de 2 horas antes nos voos nacionais e 3 horas antes nos internacionais. Assim dá tempo de despachar a mala sem correria."
+        ],
+        [
+          "Convite",
+          "\"Marca aquele amigo que sempre chega em cima da hora.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Dica da equipe",
+      "fmt": "Carrossel",
+      "t": "Quando é a melhor época para comprar a sua viagem?",
+      "f": [
+        [
+          "Gancho",
+          "\"Comprar na hora certa faz diferença no valor da viagem.\""
+        ],
+        [
+          "Conteúdo",
+          "Slides: quanto antes, mais opções de voo e hotel; alta temporada pede mais antecedência; datas flexíveis ajudam a encontrar condições melhores."
+        ],
+        [
+          "Conexão",
+          "Com antecedência você tem mais opções de voo e hotel. Na alta temporada, planeje ainda mais cedo, e se puder, tenha datas flexíveis."
+        ],
+        [
+          "Convite",
+          "\"Quer saber a melhor época para o seu destino? Chama no WhatsApp.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Pergunta aos seguidores",
+      "fmt": "Post",
+      "t": "Qual vai ser a sua próxima viagem?",
+      "f": [
+        [
+          "Gancho",
+          "\"Se você pudesse embarcar amanhã, para onde iria?\""
+        ],
+        [
+          "Conteúdo",
+          "Arte com a pergunta em destaque, convidando os seguidores a responder nos comentários."
+        ],
+        [
+          "Conexão",
+          "Conta o seu destino dos sonhos: a gente adora montar roteiros para os planos de quem acompanha a {loja}."
+        ],
+        [
+          "Convite",
+          "\"Responde aqui nos comentários.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Pergunta aos seguidores",
+      "fmt": "Stories",
+      "poll": [
+        "Nacional",
+        "Internacional"
+      ],
+      "t": "Enquete: próxima viagem nacional ou internacional?",
+      "f": [
+        [
+          "Gancho",
+          "\"Vota rapidinho...\""
+        ],
+        [
+          "Conteúdo",
+          "Enquete nacional ou internacional e, depois, caixinha: \"qual destino está na sua lista?\""
+        ],
+        [
+          "Conexão",
+          "As respostas ajudam a escolher os próximos roteiros que vamos mostrar por aqui."
+        ],
+        [
+          "Convite",
+          "\"Vota e conta o destino na caixinha.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Motivos",
+      "fmt": "Carrossel",
+      "t": "Motivos para viajar com uma agência",
+      "f": [
+        [
+          "Gancho",
+          "\"Viajar com agência é ter alguém do seu lado do começo ao fim.\""
+        ],
+        [
+          "Conteúdo",
+          "Um slide por motivo: roteiro montado para você, suporte durante a viagem, ajuda se algo der errado e menos tempo pesquisando."
+        ],
+        [
+          "Conexão",
+          "Roteiro pensado para você, suporte durante a viagem e alguém para resolver se algo sair do plano. Você só aproveita."
+        ],
+        [
+          "Convite",
+          "\"Quer viajar assim? Chama a nossa equipe.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Cliente feliz",
+      "fmt": "Post",
+      "t": "Viajou com a gente? Conta como foi!",
+      "f": [
+        [
+          "Gancho",
+          "\"A melhor parte do nosso trabalho é saber como foi a sua viagem.\""
+        ],
+        [
+          "Conteúdo",
+          "Arte convidando quem já viajou com a {loja} a contar a experiência nos comentários ou nas avaliações."
+        ],
+        [
+          "Conexão",
+          "Se você já viajou com a {loja}, conta nos comentários o que mais gostou. A sua experiência ajuda quem está planejando a próxima viagem."
+        ],
+        [
+          "Convite",
+          "\"Deixa o seu relato aqui nos comentários.\""
+        ]
+      ]
+    },
+    {
+      "tema": "Inspiração",
+      "fmt": "Post",
+      "t": "#partiu: a viagem dos seus sonhos espera por você",
+      "f": [
+        [
+          "Gancho",
+          "\"Aquela viagem que você vive adiando pode começar hoje.\""
+        ],
+        [
+          "Conteúdo",
+          "Arte inspiradora com a frase em destaque e o convite para tirar a viagem do papel."
+        ],
+        [
+          "Conexão",
+          "Escolhe o destino que a gente cuida do resto: voo, hotel, passeios e o suporte durante toda a viagem."
+        ],
+        [
+          "Convite",
+          "\"Chama no WhatsApp e conta para onde você quer ir.\""
+        ]
+      ]
+    },
     {
       "tema": "Bastidores",
       "fmt": "Stories",
