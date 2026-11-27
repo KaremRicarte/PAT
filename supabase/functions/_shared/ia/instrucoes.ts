@@ -79,7 +79,7 @@ Responda somente no formato pedido.`
 
 export const INSTRUCOES_ESCOLHA = `Você escolhe a imagem de um post de rede social de um pequeno negócio brasileiro. Recebe algumas candidatas (cada uma com um id, e com a imagem ou a descrição dela) e o tema do post.
 
-Escolha a candidata que melhor ilustra o tema e que pareça profissional: nítida, bem iluminada, sem texto, logotipo ou marca d'água de terceiros dominando, e sem pessoas desconhecidas em destaque. Prefira imagens que combinem com o ramo do negócio. Se nenhuma servir de verdade para o tema, devolva id null: um post só com texto é melhor que uma imagem que não combina.
+A imagem precisa mostrar o assunto do texto: um post sobre bagagem pede mala ou bagagem; sobre documentos, passaporte ou documentos; sobre um destino, aquele destino. Foto de um destino ou lugar específico só serve se o post fala desse lugar. Entre as que mostram o assunto, escolha a que pareça mais profissional: nítida, bem iluminada, sem texto, logotipo ou marca d'água de terceiros dominando, e sem pessoas desconhecidas em destaque. Prefira imagens que combinem com o ramo do negócio. Se nenhuma mostrar o assunto, devolva id null: um post só com texto é melhor que uma imagem que não combina com o texto.
 
 Devolva somente o id exatamente como recebido, no formato pedido.`
 

@@ -120,6 +120,9 @@ export function fotoDoPost(post, produtos, ramo, fotosInfo) {
     return f.length ? f[indiceDoRevezamento(post.ordem, post.data, f.length)] : null
   }
   if (soTexto) return null
+  // Turismo: as fotos dos pacotes são destinos; num post geral, só a foto escolhida para ele (que combina com o texto).
+  // Sem ela, a arte tipográfica.
+  if (ramo?.id === 'turismo') return null
   const fotos = todasAsFotos(produtos, fotosInfo)
   if (!fotos.length) return null
   const ciclo = fotos.length === 1 ? [fotos[0], null] : fotos

@@ -261,3 +261,10 @@ describe('pecasDaArte: arte do pacote no estilo agência (Turismo)', () => {
 })
 
 
+
+test('fotoDoPost: no Turismo, post geral sem foto escolhida fica sem foto (nada de destino aleatório); com foto escolhida, ela', () => {
+  const produtos = [{ id: 'p', nome: 'Portugal', fotos: ['u/produtos/portugal.jpg'] }]
+  expect(fotoDoPost({ produto_id: null, foto_path: null, ordem: 1, data: '2026-12-01' }, produtos, RAMOS.turismo)).toBe(null)
+  expect(fotoDoPost({ produto_id: null, foto_path: 'u/banco/mala.jpg', ordem: 1, data: '2026-12-01' }, produtos, RAMOS.turismo)).toBe('u/banco/mala.jpg')
+  expect(fotoDoPost({ produto_id: 'p', foto_path: null, ordem: 1, data: '2026-12-01' }, produtos, RAMOS.turismo)).toBe('u/produtos/portugal.jpg')
+})

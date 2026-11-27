@@ -97,3 +97,26 @@ test('palavraDoFundo: os temas novos do Turismo', () => {
   expect(palavraDoFundo({ pilar: 'aprox', titulo: 'Motivos para viajar com uma agência' })).toBe('motivos')
   expect(palavraDoFundo({ pilar: 'aprox', titulo: 'Viajou com a gente? Conta como foi!' })).toBe('clientes')
 })
+
+test('carrossel do Turismo: as páginas de dentro não desenham bolhas nem aspas; têm o texto da página e a rota', async () => {
+  globalThis.Path2D ??= class {} // ícones como no navegador (sem Path2D, o ícone vira uma bolinha)
+  const { desenharArte } = await import('../../app/src/artes/desenho.js')
+  const pecas = { ...base, palavra: 'dica', titulo: 'Qual o peso ideal da bagagem?',
+    blocos: { gancho: 'Pagar excesso de bagagem é dinheiro que podia virar passeio.', meios: ['A franquia muda conforme a companhia.', 'Pese a mala antes de sair.'], convite: 'Na dúvida, pergunta para a nossa equipe.' } }
+  for (const arte of ['papel', 'arco', 'bilhete', 'cor', 'pergunta', 'horizonte', 'ondas', 'pedra', 'cartao', 'janela']) {
+    for (let pagina = 2; pagina <= 5; pagina++) {
+      const c = canvasFalso()
+      const arcos = []
+      c.ctx.arc = (...a) => arcos.push(a)
+      c.ctx.quadraticCurveTo = (...a) => arcos.push(a) // as bolhas são feitas de curvas
+      c.ctx.bezierCurveTo = () => {}
+      desenharArte(c.ctx, { pecas, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, foto: null, W: 1080, H: 1350, pagina, paginas: 6, arte })
+      const todos = c.textos.map((x) => x.s).join(' ')
+      expect(todos).not.toContain('“') // sem aspas decorativas
+      expect(arcos.length).toBe(0) // sem bolhas, ondas e círculos
+      if (pagina === 2) expect(todos).toContain('passeio.')
+      if (pagina === 3) expect(todos).toContain('companhia.')
+      for (const tx of c.textos) { expect(tx.dir).toBeLessThanOrEqual(1080); expect(tx.base).toBeLessThanOrEqual(1350) }
+    }
+  }
+})

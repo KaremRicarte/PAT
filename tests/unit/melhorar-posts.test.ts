@@ -641,3 +641,22 @@ test('post geral: foto do cliente usada há poucos dias fica de fora da escolha'
   expect(vistas.flat()).toContain('produtos/b.jpg')
   expect(vistas.flat()).not.toContain('produtos/a.jpg')
 })
+
+test('Turismo, post geral: as fotos dos pacotes (destinos) não entram na escolha; as da própria empresa, sim', async () => {
+  const destino = `${UID}/produtos/portugal.jpg`, loja = `${UID}/negocio/equipe.jpg`
+  const ctx = contexto({ ramo: 'turismo', negocio: { nome: 'Malibu', insta: null, tom: 'proximo', fotos: [loja] },
+    produtos: [{ id: 'p', nome: 'Portugal', descricao: null, fotos: [destino], foto_path: null }] })
+  const vistas: string[] = []
+  const m = montar({ ctx, info: { [destino]: { descricao: 'Prédio histórico em Portugal.', serve: true }, [loja]: { descricao: 'Equipe da agência.', serve: true } },
+    escolher: (p) => { vistas.push(p.conteudo.map((c) => (c.tipo === 'texto' ? c.texto : '')).join('\n')); return ok({ id: null }) } })
+  await melhorarUmPost(m.deps, post({ produto_id: null, titulo: 'Qual o peso ideal da bagagem?' }))
+  const tudo = vistas.join('\n')
+  expect(tudo).not.toContain('produtos/portugal.jpg')
+  expect(tudo).toContain('negocio/equipe.jpg')
+})
+
+test('a escolha da imagem exige que ela mostre o assunto do texto (senão, nenhuma)', async () => {
+  const { INSTRUCOES_ESCOLHA } = await import('../../supabase/functions/_shared/ia/instrucoes.ts')
+  expect(INSTRUCOES_ESCOLHA).toContain('mostrar o assunto do texto')
+  expect(INSTRUCOES_ESCOLHA).toContain('Foto de um destino ou lugar específico só serve se o post fala desse lugar')
+})

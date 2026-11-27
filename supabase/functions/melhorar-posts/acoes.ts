@@ -219,7 +219,8 @@ async function melhorarComPrazo(
 
   const candidatas = semFoto ? [] : [...new Set([
     ...(post.foto_path ? [post.foto_path] : []),
-    ...(produto ? produto.fotos : soTexto ? [] : [...minhasFotos, ...produtos.flatMap((p) => p.fotos)]),
+    // post geral: as fotos do negócio e dos itens; no Turismo, os itens são destinos: só servem nos posts deles
+    ...(produto ? produto.fotos : soTexto ? [] : [...minhasFotos, ...(ramo === 'turismo' ? [] : produtos.flatMap((p) => p.fotos))]),
   ])]
   const info: Record<string, InfoFoto> = candidatas.length ? { ...(await deps.fotosInfo(candidatas)) } : {}
 

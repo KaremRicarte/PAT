@@ -4,6 +4,8 @@
 // A escolha (escolherArte) é pura e testada; o desenho usa só o ctx do canvas.
 import { t } from '../textos.js'
 import { logoBranca, logoNaCor } from './logoBranca.js'
+import { desenharIcone } from './desenho.js'
+import { corTexto } from './texto.js'
 
 // ---------- escolha da arte de cada post ----------
 
@@ -271,6 +273,8 @@ function folha(ctx, { pecas, cores, logo, foto, estilo, W, H, tipo, pagina, pagi
   const fonte = (peso) => (s, it) => `${it && voz.italico ? 'italic ' : ''}${peso} ${s}px ${voz.fd}`
   return {
     ctx, W, H, u: W / 100, tipo, pagina, total: paginas, logo, foto, voz,
+    // Turismo: a palavra-tema da capa (as páginas de dentro ficam sem formas abstratas)
+    palavra: pecas.palavra ?? null,
     blocos: pecas.blocos ?? { gancho: pecas.gancho ?? '', meios: pecas.meio ? [pecas.meio] : [], convite: pecas.convite ?? '' },
     leve: fonte(voz.leve), forte: fonte(voz.forte),
     // frase toda em itálico (no varejo, sem itálico)
@@ -772,8 +776,49 @@ function internaArco(f, { tipo, texto, k }) {
   assinar(f, luz)
 }
 
+// Turismo: página de dentro do carrossel sem formas abstratas. No alto, o número da página e a rota pontilhada com o
+// aviãozinho; ao fundo, a palavra-tema da capa bem clarinha; o texto da página em destaque. O convite vai na cor da
+// marca; a primeira página do meio com foto mostra a foto (que combina com o texto).
+function internaLimpa(f, { tipo, texto, k }) {
+  const { ctx, W, H, u } = f, x = 9 * u, mw = W - 18 * u
+  if (tipo === 'meio' && k === 0 && f.foto) return meioComFoto(f, texto, f.papel, f.tinta)
+  if (tipo === 'fecho') {
+    ctx.fillStyle = f.papel; ctx.fillRect(0, 0, W, H)
+    return fechoDoCarrossel(f, f.tinta, f.destaque, t('arte.fam.salve'))
+  }
+  const noConvite = tipo === 'convite'
+  const fundo = noConvite ? f.c1 : f.papel
+  const tinta = noConvite ? corTexto(f.c1) : f.tinta
+  ctx.fillStyle = fundo; ctx.fillRect(0, 0, W, H)
+  // a palavra-tema da capa, grande e clarinha, no pé da página
+  ctx.save()
+  ctx.font = `900 ${24 * u}px ${f.voz.fd}`; ctx.textBaseline = 'top'; ctx.textAlign = 'left'
+  ctx.globalAlpha = 0.12; ctx.fillStyle = tinta
+  ctx.fillText(f.palavra, x, H - 40 * u, mw)
+  ctx.restore()
+  // número da página e a rota com o aviãozinho
+  rotulo(f, marca(f), x, 8 * u, 2.8 * u, alfa(tinta, 0.75))
+  ctx.save()
+  ctx.strokeStyle = alfa(tinta, 0.45); ctx.lineWidth = 0.4 * u; ctx.setLineDash?.([1.4 * u, 1.4 * u])
+  ctx.beginPath(); ctx.moveTo(W * 0.42, 9 * u); ctx.bezierCurveTo(W * 0.6, 6 * u, W * 0.72, 12 * u, W - 16 * u, 8 * u); ctx.stroke()
+  ctx.restore()
+  desenharIcone(ctx, 'aviao', W - 14 * u, 4.5 * u, 6 * u, tinta)
+  if (tipo === 'gancho') {
+    const b = montar(ctx, texto, { tam: 11 * u, largura: mw, altura: H * 0.5, fonte: f.forte, lh: 1.1, italicoFinal: 2 })
+    pintar(ctx, b, x, Math.max(18 * u, (H - b.h) / 2 - 6 * u), tinta, { corItalico: f.destaque })
+  } else if (noConvite) {
+    const b = montar(ctx, texto, { tam: 8.6 * u, largura: mw, altura: H * 0.46, fonte: f.forte, lh: 1.14 })
+    pintar(ctx, b, x, Math.max(18 * u, (H - b.h) / 2 - 6 * u), tinta)
+  } else {
+    textoDoMeio(f, texto, x, 20 * u, H - 44 * u, mw, tinta, 6.6)
+  }
+  assinar(f, tinta)
+}
+
 function interna(f, item) {
   const vez = paginaDaVez(f)
+  // Turismo (com a palavra-tema): páginas limpas, sem bolhas, aspas nem ondas
+  if (f.palavra) return internaLimpa(f, vez)
   if (item.id === 'arco') return internaArco(f, vez)
   if (item.id === 'bilhete' || item.tom === 'escuro') return internaEscura(f, vez)
   return internaClara(f, vez)
