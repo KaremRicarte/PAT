@@ -810,7 +810,7 @@ function internaLimpa(f, { tipo, texto, k }) {
     const b = montar(ctx, texto, { tam: 8.6 * u, largura: mw, altura: H * 0.46, fonte: f.forte, lh: 1.14 })
     pintar(ctx, b, x, Math.max(18 * u, (H - b.h) / 2 - 6 * u), tinta)
   } else {
-    textoDoMeio(f, texto, x, 20 * u, H - 44 * u, mw, tinta, 6.6)
+    textoDoMeio(f, texto, x, 20 * u, H - 44 * u, mw, tinta, 7.6)
   }
   assinar(f, tinta)
 }
