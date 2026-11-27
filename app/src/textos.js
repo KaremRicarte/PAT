@@ -146,10 +146,10 @@ const pt = {
 
   // calendário
   'cal.semana': 'D,S,T,Q,Q,S,S',
-  'cal.resumo.postado': '📤 {n} postados',
-  'cal.resumo.aprovado': '✓ {n} aprovados',
-  'cal.resumo.pendente': '⏳ {n} pendentes',
-  'cal.resumo.reprovado': '✕ {n} reprovados',
+  'cal.resumo.postado': '{n} postados',
+  'cal.resumo.aprovado': '{n} aprovados',
+  'cal.resumo.pendente': '{n} pendentes',
+  'cal.resumo.reprovado': '{n} descartados',
   'cal.dia.pendente.1': '1 pendente',
   'cal.dia.pendente.n': '{n} pendentes',
   'cal.dia.aprovado.1': '1 aprovado',

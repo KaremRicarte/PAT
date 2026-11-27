@@ -4,7 +4,7 @@
   color-scheme: light;
   --bg: #FFFFFF; --surface: #F5F7F4; --sunk: #ECEFEA; --ink: #0B0B0B; --muted: #5F665F; --line: #E2E6E0;
   --pri: #0AF700; --pri-ink: #000000; --pri-soft: #E8FDE3; --menta: #C4FDBA; --escuro: #0B0B0B; --escuro-ink: #0AF700;
-  --st-postado: #1F7AE0; --st-aprovado: #0AF700; --st-pendente: #0B0B0B; --st-reprovado: #E5484D;
+  --st-postado: #0AF700; --st-aprovado: #0AF700; --st-pendente: #0B0B0B; --st-reprovado: #E5484D;
   --ok: #0AF700; --ok-soft: #E8FDE3; --bad: #D93036; --bad-soft: #FDE8E9;
   --display: "Quicksand", "Nunito Sans", system-ui, sans-serif;
   --body: "Quicksand", "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -87,7 +87,20 @@ ol.passos li.feito::before { background: var(--pri); border-color: var(--pri); }
 .sino:empty { display: none; }
 .resumo { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 20px 0 16px; font-weight: 700; }
 .resumo .item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.resumo .item::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--cor); }
+/* Cada situação tem a sua bolinha (forma e cor diferentes), igual no calendário e na legenda:
+   para aprovar = branca com contorno verde; aprovado = preta com ✓ verde; postado = verde com ↑; descartado = vermelha com ✕ */
+.resumo .item::before, .bolinha {
+  flex: none; width: 20px; height: 20px; border-radius: 50%; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; line-height: 1;
+}
+.resumo .item.pendente::before { content: "…"; }
+.resumo .item.aprovado::before { content: "✓"; }
+.resumo .item.postado::before { content: "↑"; }
+.resumo .item.reprovado::before { content: "✕"; }
+.resumo .item.pendente::before, .bolinha.pendente { background: var(--bg); color: var(--ink); border: 2px solid var(--pri); }
+.resumo .item.aprovado::before, .bolinha.aprovado { background: var(--escuro); color: var(--escuro-ink); }
+.resumo .item.postado::before, .bolinha.postado { background: var(--pri); color: var(--pri-ink); }
+.resumo .item.reprovado::before, .bolinha.reprovado { background: var(--st-reprovado); color: #FFFFFF; }
 .postado { --cor: var(--st-postado); } .aprovado { --cor: var(--st-aprovado); }
 .pendente { --cor: var(--st-pendente); } .reprovado { --cor: var(--st-reprovado); }
 .grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 24px; }
@@ -99,10 +112,6 @@ button.dia-btn {
 button.dia-btn.sem-post { background: transparent; color: var(--muted); font-weight: 600; }
 button.dia-btn.hoje { border-color: var(--ink); }
 button.dia-btn[aria-pressed=true] { background: var(--pri); color: var(--pri-ink); border-color: var(--pri); }
-.bolinha {
-  width: 18px; height: 18px; border-radius: 50%; background: var(--cor); color: #000;
-  font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
-}
 button.dia-btn.hoje[aria-pressed=true] { box-shadow: inset 0 0 0 2px var(--pri-ink); }
 button.dia-btn[aria-pressed=true] .bolinha { box-shadow: 0 0 0 2px var(--pri-ink); }
 .lista-dia h2 { font-size: 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -147,6 +156,7 @@ button.voltar { min-height: 48px; margin-bottom: 20px; }
 .cabecalho-post .situacao { font-weight: 700; color: var(--cor); }
 /* aprovado: o verde da marca em pílula (em letra fina ele não se lê no branco) */
 .situacao.aprovado { background: var(--escuro); color: var(--escuro-ink); border-radius: 999px; padding: 1px 10px; }
+.situacao.postado { background: var(--pri); color: var(--pri-ink); border-radius: 999px; padding: 1px 10px; }
 /* para aprovar: pílula branca com contorno verde (diferente do aprovado, nas mesmas cores) */
 .situacao.pendente { background: var(--bg); color: var(--ink); border: 2px solid var(--pri); border-radius: 999px; padding: 0 10px; }
 .arte-grande { margin-bottom: 20px; }
