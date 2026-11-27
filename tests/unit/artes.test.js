@@ -220,3 +220,41 @@ describe('arte do pacote no estilo agência (Turismo)', () => {
     expect(textos.some((x) => x.s.includes('Fale com a loja'))).toBe(false)
   })
 })
+
+describe('marca d\'água da logo (todos os ramos)', () => {
+  const logo = { width: 600, height: 300 }
+  const comLogo = () => {
+    const c = canvasFalso()
+    const desenhos = []
+    for (const m of ['moveTo', 'lineTo', 'quadraticCurveTo', 'bezierCurveTo', 'closePath', 'stroke', 'ellipse', 'setLineDash', 'translate', 'rotate', 'scale', 'clip', 'arcTo', 'strokeText']) c.ctx[m] ??= () => {}
+    c.ctx.createRadialGradient ??= () => ({ addColorStop() {} })
+    c.ctx.drawImage = (img, x, y, w, h) => { if (img === logo) desenhos.push({ x, y, w, h, alfa: c.ctx.globalAlpha }) }
+    return { ...c, desenhos }
+  }
+  const pecas = (marcaDagua) => ({ rotulo: 'M', titulo: 'Título', gancho: 'Gancho', meio: '', convite: '', assinatura: { texto: '@malibu', logo: true } })
+  const formas = [{ W: 1080, H: 1350 }, { W: 1080, H: 1920 }]
+
+  test('arte comum e arte de família: logo pequena, transparente, no canto de baixo à direita', async () => {
+    const { desenharArte } = await import('../../app/src/artes/desenho.js')
+    for (const arte of [null, 'papel', 'arco', 'bilhete', 'cor', 'pergunta', 'horizonte', 'ondas', 'pedra', 'cartao', 'janela']) {
+      for (const forma of formas) {
+        const { ctx, desenhos } = comLogo()
+        desenharArte(ctx, { pecas: pecas(true), look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, logo, ...forma, arte })
+        expect(desenhos.length).toBe(1)
+        const d = desenhos[0]
+        expect(d.w).toBeLessThanOrEqual(forma.W * 0.14)
+        expect(d.alfa).toBeLessThan(1)
+        expect(d.x + d.w).toBeGreaterThan(forma.W * 0.85)
+        expect(d.y + d.h).toBeGreaterThan(forma.H * 0.9)
+      }
+    }
+  })
+  test('arte do pacote: a logo também vira marca d\'água', async () => {
+    const { desenharArte } = await import('../../app/src/artes/desenho.js')
+    const pacote = { nome: 'Gramado', chamada: 'PACOTE EXCLUSIVO', dias: null, icones: [], linha: null, de: null, total: null, caixa: null, pix: null, contato: null, whatsapp: null }
+    const { ctx, desenhos } = comLogo()
+    desenharArte(ctx, { pecas: { ...pecas(true), preco: { de: null, por: 'R$ 99' }, pacote }, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, logo, W: 1080, H: 1350 })
+    expect(desenhos[0].w).toBeLessThanOrEqual(1080 * 0.14)
+    expect(desenhos[0].alfa).toBeLessThan(1)
+  })
+})

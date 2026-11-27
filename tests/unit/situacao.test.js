@@ -259,3 +259,4 @@ describe('pecasDaArte: arte do pacote no estilo agência (Turismo)', () => {
     expect(pecasDaArte(comPreco, { ...n, whatsapp: null }, RAMOS.turismo, produtos).pacote.whatsapp).toBe(null)
   })
 })
+

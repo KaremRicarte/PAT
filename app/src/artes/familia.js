@@ -210,6 +210,19 @@ function grao(ctx, x0, y0, W, H, forca = 0.05, semente = 7) {
 const circulo = (ctx, x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2) }
 const dimensoes = (img) => [img.naturalWidth || img.width, img.naturalHeight || img.height]
 
+// Logo como marca d'água: pequena e transparente, com o canto de baixo à direita em (dir, base). Devolve a largura.
+export function marcaDagua(ctx, logo, dir, base, u) {
+  const [lw, lh] = dimensoes(logo)
+  if (!lw || !lh) return 0
+  const k = Math.min(12 * u / lw, 5.5 * u / lh), w = lw * k, h = lh * k
+  ctx.save()
+  ctx.globalAlpha = 0.55
+  ctx.drawImage(logo, dir - w, base - h, w, h)
+  ctx.restore()
+  return w
+}
+
+
 // A foto cobrindo o retângulo (x, y, w, h), cortando o que sobra.
 function cobrirEm(ctx, img, x, y, w, h) {
   const [iw, ih] = dimensoes(img)
@@ -274,18 +287,18 @@ function assinar(f, cor, { centro = false } = {}) {
   const { W, H, u } = f
   const principal = f.insta || (f.temLogo ? null : f.nome)
   if (centro) {
-    if (f.temLogo && !principal) return logoEm(f, W / 2, H - 6 * u, 'centro')
+    // a logo fica de marca d'água no canto; o @ (ou o nome) no meio
+    if (f.temLogo) logoEm(f)
+    if (!principal) return
     return rotulo(f, principal, W / 2, H - 10.5 * u, 3.3 * u, cor, { alinhar: 'center', espacamento: 0.02, peso: 600, maxW: W - 18 * u })
   }
   rotulo(f, principal, 9 * u, H - 9.5 * u, 3.3 * u, cor, { espacamento: 0.02, peso: 600, maxW: W * 0.5 })
-  if (f.temLogo) logoEm(f, W - 9 * u, H - 6 * u, 'direita')
+  if (f.temLogo) logoEm(f)
   else if (f.insta && f.tipo !== 'car') rotulo(f, f.nome, W - 9 * u, H - 9.3 * u, 2.6 * u, alfa(cor, 0.7), { alinhar: 'right', maxW: W * 0.36 })
 }
-function logoEm(f, x, base, lado) {
-  const [lw, lh] = dimensoes(f.logo)
-  if (!lw || !lh) return
-  const k = Math.min(18 * f.u / lw, 7 * f.u / lh), w = lw * k, h = lh * k
-  f.ctx.drawImage(f.logo, lado === 'centro' ? x - w / 2 : x - w, base - h, w, h)
+// A logo como marca d'água: pequena e transparente, no canto de baixo à direita.
+function logoEm(f) {
+  marcaDagua(f.ctx, f.logo, f.W - 6 * f.u, f.H - 5.5 * f.u, f.u)
 }
 
 // ---------- as 10 capas (feed, stories, capa de vídeo e página 1 do carrossel) ----------
@@ -738,7 +751,7 @@ function internaArco(f, { tipo, texto, k }) {
     ctx.fillStyle = luz; circulo(ctx, W / 2 + w / 2 - 2 * u, H * 0.23, 4.5 * u); ctx.fill()
     const b = montar(ctx, f.insta || f.nome, { tam: 7.4 * u, largura: W - 18 * u, altura: 16 * u, fonte: f.forte })
     pintar(ctx, b, 9 * u, H * 0.68, luz, { alinhar: 'center', largura: W - 18 * u })
-    if (f.temLogo) logoEm(f, W / 2, H - 8 * u, 'centro')
+    if (f.temLogo) logoEm(f)
     return
   }
   assinar(f, luz)

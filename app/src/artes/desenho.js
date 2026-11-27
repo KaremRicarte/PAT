@@ -3,7 +3,7 @@
 import { LOOKS } from './looks.js'
 import { corTexto, contrasteBom, quebrarLinhas, encaixarTexto } from './texto.js'
 import { t } from '../textos.js'
-import { desenharDaFamilia } from './familia.js'
+import { desenharDaFamilia, marcaDagua } from './familia.js'
 import { faixaDaData } from './temas.js'
 
 // ---------- peças básicas ----------
@@ -471,28 +471,23 @@ export function enfeiteSuave(f) {
 }
 
 // Assinatura no canto de baixo (wmk): o texto embaixo e o logo acima dele.
+// Assinatura: a logo como marca d'água no canto de baixo à direita e o @ ao lado dela.
 export function assinar(f, assinatura, logo, cor) {
   const { ctx, W, H, u, look } = f
   const recuo = look.center ? 8 * u : 0, dir = W - (recuo || 5 * u)
-  let base = H - (recuo || 6.5 * u)
-  ctx.save()
-  ctx.globalAlpha = 0.9
+  const base = H - (recuo || 6.5 * u)
+  const larguraLogo = assinatura?.logo && logo ? marcaDagua(ctx, logo, dir, base, u) : 0
   if (assinatura?.texto) {
+    const folga = larguraLogo ? larguraLogo + 2.5 * u : 0
+    ctx.save()
+    ctx.globalAlpha = 0.9
     ctx.font = `${look.dw} ${4.2 * u}px ${look.fd}`
     ctx.fillStyle = cor
     ctx.textAlign = 'right'
     ctx.textBaseline = 'bottom'
-    ctx.fillText(assinatura.texto, dir, base, W - 16 * u)
-    base -= 5.4 * u
+    ctx.fillText(assinatura.texto, dir - folga, base, W - 16 * u - folga)
+    ctx.restore()
   }
-  if (assinatura?.logo && logo) {
-    const [lw, lh] = dimensoes(logo)
-    if (lw && lh) {
-      const k = Math.min(24 * u / lw, 12 * u / lh), w = lw * k, h = lh * k
-      ctx.drawImage(logo, dir - w, base - h, w, h)
-    }
-  }
-  ctx.restore()
 }
 
 // Fecho do carrossel: o logo grande e o nome no centro (o endSig do v1).
