@@ -3,7 +3,7 @@
 import { t } from '../textos.js'
 import { el, campo } from '../comum.js'
 import { REDES } from '../../../supabase/functions/_shared/modelos/tipos.ts'
-import { datasParaPromocao, datasDoMes, diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
+import { datasParaPromocao, diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { MAX_ITENS, validarItens, MAX_FOTOS_NEGOCIO, itensRepetidos, textoDosRepetidos } from './negocio.js'
 import { montarImportacao, faixaDeFotos } from './importarTela.js'
@@ -84,26 +84,24 @@ export function nomesDasRedes(redes) {
 
 // "Promoção só para uma data especial": marca e escolhe a data (das próximas datas boas ou outro dia).
 // item.promoData: null = sem data; '' = marcada, falta escolher o dia; 'AAAA-MM-DD' = o dia.
-// As datas da caixinha "Promoção só para uma data especial": gerando um mês (alvo), só as datas de promoção daquele
-// mês; sem mês (Editar/Importar, Refazer), as de hoje em diante.
+// As datas da caixinha "Promoção só para uma data especial": gerando um mês (alvo), as datas de promoção daquele
+// mês em diante (há promoções anunciadas com antecedência); sem mês (Editar/Importar, Refazer), as de hoje em diante.
 export function datasDaCaixa(ramo, hoje, alvo = null) {
   if (ramo.noPromo) return []
   if (!alvo) return datasParaPromocao(hoje, ramo)
-  return datasDoMes(alvo.anoMes, ramo).filter((d) => d.promo && d.data >= alvo.inicio && d.data >= hoje)
+  return datasParaPromocao(alvo.inicio > hoje ? alvo.inicio : hoje, ramo)
 }
 
-// Os limites do dia em "outro dia": o mês que está sendo gerado, ou de hoje em diante.
+// O primeiro dia que vale em "outro dia": o começo do mês que está sendo gerado (soDaqui: promoções de antes dele
+// aparecem desmarcadas), ou hoje.
 export function faixaDaCaixa(hoje, alvo = null) {
-  if (!alvo) return { min: hoje, max: null }
-  const [a, m] = alvo.anoMes.split('-').map(Number)
-  const ultimo = new Date(Date.UTC(a, m, 0)).getUTCDate()
-  return { min: alvo.inicio, max: `${alvo.anoMes}-${String(ultimo).padStart(2, '0')}` }
+  return alvo ? { min: alvo.inicio, max: null, soDaqui: true } : { min: hoje, max: null }
 }
 
-// faixa: { min, max } das datas que valem aqui. Uma promoção marcada fora dela (ex.: de outro mês, ao gerar dezembro)
+// faixa: { min, max, soDaqui } das datas que valem aqui. Uma promoção de antes dela (ex.: de novembro, ao gerar dezembro)
 // aparece desmarcada; ela só muda se o cliente mexer na caixinha.
 export function caixaDaData(item, datas, faixa = { min: hojeEmSaoPaulo(), max: null }) {
-  const naFaixa = (d) => !faixa.max || (d >= faixa.min && d <= faixa.max)
+  const naFaixa = (d) => !faixa.soDaqui || d >= faixa.min
   const id = `promo-data-${item.id}`
   const marcar = el('input', { type: 'checkbox', id, checked: item.promoData != null && (item.promoData === '' || naFaixa(item.promoData)) })
   const OUTRO = 'outro'
