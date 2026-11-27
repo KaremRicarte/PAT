@@ -13,11 +13,14 @@ const MINI = 96 // px do quadrado de cada foto na grade (toque bem maior que 48 
 // A foto enviada para um post fica na pasta do cliente (o banco só aceita foto_path dentro dela).
 export const caminhoDaFotoDoPost = (uid, postId) => `${uid}/posts/${postId}.jpg`
 
-// As fotos que o cliente pode escolher: a que ele enviou para o post (se houver) e as dos produtos.
+// As fotos que o cliente pode escolher: a que ele enviou para o post (se houver) e as do item do post (post de um
+// item: só as fotos dele, para não misturar pacotes); post geral: as de todos os itens.
 // `atual` marca a que a arte usa agora (a mesma regra de fotoDoPost). semFoto: só nos ramos textOnly.
 export function opcoesDeFoto(produtos, ramo, post, fotosInfo) {
   const atual = fotoDoPost(post, produtos, ramo, fotosInfo)
-  const paths = [...new Set([post.foto_path, ...todasAsFotos(produtos, fotosInfo)].filter(Boolean))]
+  const doItem = post.produto_id ? (produtos ?? []).find((p) => p.id === post.produto_id) : null
+  const doCatalogo = doItem ? fotosDoProduto(doItem, fotosInfo) : todasAsFotos(produtos, fotosInfo)
+  const paths = [...new Set([post.foto_path, ...doCatalogo].filter(Boolean))]
   return {
     fotos: paths.map((path) => ({ path, atual: path === atual })),
     semFoto: Boolean(ramo?.textOnly),

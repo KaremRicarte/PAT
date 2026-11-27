@@ -19,18 +19,19 @@ test('caminhoDaFotoDoPost: a foto nova fica na pasta do cliente', () => {
   expect(caminhoDaFotoDoPost('u1', 'p9')).toBe('u1/posts/p9.jpg')
 })
 
-test('opcoesDeFoto: sem foto_path, a atual é a do produto do post', () => {
+test('opcoesDeFoto: post de um item mostra só as fotos dele, com a atual marcada', () => {
   const { fotos } = opcoesDeFoto(produtos, RAMOS.beleza, { produto_id: 'c', foto_path: null, sem_foto: false })
-  expect(fotos).toEqual([
-    { path: 'u1/produtos/a.jpg', atual: false },
-    { path: 'u1/produtos/c.jpg', atual: true },
-  ])
+  expect(fotos).toEqual([{ path: 'u1/produtos/c.jpg', atual: true }])
 })
 
-test('opcoesDeFoto: produtos sem foto ficam fora', () => {
-  const { fotos } = opcoesDeFoto(produtos, RAMOS.beleza, { produto_id: 'b', foto_path: null, sem_foto: false })
+test('opcoesDeFoto: post geral (sem item) mostra as fotos de todos os itens', () => {
+  const { fotos } = opcoesDeFoto(produtos, RAMOS.beleza, { produto_id: null, foto_path: null, sem_foto: false })
   expect(fotos.map((f) => f.path)).toEqual(['u1/produtos/a.jpg', 'u1/produtos/c.jpg'])
-  expect(fotos.find((f) => f.atual)).toBeUndefined() // o serviço do post não tem foto: arte só com texto, nenhuma marcada
+})
+
+test('opcoesDeFoto: item sem foto: nenhuma foto de outro item (só Enviar outra foto)', () => {
+  const { fotos } = opcoesDeFoto(produtos, RAMOS.beleza, { produto_id: 'b', foto_path: null, sem_foto: false })
+  expect(fotos).toEqual([])
 })
 
 test('opcoesDeFoto: a foto enviada para o post entra primeiro, marcada', () => {
@@ -124,11 +125,13 @@ test('post com outra gravação em andamento: avisa para esperar em vez de ficar
   await primeira
 })
 
-test('opcoesDeFoto lista todas as fotos de todos os itens, sem repetir', () => {
+test('opcoesDeFoto: post do item lista só as fotos dele; post geral, as de todos os itens, sem repetir', () => {
   const ps = [{ id: 'x', fotos: ['a', 'b'] }, { id: 'y', fotos: ['b', 'c'] }]
   const { fotos } = opcoesDeFoto(ps, RAMOS.beleza, { produto_id: 'x', ordem: 1, foto_path: null, sem_foto: false })
-  expect(fotos.map((f) => f.path)).toEqual(['a', 'b', 'c'])
+  expect(fotos.map((f) => f.path)).toEqual(['a', 'b'])
   expect(fotos.find((f) => f.atual).path).toBe('b')
+  const geral = opcoesDeFoto(ps, RAMOS.beleza, { produto_id: null, ordem: 1, foto_path: null, sem_foto: false })
+  expect(geral.fotos.map((f) => f.path)).toEqual(['a', 'b', 'c'])
 })
 
 // ---------- Depois de trocar a foto, a IA reescreve a legenda (reescrever-post) ----------
