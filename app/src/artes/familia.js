@@ -3,6 +3,7 @@
 // Com foto, a foto entra na forma de cada arte (arco, janela, círculo, pedra, céu...).
 // A escolha (escolherArte) é pura e testada; o desenho usa só o ctx do canvas.
 import { t } from '../textos.js'
+import { logoBranca } from './logoBranca.js'
 
 // ---------- escolha da arte de cada post ----------
 
@@ -210,14 +211,17 @@ function grao(ctx, x0, y0, W, H, forca = 0.05, semente = 7) {
 const circulo = (ctx, x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2) }
 const dimensoes = (img) => [img.naturalWidth || img.width, img.naturalHeight || img.height]
 
-// Logo como marca d'água: pequena e transparente, com o canto de baixo à direita em (dir, base). Devolve a largura.
+// Logo como marca d'água: pequena, branca e transparente, com o canto de baixo à direita em (dir, base). Devolve a largura.
 export function marcaDagua(ctx, logo, dir, base, u) {
   const [lw, lh] = dimensoes(logo)
   if (!lw || !lh) return 0
   const k = Math.min(12 * u / lw, 5.5 * u / lh), w = lw * k, h = lh * k
   ctx.save()
-  ctx.globalAlpha = 0.55
-  ctx.drawImage(logo, dir - w, base - h, w, h)
+  // branca (mesmo que a logo seja colorida), com uma sombra leve para não sumir em fundo claro
+  ctx.globalAlpha = 0.75
+  ctx.shadowColor = 'rgba(0,0,0,.35)'
+  ctx.shadowBlur = 1.2 * u
+  ctx.drawImage(logoBranca(logo), dir - w, base - h, w, h)
   ctx.restore()
   return w
 }
