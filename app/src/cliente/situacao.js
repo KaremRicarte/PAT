@@ -4,7 +4,7 @@ import { t } from '../textos.js'
 import { daData } from '../../../supabase/functions/_shared/modelos/gerar.ts'
 import { diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
 import { indiceDoRevezamento } from '../../../supabase/functions/_shared/modelos/revezamento.ts'
-import { pacoteAtivo, linhasDoCartao } from '../../../supabase/functions/_shared/modelos/pacote.ts'
+import { pacoteAtivo, noitesDoPacote, textoDasRefeicoes } from '../../../supabase/functions/_shared/modelos/pacote.ts'
 import { formatarWhatsApp } from '../contato.js'
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
@@ -155,10 +155,11 @@ function precoDaArte(post, ramo) {
   return { de: post.preco_de != null ? dinheiro(post.preco_de) : null, por: dinheiro(post.preco_por) }
 }
 
-const UNIDADES = { pessoa: 'por pessoa', casal: 'por casal', noite: 'por noite', pacote: 'pacote completo' }
+const TOTAL = { pessoa: 'Total por pessoa:', casal: 'Total por casal:', noite: 'Por noite:', pacote: 'Pacote completo:' }
+const diaMesCurto = (d) => `${d.slice(8, 10)}/${d.slice(5, 7)}`
 
-// Cartão do pacote (Turismo, pacote marcado): nos posts com preço e, com "Ocultar preço", nos posts da data da
-// promoção (sem a parte do preço). null nos outros casos: a arte fica como antes.
+// Arte do pacote (Turismo, pacote marcado), no estilo das agências: nos posts com preço, nos posts que mostram o
+// pacote com "Entrar em contato" e nos posts da data da promoção. null nos outros casos: a arte fica como antes.
 function cartaoDoPacote(post, negocio, ramo, produtos) {
   if (ramo?.id !== 'turismo' || !post.produto_id) return null
   const produto = (produtos ?? []).find((p) => p.id === post.produto_id)
@@ -166,17 +167,29 @@ function cartaoDoPacote(post, negocio, ramo, produtos) {
   if (!p) return null
   const comPreco = post.preco_por != null
   const daData = Boolean(produto.ocultar_preco) && (post.ocasiao?.fase === 'dia' || post.ocasiao?.fase === 'aquecimento')
-  // "Entrar em contato para as condições": o cartão vai nos posts que mostram o pacote, sem valor
+  // "Entrar em contato para as condições": a arte vai nos posts que mostram o pacote, sem valor
   const contato = Boolean(produto.ocultar_preco)
   if (!comPreco && !daData && !(contato && post.pilar === 'demo')) return null
-  const unidade = [UNIDADES[p.preco_por], p.taxas ? 'taxas inclusas' : null].filter(Boolean).join(' · ')
+  const n = noitesDoPacote(p)
+  const r = p.refeicoes
+  const datas = p.ida && p.volta && n > 0 ? `${diaMesCurto(p.ida)} a ${diaMesCurto(p.volta)}` : p.ida ? diaMesCurto(p.ida) : null
+  const linha = [p.hotel, datas, textoDasRefeicoes(r)].filter(Boolean).join(' · ')
+  const por = Number(post.preco_por)
   return {
-    linhas: linhasDoCartao(p),
-    unidade: comPreco && unidade ? unidade : null,
-    parcelas: comPreco && p.parcelas ? `em até ${p.parcelas}x de ${dinheiro(Math.round(Number(post.preco_por) / p.parcelas * 100) / 100)} sem juros` : null,
-    pix: comPreco && p.pix ? `${p.pix}% de desconto no Pix` : null,
-    whatsapp: negocio?.whatsapp ? formatarWhatsApp(negocio.whatsapp) : null,
+    nome: produto.nome,
+    chamada: t('arte.pacote.chamada'),
+    dias: n == null ? null : n === 0 ? t('arte.pacote.batevolta') : t('arte.pacote.dias', { n: n + 1 }),
+    icones: [p.transporte, p.hotel ? 'hotel' : null, p.transfer ? 'transfer' : null,
+      r.cafe || r.almoco || r.jantar ? 'refeicao' : null].filter(Boolean),
+    linha: linha || null,
+    de: comPreco && post.preco_de != null ? dinheiro(post.preco_de) : null,
+    total: comPreco ? [`${TOTAL[p.preco_por] ?? 'Por'} ${dinheiro(por)}`, p.taxas ? 'taxas inclusas' : null].filter(Boolean).join(' · ') : null,
+    caixa: comPreco
+      ? { topo: t('arte.pacote.apartir'), meio: p.parcelas ? `${p.parcelas}X` : null, valor: dinheiro(p.parcelas ? Math.round(por / p.parcelas * 100) / 100 : por) }
+      : null,
+    pix: comPreco && p.pix ? t('arte.pacote.pix', { p: p.pix }) : null,
     contato: contato && !comPreco ? t('arte.pacote.contato') : null,
+    whatsapp: negocio?.whatsapp ? formatarWhatsApp(negocio.whatsapp) : null,
   }
 }
 

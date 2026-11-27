@@ -212,58 +212,50 @@ test('fotoDoPost: mesmo item, mesma ordem, meses diferentes -> fotos diferentes'
   expect(nov).not.toBe(dez)
 })
 
-describe('pecasDaArte: cartão do pacote (Turismo)', () => {
+describe('pecasDaArte: arte do pacote no estilo agência (Turismo)', () => {
   const PACOTE = { ativo: true, hotel: 'Serra Azul', ida: '2026-12-12', volta: '2026-12-17', transporte: 'aviao', transfer: true,
     refeicoes: { cafe: true, almoco: false, jantar: false }, preco_por: 'pessoa', parcelas: 10, taxas: true, pix: 5 }
   const n = { nome: 'Malibu', insta: '@malibu', assinatura: 'insta', whatsapp: '83999990000' }
   const produtos = [{ id: 'g', nome: 'Gramado', pacote: PACOTE, ocultar_preco: false }]
-  const comPreco = { titulo: 'T', produto_id: 'g', preco_de: 2800, preco_por: 2390 }
+  const comPreco = { titulo: 'T', produto_id: 'g', pilar: 'demo', preco_de: 2800, preco_por: 2390 }
 
-  test('post com preço de um pacote ativo: linhas, condições e WhatsApp', () => {
+  test('com preço: nome, dias, ícones, linha, total, quadro de parcelas, Pix e WhatsApp', () => {
     const p = pecasDaArte(comPreco, n, RAMOS.turismo, produtos).pacote
-    expect(p.linhas[0]).toEqual({ icone: 'hotel', texto: 'Serra Azul' })
-    expect(p.linhas.map((l) => l.icone)).toEqual(['hotel', 'aviao', 'transfer', 'data', 'refeicao'])
-    expect(p.unidade).toBe('por pessoa · taxas inclusas')
-    expect(p.parcelas).toBe('em até 10x de R$ 239 sem juros')
-    expect(p.pix).toBe('5% de desconto no Pix')
-    expect(p.whatsapp).toBe('(83) 99999-0000')
+    expect(p).toEqual({
+      nome: 'Gramado', chamada: 'PACOTE EXCLUSIVO', dias: '6 dias', icones: ['aviao', 'hotel', 'transfer', 'refeicao'],
+      linha: 'Serra Azul · 12/12 a 17/12 · Café da manhã',
+      de: 'R$ 2.800', total: 'Total por pessoa: R$ 2.390 · taxas inclusas',
+      caixa: { topo: 'A PARTIR DE', meio: '10X', valor: 'R$ 239' },
+      pix: '5% OFF À VISTA NO PIX', contato: null, whatsapp: '(83) 99999-0000',
+    })
   })
-  test('outro ramo, pacote desmarcado ou post sem preço: sem cartão (as peças são as de antes)', () => {
+  test('sem parcelas: o quadro mostra o valor; sem unidade: "Por"', () => {
+    const p = pecasDaArte({ ...comPreco, preco_de: null }, n, RAMOS.turismo, [{ ...produtos[0], pacote: { ...PACOTE, parcelas: null, preco_por: null, taxas: false } }]).pacote
+    expect(p.caixa).toEqual({ topo: 'A PARTIR DE', meio: null, valor: 'R$ 2.390' })
+    expect(p.total).toBe('Por R$ 2.390')
+    expect(p.de).toBe(null)
+  })
+  test('pacote só com o preço (sem detalhes): sem dias, sem ícones, sem linha', () => {
+    const p = pecasDaArte(comPreco, n, RAMOS.turismo, [{ ...produtos[0], pacote: { ativo: true } }]).pacote
+    expect([p.dias, p.icones, p.linha]).toEqual([null, [], null])
+    expect(p.nome).toBe('Gramado')
+  })
+  test('bate-volta', () => {
+    const p = pecasDaArte(comPreco, n, RAMOS.turismo, [{ ...produtos[0], pacote: { ...PACOTE, volta: '2026-12-12' } }]).pacote
+    expect(p.dias).toBe('Bate-volta')
+  })
+  test('"Entrar em contato": sem total, quadro nem Pix; com a frase de contato (posts que mostram o pacote)', () => {
+    const p = pecasDaArte({ ...comPreco, preco_de: null, preco_por: null }, n, RAMOS.turismo, [{ ...produtos[0], ocultar_preco: true }]).pacote
+    expect([p.total, p.caixa, p.pix, p.de]).toEqual([null, null, null, null])
+    expect(p.contato).toBe('Condições especiais: fale com a loja')
+    expect(pecasDaArte({ ...comPreco, pilar: 'need', preco_por: null }, n, RAMOS.turismo, [{ ...produtos[0], ocultar_preco: true }])).not.toHaveProperty('pacote')
+  })
+  test('outro ramo, pacote desmarcado ou post sem preço (mostrar o preço): sem arte de pacote', () => {
     expect(pecasDaArte(comPreco, n, RAMOS.beleza, produtos)).not.toHaveProperty('pacote')
     expect(pecasDaArte(comPreco, n, RAMOS.turismo, [{ ...produtos[0], pacote: { ...PACOTE, ativo: false } }])).not.toHaveProperty('pacote')
     expect(pecasDaArte({ ...comPreco, preco_de: null, preco_por: null }, n, RAMOS.turismo, produtos)).not.toHaveProperty('pacote')
-    expect(pecasDaArte(comPreco, n, RAMOS.turismo)).not.toHaveProperty('pacote')
   })
-  test('Ocultar preço: no post da data da promoção, o cartão sai sem a parte do preço', () => {
-    const oculto = [{ ...produtos[0], ocultar_preco: true }]
-    const post = { titulo: 'T', produto_id: 'g', preco_de: null, preco_por: null, ocasiao: { nome: 'Natal', data: '2026-12-20', fase: 'dia' } }
-    const p = pecasDaArte(post, n, RAMOS.turismo, oculto).pacote
-    expect(p.linhas.length).toBe(5)
-    expect(p.parcelas).toBe(null)
-    expect(p.pix).toBe(null)
-    expect(p.unidade).toBe(null)
-  })
-  test('sem WhatsApp cadastrado: sem o selo', () => {
+  test('sem WhatsApp: sem o botão', () => {
     expect(pecasDaArte(comPreco, { ...n, whatsapp: null }, RAMOS.turismo, produtos).pacote.whatsapp).toBe(null)
-  })
-})
-
-describe('pecasDaArte: pacote com "Entrar em contato para as condições"', () => {
-  const PACOTE = { ativo: true, hotel: 'Serra Azul', transporte: 'aviao', parcelas: 10, pix: 5, preco_por: 'pessoa', taxas: true }
-  const n = { nome: 'Malibu', insta: '@malibu', assinatura: 'insta', whatsapp: '83999990000' }
-  const produtos = [{ id: 'g', nome: 'Gramado', pacote: PACOTE, ocultar_preco: true }]
-  test('post que mostra o pacote (demo): cartão com os detalhes e "Condições especiais", sem condições de preço', () => {
-    const p = pecasDaArte({ titulo: 'T', produto_id: 'g', pilar: 'demo', preco_de: null, preco_por: null }, n, RAMOS.turismo, produtos).pacote
-    expect(p.contato).toBe('Condições especiais: fale com a loja')
-    expect(p.linhas[0]).toEqual({ icone: 'hotel', texto: 'Serra Azul' })
-    expect([p.unidade, p.parcelas, p.pix]).toEqual([null, null, null])
-    expect(p.whatsapp).toBe('(83) 99999-0000')
-  })
-  test('post de dúvida ou de aproximação: sem cartão', () => {
-    expect(pecasDaArte({ titulo: 'T', produto_id: 'g', pilar: 'need', preco_por: null }, n, RAMOS.turismo, produtos)).not.toHaveProperty('pacote')
-  })
-  test('"Mostrar o preço": sem a linha de contato', () => {
-    const mostra = [{ ...produtos[0], ocultar_preco: false }]
-    expect(pecasDaArte({ titulo: 'T', produto_id: 'g', pilar: 'demo', preco_de: null, preco_por: 2390 }, n, RAMOS.turismo, mostra).pacote.contato).toBe(null)
   })
 })

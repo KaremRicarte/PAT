@@ -166,74 +166,57 @@ test('encaixarTexto: linha mais larga que o máximo também conta como "não cou
   for (const l of r.linhas) expect(l.length * r.tamanho / 10).toBeLessThanOrEqual(20)
 })
 
-test('desenharArte: cartão do pacote (Turismo) mostra detalhes, preço e WhatsApp, sem sair da arte, mesmo com hotel longo', async () => {
-  const { desenharArte } = await import('../../app/src/artes/desenho.js')
-  const linhas = [
-    { icone: 'hotel', texto: 'Hotel ' + 'Serra Azul Resort e Spa das Hortênsias '.repeat(2).slice(0, 74) },
-    { icone: 'aviao', texto: 'Aéreo' }, { icone: 'transfer', texto: 'Transfer incluso' },
-    { icone: 'data', texto: '12/12 a 17/12 · 5 noites' }, { icone: 'refeicao', texto: 'Pensão completa' },
-  ]
-  const pacote = { linhas, unidade: 'por pessoa · taxas inclusas', parcelas: 'em até 10x de R$ 239 sem juros', pix: '5% de desconto no Pix', whatsapp: '(83) 99999-0000' }
-  const base = { rotulo: 'MALIBU TURISMO', titulo: 'Oferta: Por que viver o Natal em Gramado pelo menos uma vez?', gancho: 'Que tal um Natal com cara de filme?', meio: '', convite: '', assinatura: { texto: '@malibu', logo: false } }
+describe('arte do pacote no estilo agência (Turismo)', () => {
+  const completo = {
+    nome: 'Gramado', chamada: 'PACOTE EXCLUSIVO', dias: '6 dias', icones: ['aviao', 'hotel', 'transfer', 'refeicao'],
+    linha: 'Hotel Fazenda Recanto das Hortênsias e Araucárias da Serra Gaúcha · 12/12 a 17/12 · Pensão completa',
+    de: 'R$ 2.800', total: 'Total por pessoa: R$ 2.390 · taxas inclusas', caixa: { topo: 'A PARTIR DE', meio: '10X', valor: 'R$ 239' },
+    pix: '5% OFF À VISTA NO PIX', contato: null, whatsapp: '(83) 99999-0000',
+  }
+  const contato = { ...completo, de: null, total: null, caixa: null, pix: null, contato: 'Condições especiais: fale com a loja' }
+  const base = { rotulo: 'MALIBU', titulo: 'Título longo do post que não vai na arte do pacote', gancho: '', meio: '', convite: '', assinatura: { texto: '@malibu', logo: false } }
   const formas = [{ W: 1080, H: 1350, paginas: 1 }, { W: 1080, H: 1350, paginas: 5 }, { W: 1080, H: 1920, paginas: 1 }, { W: 720, H: 1280, paginas: 1, capaDeVideo: true }]
-  for (const look of Object.values(LOOKS)) {
-    for (const forma of formas) {
-      for (const preco of [{ de: 'R$ 2.800', por: 'R$ 2.390' }, null]) {
-        const { ctx, textos, caixas } = canvasFalso()
-        const pc = preco ? pacote : { ...pacote, unidade: null, parcelas: null, pix: null }
-        // arte de família escolhida: o cartão ainda assim usa a composição de preço
-        desenharArte(ctx, { pecas: { ...base, preco, pacote: pc }, look, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, foto: null, logo: null, ...forma, pagina: 1, arte: 'a1' })
-        const tem = (s) => textos.some((x) => x.s.includes(s))
-        expect(tem('Aéreo')).toBe(true)
-        expect(tem('5 noites')).toBe(true)
-        expect(tem('Fale com a loja')).toBe(true)
-        expect(tem('(83) 99999-0000')).toBe(true)
-        expect(tem('R$ 2.390')).toBe(Boolean(preco))
-        expect(tem('em até 10x')).toBe(Boolean(preco))
-        expect(tem('5% de desconto no Pix')).toBe(Boolean(preco))
-        for (const tx of [...textos, ...caixas]) {
-          expect(tx.esq).toBeGreaterThanOrEqual(0); expect(tx.dir).toBeLessThanOrEqual(forma.W)
-          expect(tx.topo).toBeGreaterThanOrEqual(0); expect(tx.base).toBeLessThanOrEqual(forma.H)
+
+  for (const [nome, pacote, preco] of [['com preço', completo, { de: 'R$ 2.800', por: 'R$ 2.390' }], ['contato', contato, null]]) {
+    test(`${nome}: tudo aparece e nada sai da arte, em todos os estilos e formas`, async () => {
+      const { desenharArte } = await import('../../app/src/artes/desenho.js')
+      for (const look of Object.values(LOOKS)) {
+        for (const forma of formas) {
+          const { ctx, textos, caixas } = canvasFalso()
+          desenharArte(ctx, { pecas: { ...base, preco, pacote }, look, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, foto: null, logo: null, ...forma, pagina: 1, arte: 'a1' })
+          const tem = (s) => textos.some((x) => x.s.includes(s))
+          expect(tem('GRAMADO')).toBe(true)
+          expect(tem('6 dias')).toBe(true)
+          expect(tem('PACOTE EXCLUSIVO')).toBe(true)
+          expect(tem('Fale com a loja')).toBe(true)
+          expect(tem('Título longo do post')).toBe(false)
+          if (preco) {
+            for (const s of ['A PARTIR DE', '10X', 'R$ 239', 'Total por pessoa', '5% OFF']) expect(tem(s)).toBe(true)
+          } else {
+            expect(tem('Condições especiais')).toBe(true)
+            expect(textos.some((x) => x.s.startsWith('R$'))).toBe(false)
+          }
+          // a linha longa aparece inteira, em até 2 linhas
+          const daLinha = textos.filter((x) => completo.linha.includes(x.s) && x.s.length > 8)
+          expect(daLinha.length).toBeLessThanOrEqual(2)
+          expect(daLinha.map((x) => x.s).join(' ')).toBe(completo.linha)
+          for (const tx of [...textos, ...caixas]) {
+            expect(tx.esq).toBeGreaterThanOrEqual(0); expect(tx.dir).toBeLessThanOrEqual(forma.W)
+            expect(tx.topo).toBeGreaterThanOrEqual(0); expect(tx.base).toBeLessThanOrEqual(forma.H)
+          }
+          const assin = textos.find((x) => x.s === '@malibu')
+          const whats = textos.find((x) => x.s.includes('Fale com a loja'))
+          expect(whats.base).toBeLessThanOrEqual(assin.topo)
         }
-        // o cartão fica acima da assinatura
-        const assin = textos.find((x) => x.s === '@malibu')
-        const whats = textos.find((x) => x.s.includes('Fale com a loja'))
-        expect(whats.base).toBeLessThanOrEqual(assin.topo)
       }
-    }
+    })
   }
-})
-
-test('desenharArte: cartão sem WhatsApp não desenha o selo', async () => {
-  const { desenharArte } = await import('../../app/src/artes/desenho.js')
-  const { ctx, textos } = canvasFalso()
-  const pacote = { linhas: [{ icone: 'hotel', texto: 'Serra Azul' }], unidade: null, parcelas: null, pix: null, whatsapp: null }
-  desenharArte(ctx, { pecas: { rotulo: 'M', titulo: 'T', gancho: '', meio: '', convite: '', assinatura: { texto: '@m', logo: false }, preco: { de: null, por: 'R$ 99' }, pacote }, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, W: 1080, H: 1350 })
-  expect(textos.some((x) => x.s.includes('Serra Azul'))).toBe(true)
-  expect(textos.some((x) => x.s.includes('Fale com a loja'))).toBe(false)
-})
-
-test('cartão do pacote: hotel de 80 letras aparece inteiro (em até 2 linhas, letra menor), em stories e feed', async () => {
-  const { desenharArte } = await import('../../app/src/artes/desenho.js')
-  const hotel = 'Hotel Fazenda Recanto das Hortênsias e Araucárias da Serra Gaúcha Resort e Spa X'.slice(0, 80)
-  for (const forma of [{ W: 1080, H: 1920 }, { W: 1080, H: 1350 }]) {
+  test('pacote só com preço e sem WhatsApp: sem dias, ícones nem botão', async () => {
+    const { desenharArte } = await import('../../app/src/artes/desenho.js')
     const { ctx, textos } = canvasFalso()
-    const pacote = { linhas: [{ icone: 'hotel', texto: hotel }, { icone: 'aviao', texto: 'Aéreo' }], unidade: null, parcelas: null, pix: null, whatsapp: null }
-    desenharArte(ctx, { pecas: { rotulo: 'M', titulo: 'T', gancho: '', meio: '', convite: '', assinatura: { texto: '@m', logo: false }, preco: { de: null, por: 'R$ 99' }, pacote }, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, ...forma })
-    const daLinha = textos.filter((x) => hotel.includes(x.s) && x.s.length > 3)
-    expect(daLinha.length).toBeLessThanOrEqual(2)
-    expect(daLinha.map((x) => x.s).join(' ')).toBe(hotel)
-  }
-})
-
-test('cartão do pacote com "Entrar em contato": mostra "Condições especiais" no lugar do preço', async () => {
-  const { desenharArte } = await import('../../app/src/artes/desenho.js')
-  for (const forma of [{ W: 1080, H: 1350 }, { W: 1080, H: 1920 }]) {
-    const { ctx, textos } = canvasFalso()
-    const pacote = { linhas: [{ icone: 'hotel', texto: 'Serra Azul' }], unidade: null, parcelas: null, pix: null, whatsapp: '(83) 99999-0000', contato: 'Condições especiais: fale com a loja' }
-    desenharArte(ctx, { pecas: { rotulo: 'M', titulo: 'T', gancho: '', meio: '', convite: '', assinatura: { texto: '@m', logo: false }, preco: null, pacote }, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, ...forma, arte: 'a1' })
-    expect(textos.some((x) => x.s === 'Condições especiais: fale com a loja')).toBe(true)
-    expect(textos.some((x) => x.s.startsWith('R$'))).toBe(false)
-    for (const tx of textos) { expect(tx.base).toBeLessThanOrEqual(forma.H); expect(tx.dir).toBeLessThanOrEqual(forma.W) }
-  }
+    const pacote = { ...completo, dias: null, icones: [], linha: null, whatsapp: null }
+    desenharArte(ctx, { pecas: { ...base, preco: { de: null, por: 'R$ 99' }, pacote }, look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, W: 1080, H: 1350 })
+    expect(textos.some((x) => x.s.includes('GRAMADO'))).toBe(true)
+    expect(textos.some((x) => x.s.includes('Fale com a loja'))).toBe(false)
+  })
 })

@@ -251,55 +251,7 @@ function desenharIcone(ctx, nome, x, y, tam, cor) {
   ctx.restore()
 }
 
-// Medidas do cartão na escala `e` (1 = tamanho cheio; encolhe até caber no espaço).
-function medidasDoCartao(f, pecas, e) {
-  const { ctx, u, mw, look } = f
-  const pc = pecas.pacote, preco = pecas.preco
-  const m = {
-    e, pad: 3.2 * u * e, gap: 2 * u * e,
-    linha: 3.9 * u * e, icone: 4.2 * u * e, entre: 1.35,
-    de: 3.2 * u * e, por: 8.5 * u * e, peq: 2.9 * u * e,
-    pilula: 2.8 * u * e, whats: 3.4 * u * e,
-  }
-  const larguraTexto = mw - m.pad * 2 - m.icone - 2 * u * e
-  ctx.font = `600 ${m.linha}px ${look.fb ?? look.fd}`
-  // cada linha cabe em até 2 linhas de texto (o hotel longo quebra; além disso, a fonte comprime no fillText)
-  m.linhas = pc.linhas.map((l) => {
-    let tam = m.linha, partes
-    for (let i = 0; i < 12; i++) {
-      ctx.font = `600 ${tam}px ${look.fb ?? look.fd}`
-      partes = quebrarLinhas(l.texto, larguraTexto, medidor(ctx))
-      if (partes.length <= 2) break
-      tam *= 0.93
-    }
-    if (partes.length > 2) partes = [partes[0], partes.slice(1).join(' ')]
-    return { ...l, tam, partes }
-  })
-  m.larguraTexto = larguraTexto
-  let h = m.pad
-  h += m.linhas.reduce((s, l) => s + l.partes.length * m.linha * m.entre, 0)
-  if (preco) {
-    h += m.gap
-    if (preco.de) h += m.de * 1.3
-    h += m.por * 1.1
-    if (pc.unidade) h += m.peq * 1.4
-    if (pc.parcelas) h += m.peq * 1.4
-    if (pc.pix) h += m.gap + m.pilula * 1.9
-  }
-  if (!preco && pc.contato) h += m.gap + m.de * 1.5
-  if (pc.whatsapp) h += m.gap + m.whats * 2.2
-  m.h = h + m.pad
-  return m
-}
-
-export function medirCartao(f, pecas, alturaMax) {
-  let e = 1
-  let m = medidasDoCartao(f, pecas, e)
-  for (let i = 0; i < 20 && m.h > alturaMax; i++) { e *= 0.93; m = medidasDoCartao(f, pecas, e) }
-  return m
-}
-
-// Pílula com texto (e ícone opcional) centralizado ou à esquerda; devolve a altura.
+// Pílula com texto (e ícone opcional) centralizado ou à esquerda.
 function pilula(f, texto, x, y, w, h, tam, { fundo, tinta, icone = null, centro = false }) {
   const { ctx, look } = f
   ctx.save()
@@ -319,94 +271,174 @@ function pilula(f, texto, x, y, w, h, tam, { fundo, tinta, icone = null, centro 
   ctx.restore()
 }
 
-// Desenha o cartão com o topo em `y` (medidas de medirCartao). Devolve a altura.
-function desenharCartao(f, pecas, m, y) {
-  const { ctx, x, mw, u, look } = f
-  const pc = pecas.pacote, preco = pecas.preco
-  const branco = '#FFFFFF'
-  ctx.save()
-  ctx.fillStyle = 'rgba(0,0,0,.6)'
-  retanguloArredondado(ctx, x, y, mw, m.h, 3 * u * m.e)
-  ctx.fill()
-  const ix = x + m.pad, tx = ix + m.icone + 2 * u * m.e
-  let cy = y + m.pad
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'middle'
-  for (const l of m.linhas) {
-    const alto = m.linha * m.entre
-    desenharIcone(ctx, l.icone, ix, cy + (alto - m.icone) / 2, m.icone, branco)
-    ctx.font = `600 ${l.tam}px ${look.fb ?? look.fd}`
-    ctx.fillStyle = branco
-    l.partes.forEach((p, i) => ctx.fillText(p, tx, cy + alto * i + alto / 2, m.larguraTexto))
-    cy += alto * l.partes.length
+// Texto que cabe em até `max` linhas na largura: a letra diminui até caber; o que sobrar vai junto na última linha.
+function quebrarEmAte(f, texto, largura, tam, peso, fonte, max) {
+  const { ctx } = f
+  let partes
+  for (let i = 0; i < 14; i++) {
+    ctx.font = `${peso} ${tam}px ${fonte}`
+    partes = quebrarLinhas(texto, largura, medidor(ctx))
+    if (partes.length <= max) break
+    tam *= 0.93
   }
-  const largura = mw - m.pad * 2
-  if (preco) {
-    cy += m.gap
-    ctx.textBaseline = 'top'
-    if (preco.de) {
-      const txt = `De ${preco.de} por`
-      ctx.font = `700 ${m.de}px ${look.fd}`
-      ctx.fillStyle = branco
-      ctx.globalAlpha = 0.85
-      ctx.fillText(txt, ix, cy, largura)
-      // risca só o valor antigo
-      const w0 = ctx.measureText('De ').width, wv = ctx.measureText(preco.de).width
-      ctx.fillRect(ix + w0, cy + m.de * 0.5, Math.min(wv, largura - w0), Math.max(1, m.de * 0.08))
-      ctx.globalAlpha = 1
-      cy += m.de * 1.3
-    }
-    ctx.font = `800 ${m.por}px ${look.fd}`
-    ctx.fillStyle = branco
-    ctx.fillText(preco.por, ix, cy, largura)
-    cy += m.por * 1.1
-    ctx.font = `600 ${m.peq}px ${look.fb ?? look.fd}`
-    for (const txt of [pc.unidade, pc.parcelas]) {
-      if (!txt) continue
-      ctx.fillText(txt, ix, cy + m.peq * 0.2, largura)
-      cy += m.peq * 1.4
-    }
-    if (pc.pix) {
-      cy += m.gap
-      ctx.font = `800 ${m.pilula}px ${look.fd}`
-      const w = Math.min(ctx.measureText(pc.pix).width + m.pilula * 1.9, largura)
-      pilula(f, pc.pix, ix, cy, w, m.pilula * 1.9, m.pilula, { fundo: VERDE, tinta: '#0B2E13' })
-      cy += m.pilula * 1.9
-    }
-  }
-  // "Entrar em contato para as condições": a frase no lugar do preço
-  if (!preco && pc.contato) {
-    cy += m.gap
-    ctx.font = `800 ${m.de}px ${look.fd}`
-    ctx.fillStyle = branco
-    ctx.textBaseline = 'middle'
-    ctx.fillText(pc.contato, ix, cy + m.de * 0.75, largura)
-    cy += m.de * 1.5
-  }
-  if (pc.whatsapp) {
-    cy += m.gap
-    pilula(f, `${t('arte.pacote.whats')} · ${pc.whatsapp}`, ix, cy, largura, m.whats * 2.2, m.whats,
-      { fundo: VERDE, tinta: branco, icone: 'whats', centro: true })
-  }
-  ctx.restore()
-  return m.h
+  if (partes.length > max) partes = [...partes.slice(0, max - 1), partes.slice(max - 1).join(' ')]
+  return { partes, tam }
 }
 
-// Arte com o cartão do pacote (arte única, capa do vídeo e 1ª página do carrossel): rótulo e título no alto,
-// o cartão embaixo, acima da assinatura.
+// A foto cobrindo só um pedaço da arte (de y até o fim).
+function fotoNaArea(ctx, img, W, y, h) {
+  if (!img) return
+  const [iw, ih] = dimensoes(img)
+  if (!iw || !ih) return
+  ctx.save()
+  ctx.beginPath(); ctx.rect(0, y, W, h); ctx.clip?.()
+  const s = Math.max(W / iw, h / ih), w = iw * s, hh = ih * s
+  ctx.drawImage(img, (W - w) / 2, y + (h - hh) / 2, w, hh)
+  ctx.restore()
+}
+
+// O painel de informações do pacote (alto da arte) na escala `e`. Com desenhar = false, só mede: devolve a altura.
+function painelDoPacote(f, pecas, e, y0, desenhar) {
+  const { ctx, u, x, mw, look } = f
+  const pc = pecas.pacote
+  const tinta = f.b2i
+  const fb = look.fb ?? look.fd
+  let y = y0
+  const texto = (s, tam, peso, fonte, yy, cor = tinta, max = mw, xx = x) => {
+    if (!desenhar) return
+    ctx.font = `${peso} ${tam}px ${fonte}`; ctx.fillStyle = cor; ctx.textAlign = 'left'; ctx.textBaseline = 'top'
+    ctx.fillText(s, xx, yy, max)
+  }
+  // chamada ("PACOTE EXCLUSIVO")
+  const tc = 3.3 * u * e
+  texto(pc.chamada, tc, 700, look.fd, y)
+  y += tc * 1.45
+  // nome do pacote, grande, em até 2 linhas
+  const nome = quebrarEmAte(f, pc.nome.toUpperCase(), mw, 11 * u * e, look.dw, look.fd, 2)
+  nome.partes.forEach((l, i) => texto(l, nome.tam, look.dw, look.fd, y + nome.tam * 1.05 * i))
+  y += nome.tam * 1.05 * nome.partes.length + 1.5 * u * e
+  // dias e ícones do que inclui
+  if (pc.dias || pc.icones.length) {
+    const td = 4.3 * u * e, ti = 4.6 * u * e
+    let xx = x
+    if (pc.dias) {
+      texto(pc.dias, td, 800, look.fd, y + (ti - td) / 2)
+      ctx.font = `800 ${td}px ${look.fd}`
+      xx += ctx.measureText(pc.dias).width + 2.5 * u * e
+      if (pc.icones.length && desenhar) { ctx.fillStyle = tinta; ctx.globalAlpha = 0.5; ctx.fillRect(xx, y, Math.max(1, 0.3 * u * e), ti); ctx.globalAlpha = 1 }
+      xx += 2.5 * u * e
+    }
+    for (const nomeIcone of pc.icones) {
+      if (desenhar) desenharIcone(ctx, nomeIcone, xx, y, ti, tinta)
+      xx += ti + 2.2 * u * e
+    }
+    y += ti + 1.8 * u * e
+  }
+  // hotel · datas · refeições, em até 2 linhas
+  if (pc.linha) {
+    const l = quebrarEmAte(f, pc.linha, mw, 3.4 * u * e, 600, fb, 2)
+    l.partes.forEach((p, i) => texto(p, l.tam, 600, fb, y + l.tam * 1.3 * i))
+    y += l.tam * 1.3 * l.partes.length
+  }
+  y += 2.6 * u * e
+  // bloco de baixo: à esquerda total, "de" e Pix (ou a frase de contato); à direita o quadro do preço
+  const caixa = pc.caixa
+  const bw = caixa ? 0.4 * mw : 0
+  const esq = caixa ? mw - bw - 3 * u * e : mw
+  let ye = y
+  if (pc.contato) {
+    const c = quebrarEmAte(f, pc.contato, esq, 4.4 * u * e, 800, look.fd, 2)
+    c.partes.forEach((p, i) => texto(p, c.tam, 800, look.fd, ye + c.tam * 1.2 * i))
+    ye += c.tam * 1.2 * c.partes.length
+  }
+  if (pc.de) {
+    const td = 3 * u * e, txt = `De ${pc.de} por`
+    texto(txt, td, 700, look.fd, ye, tinta, esq)
+    if (desenhar) {
+      ctx.font = `700 ${td}px ${look.fd}`
+      const w0 = ctx.measureText('De ').width, wv = ctx.measureText(pc.de).width
+      ctx.fillStyle = tinta; ctx.fillRect(x + w0, ye + td * 0.5, Math.min(wv, esq - w0), Math.max(1, td * 0.08))
+    }
+    ye += td * 1.35
+  }
+  if (pc.total) {
+    const tt = quebrarEmAte(f, pc.total, esq, 3.4 * u * e, 700, fb, 2)
+    tt.partes.forEach((p, i) => texto(p, tt.tam, 700, fb, ye + tt.tam * 1.3 * i))
+    ye += tt.tam * 1.3 * tt.partes.length
+  }
+  if (pc.pix) {
+    ye += 1.4 * u * e
+    const tp = 2.7 * u * e, hp = tp * 2
+    ctx.font = `800 ${tp}px ${look.fd}`
+    const wp = Math.min(ctx.measureText(pc.pix).width + hp, esq)
+    if (desenhar) pilula(f, pc.pix, x, ye, wp, hp, tp, { fundo: VERDE, tinta: '#0B2E13' })
+    ye += hp
+  }
+  let yd = y
+  if (caixa) {
+    const pad = 2.2 * u * e, tt = 2.7 * u * e, tm = 7.5 * u * e
+    let tv = 9 * u * e
+    ctx.font = `900 ${tv}px ${look.fd}`
+    while (ctx.measureText(caixa.valor).width > bw - pad * 2 && tv > 3 * u) { tv *= 0.93; ctx.font = `900 ${tv}px ${look.fd}` }
+    const hb = pad * 2 + tt * 1.35 + (caixa.meio ? tm * 1.05 : 0) + tv * 1.05
+    if (desenhar) {
+      const bx = x + mw - bw
+      ctx.save()
+      ctx.fillStyle = f.b1
+      retanguloArredondado(ctx, bx, y, bw, hb, 1.6 * u * e)
+      ctx.fill()
+      ctx.restore()
+      const cx = bx + bw / 2
+      const centro = (s, tam, peso, yy) => {
+        ctx.font = `${peso} ${tam}px ${look.fd}`; ctx.fillStyle = f.b1i; ctx.textAlign = 'center'; ctx.textBaseline = 'top'
+        ctx.fillText(s, cx, yy, bw - pad * 2)
+      }
+      let yy = y + pad
+      centro(caixa.topo, tt, 700, yy); yy += tt * 1.35
+      if (caixa.meio) { centro(caixa.meio, tm, 900, yy); yy += tm * 1.05 }
+      centro(caixa.valor, tv, 900, yy)
+    }
+    yd = y + hb
+  }
+  return Math.max(ye, yd) - y0
+}
+
+// Arte do pacote no estilo das agências (arte única, capa do vídeo e 1ª página do carrossel): no alto, o painel
+// na cor da marca com o nome do pacote, dias, ícones, hotel e datas, o preço (ou "Condições especiais"); embaixo
+// a foto, com o botão do WhatsApp e a assinatura.
 function arteDoPacote(f, { pecas, foto, logo, rotuloTexto }) {
-  const { u, H } = f
-  const tinta = fundoComFoto(f, foto)
-  const topo = 17 * u, fundo = H - 20 * u
-  rotulo(f, rotuloTexto ?? pecas.rotulo, 9 * u, tinta)
-  // o título fica com pelo menos 2 linhas pequenas; o resto é do cartão
-  const minTitulo = 14 * u
-  const m = medirCartao(f, pecas, fundo - topo - minTitulo - 3 * u)
-  const tit = montarTitulo(f, pecas.titulo, 8 * u, fundo - topo - m.h - 3 * u)
-  pintarTitulo(f, tit, topo, tinta)
-  desenharCartao(f, pecas, m, fundo - m.h)
+  const { ctx, u, W, H, x, mw } = f
+  const vertical = H > W * 1.3
+  const maxPainel = Math.round(H * (vertical ? 0.52 : 0.58))
+  // a faixa da data especial ocupa o alto do feed
+  const y0 = (pecas.ocasiao && !vertical ? 10.5 : 7) * u
+  const comRotulo = rotuloTexto ? { ...pecas, pacote: { ...pecas.pacote, chamada: `${rotuloTexto.split(' · ')[0]} · ${pecas.pacote.chamada}` } } : pecas
+  // no vertical as letras crescem para ocupar o painel; em todos, encolhem até caber; o painel termina no conteúdo
+  let e = vertical ? 1.4 : 1
+  for (let i = 0; i < 30 && painelDoPacote(f, comRotulo, e, y0, false) > maxPainel - y0 - 5 * u; i++) e *= 0.96
+  const painelH = Math.min(maxPainel, Math.round(y0 + painelDoPacote(f, comRotulo, e, y0, false) + 5 * u))
+  // fundo: painel na cor de fundo da marca; embaixo a foto (ou a cor principal, sem foto)
+  ctx.fillStyle = f.b2; ctx.fillRect(0, 0, W, painelH)
+  const fotoH = H - painelH
+  if (foto) {
+    fotoNaArea(ctx, foto, W, painelH, fotoH)
+    // escurece o pé da foto para o botão e a assinatura aparecerem
+    const g = ctx.createLinearGradient(0, painelH, 0, H)
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.55, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.6)')
+    ctx.fillStyle = g; ctx.fillRect(0, painelH, W, fotoH)
+  } else {
+    ctx.fillStyle = f.b1; ctx.fillRect(0, painelH, W, fotoH)
+  }
+  painelDoPacote(f, comRotulo, e, y0, true)
+  const pc = pecas.pacote
+  if (pc.whatsapp) {
+    const hp = 7.2 * u, tp = 3.3 * u, texto = `${t('arte.pacote.whats')} · ${pc.whatsapp}`
+    ctx.font = `800 ${tp}px ${f.look.fd}`
+    const wp = Math.min(ctx.measureText(texto).width + tp * 1.8 + hp * 1.4, mw)
+    pilula(f, texto, x + (mw - wp) / 2, H - 20 * u - hp, wp, hp, tp, { fundo: VERDE, tinta: '#FFFFFF', icone: 'whats', centro: true })
+  }
   faixa(f)
-  assinar(f, pecas.assinatura, logo, tinta)
+  assinar(f, pecas.assinatura, logo, foto ? '#FFFFFF' : f.b1i)
 }
 
 // ---------- acabamento ----------
