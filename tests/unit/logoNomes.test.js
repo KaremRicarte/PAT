@@ -66,3 +66,10 @@ test('caixaVisivel: a caixa em volta do que ficou visível', async () => {
   expect(caixaVisivel(px, w, h)).toEqual({ x: 2, y: 1, w: 3, h: 2 })
   expect(caixaVisivel(new Uint8ClampedArray(w * h * 4), w, h)).toBe(null)
 })
+
+test('logoNaCor: sem canvas (testes), devolve a própria logo; sem logo, nada', async () => {
+  const { logoNaCor } = await import('../../app/src/artes/logoBranca.js')
+  const logo = { width: 10, height: 5 }
+  expect(logoNaCor(logo, '#111111')).toBe(logo)
+  expect(logoNaCor(null, '#111111')).toBe(null)
+})

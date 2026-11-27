@@ -4,6 +4,7 @@ import { LOOKS } from './looks.js'
 import { corTexto, contrasteBom, quebrarLinhas, encaixarTexto } from './texto.js'
 import { t } from '../textos.js'
 import { desenharDaFamilia, marcaDagua } from './familia.js'
+import { logoNaCor } from './logoBranca.js'
 import { faixaDaData } from './temas.js'
 
 // ---------- peças básicas ----------
@@ -494,8 +495,10 @@ export function assinar(f, assinatura, logo, cor) {
 function fecho(f, assinatura, logo, alternativa) {
   const { ctx, W, H, u, look, mw } = f
   let lw = 0, lh = 0
-  if (assinatura?.logo && logo) {
-    const [iw, ih] = dimensoes(logo)
+  // a logo só com os nomes, na cor do texto da página (como a marca d'água, mas grande)
+  const marca = assinatura?.logo && logo ? logoNaCor(logo, f.b2i) : null
+  if (marca) {
+    const [iw, ih] = dimensoes(marca)
     if (iw && ih) { const k = Math.min(0.45 * W / iw, 0.2 * H / ih); lw = iw * k; lh = ih * k }
   }
   const texto = assinatura?.texto || (lw ? '' : alternativa)
@@ -503,7 +506,7 @@ function fecho(f, assinatura, logo, alternativa) {
   const bloco = texto ? montarTexto({ ...f, alinhar: 'center' }, texto, tam, 30 * u, { fonte: look.fd, peso: look.dw, entrelinha: 1.2 }) : null
   const gap = lw && bloco ? 4 * u : 0
   let y = (H - lh - gap - (bloco?.h ?? 0)) / 2
-  if (lw) { ctx.drawImage(logo, (W - lw) / 2, y, lw, lh); y += lh + gap }
+  if (lw) { ctx.drawImage(marca, (W - lw) / 2, y, lw, lh); y += lh + gap }
   if (bloco) pintarTexto({ ...f, alinhar: 'center', mw }, bloco, y, f.b2i)
 }
 

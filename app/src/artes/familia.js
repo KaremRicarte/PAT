@@ -3,7 +3,7 @@
 // Com foto, a foto entra na forma de cada arte (arco, janela, círculo, pedra, céu...).
 // A escolha (escolherArte) é pura e testada; o desenho usa só o ctx do canvas.
 import { t } from '../textos.js'
-import { logoBranca } from './logoBranca.js'
+import { logoBranca, logoNaCor } from './logoBranca.js'
 
 // ---------- escolha da arte de cada post ----------
 
@@ -678,8 +678,10 @@ function fechoDoCarrossel(f, cor, corFrase, frase) {
   const { ctx, W, H, u } = f
   let y = H / 2 - 3 * u
   if (f.temLogo) {
-    const [lw, lh] = dimensoes(f.logo)
-    if (lw && lh) { const k = Math.min(0.4 * W / lw, 0.16 * H / lh), w = lw * k, h = lh * k; ctx.drawImage(f.logo, (W - w) / 2, y - h - 6 * u, w, h) }
+    // a logo só com os nomes, na cor do texto da página
+    const marca = logoNaCor(f.logo, cor)
+    const [lw, lh] = dimensoes(marca)
+    if (lw && lh) { const k = Math.min(0.4 * W / lw, 0.16 * H / lh), w = lw * k, h = lh * k; ctx.drawImage(marca, (W - w) / 2, y - h - 6 * u, w, h) }
   }
   const b = montar(ctx, f.insta || f.nome, { tam: 8.5 * u, largura: W - 18 * u, altura: 20 * u, fonte: f.leve, lh: 1.15 })
   pintar(ctx, b, 9 * u, y - b.h / 2, cor, { alinhar: 'center', largura: W - 18 * u })

@@ -5,6 +5,7 @@ import {
   folha, cobrir, sombrear, rotulo, montarTitulo, pintarTitulo, montarTexto, pintarTexto,
   caixaDeTexto, faixa, enfeiteSuave, assinar,
 } from './desenho.js'
+import { logoNaCor } from './logoBranca.js'
 
 export const W_VIDEO = 720
 export const H_VIDEO = 1280
@@ -77,8 +78,10 @@ function telaFinal(f, pecas, logo) {
   ctx.fillRect(0, 0, W, H)
   enfeiteSuave(f)
   let lw = 0, lh = 0
-  if (pecas.assinatura?.logo && logo) {
-    const [iw, ih] = medidas(logo)
+  // a logo só com os nomes, na cor do texto da tela (como nas artes)
+  const marca = pecas.assinatura?.logo && logo ? logoNaCor(logo, f.b2i) : null
+  if (marca) {
+    const [iw, ih] = medidas(marca)
     if (iw && ih) { lh = Math.min(0.2 * H, 45 * u * ih / iw); lw = lh * iw / ih }
   }
   const nomeTam = lw ? 5.5 * u : 9 * u
@@ -90,7 +93,7 @@ function telaFinal(f, pecas, logo) {
   const gapLogo = lw && nome ? 2 * u : 0
   const gapConvite = convite && (lw || nome) ? 4 * u : 0
   let y = (H - (lh + gapLogo + (nome?.h ?? 0) + gapConvite + (convite?.h ?? 0))) / 2
-  if (lw) { ctx.drawImage(logo, (W - lw) / 2, y, lw, lh); y += lh + gapLogo }
+  if (lw) { ctx.drawImage(marca, (W - lw) / 2, y, lw, lh); y += lh + gapLogo }
   if (nome) { pintarTexto(centro, nome, y, f.b2i); y += nome.h }
   y += gapConvite
   if (convite) pintarTexto(centro, convite, y, f.b2i)

@@ -198,3 +198,31 @@ export function logoBranca(logo) {
   prontas.set(logo, pronta)
   return pronta
 }
+
+const pintadas = new WeakMap() // logo branca -> Map(cor -> canvas)
+
+// A logo só com os nomes, na cor pedida (telas de fechamento: a cor do texto da página, para aparecer em fundo claro).
+// Sem canvas (testes): a original.
+export function logoNaCor(logo, cor) {
+  if (!logo) return logo
+  const branca = logoBranca(logo)
+  if (branca === logo || !cor || /^#?f{3}(f{3})?$/i.test(cor)) return branca
+  if (!pintadas.has(branca)) pintadas.set(branca, new Map())
+  const cache = pintadas.get(branca)
+  if (cache.has(cor)) return cache.get(cor)
+  let pronta = branca
+  try {
+    const tela = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(branca.width, branca.height)
+      : Object.assign(document.createElement('canvas'), { width: branca.width, height: branca.height })
+    const ctx = tela.getContext('2d')
+    ctx.drawImage(branca, 0, 0)
+    ctx.globalCompositeOperation = 'source-in'
+    ctx.fillStyle = cor
+    ctx.fillRect(0, 0, branca.width, branca.height)
+    pronta = tela
+  } catch (e) {
+    console.error(e)
+  }
+  cache.set(cor, pronta)
+  return pronta
+}
