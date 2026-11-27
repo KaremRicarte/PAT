@@ -63,3 +63,15 @@ test('estadoDoNegocio e o resumo da marca levam o WhatsApp', () => {
   expect(resumoDaPergunta('marca', e, ramo)).toBe('Logo e @ · (83) 99999-0000')
   expect(estadoDoNegocio(null, [], ramo).whatsapp).toBe('')
 })
+
+test('datasDaCaixa: gerando um mês, só as datas de promoção daquele mês; sem mês, de hoje em diante', async () => {
+  const { datasDaCaixa, faixaDaCaixa } = await import('../../app/src/cliente/perguntas.js')
+  const dez = datasDaCaixa(RAMOS.turismo, '2026-11-27', { anoMes: '2026-12', inicio: '2026-12-01' })
+  expect(dez.length).toBeGreaterThan(0)
+  expect(dez.every((d) => d.data.startsWith('2026-12'))).toBe(true)
+  expect(datasDaCaixa(RAMOS.turismo, '2026-11-27').some((d) => d.data === '2026-11-27')).toBe(true)
+  expect(datasDaCaixa(RAMOS.psicologia, '2026-11-27', { anoMes: '2026-12', inicio: '2026-12-01' })).toEqual([])
+  expect(faixaDaCaixa('2026-11-27', { anoMes: '2026-12', inicio: '2026-12-01' })).toEqual({ min: '2026-12-01', max: '2026-12-31' })
+  expect(faixaDaCaixa('2026-11-27', { anoMes: '2027-02', inicio: '2027-02-01' })).toEqual({ min: '2027-02-01', max: '2027-02-28' })
+  expect(faixaDaCaixa('2026-11-27')).toEqual({ min: '2026-11-27', max: null })
+})

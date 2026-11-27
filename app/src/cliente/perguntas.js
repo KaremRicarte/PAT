@@ -3,7 +3,7 @@
 import { t } from '../textos.js'
 import { el, campo } from '../comum.js'
 import { REDES } from '../../../supabase/functions/_shared/modelos/tipos.ts'
-import { datasParaPromocao, diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
+import { datasParaPromocao, datasDoMes, diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
 import { hojeEmSaoPaulo } from '../../../supabase/functions/_shared/modelos/calendario.ts'
 import { MAX_ITENS, validarItens, MAX_FOTOS_NEGOCIO, itensRepetidos, textoDosRepetidos } from './negocio.js'
 import { montarImportacao, faixaDeFotos } from './importarTela.js'
@@ -84,27 +84,47 @@ export function nomesDasRedes(redes) {
 
 // "Promoção só para uma data especial": marca e escolhe a data (das próximas datas boas ou outro dia).
 // item.promoData: null = sem data; '' = marcada, falta escolher o dia; 'AAAA-MM-DD' = o dia.
-export function caixaDaData(item, datas) {
+// As datas da caixinha "Promoção só para uma data especial": gerando um mês (alvo), só as datas de promoção daquele
+// mês; sem mês (Editar/Importar, Refazer), as de hoje em diante.
+export function datasDaCaixa(ramo, hoje, alvo = null) {
+  if (ramo.noPromo) return []
+  if (!alvo) return datasParaPromocao(hoje, ramo)
+  return datasDoMes(alvo.anoMes, ramo).filter((d) => d.promo && d.data >= alvo.inicio && d.data >= hoje)
+}
+
+// Os limites do dia em "outro dia": o mês que está sendo gerado, ou de hoje em diante.
+export function faixaDaCaixa(hoje, alvo = null) {
+  if (!alvo) return { min: hoje, max: null }
+  const [a, m] = alvo.anoMes.split('-').map(Number)
+  const ultimo = new Date(Date.UTC(a, m, 0)).getUTCDate()
+  return { min: alvo.inicio, max: `${alvo.anoMes}-${String(ultimo).padStart(2, '0')}` }
+}
+
+// faixa: { min, max } das datas que valem aqui. Uma promoção marcada fora dela (ex.: de outro mês, ao gerar dezembro)
+// aparece desmarcada; ela só muda se o cliente mexer na caixinha.
+export function caixaDaData(item, datas, faixa = { min: hojeEmSaoPaulo(), max: null }) {
+  const naFaixa = (d) => !faixa.max || (d >= faixa.min && d <= faixa.max)
   const id = `promo-data-${item.id}`
-  const marcar = el('input', { type: 'checkbox', id, checked: item.promoData != null })
+  const marcar = el('input', { type: 'checkbox', id, checked: item.promoData != null && (item.promoData === '' || naFaixa(item.promoData)) })
   const OUTRO = 'outro'
   const lista = el('select', { 'aria-label': t('quiz.item.promodata.qual') },
     ...datas.map((d) => el('option', { value: d.data, texto: `${diaMes(d.data)} · ${d.nome}` })),
     el('option', { value: OUTRO, texto: t('quiz.item.promodata.outro') }))
-  const [rDia, iDia] = campo(t('quiz.item.promodata.dia'), { type: 'date', min: hojeEmSaoPaulo() })
+  const [rDia, iDia] = campo(t('quiz.item.promodata.dia'), { type: 'date', min: faixa.min, ...(faixa.max ? { max: faixa.max } : {}) })
   const outro = el('div', { class: 'promo-outro' }, rDia, iDia)
   const passou = el('p', { class: 'muted pequeno', texto: t('quiz.item.promodata.passou') })
   const detalhes = el('div', { class: 'promo-data-detalhes' }, lista, outro, passou,
     el('p', { class: 'muted pequeno', texto: t('quiz.item.promodata.dica') }))
   const daLista = () => datas.some((d) => d.data === item.promoData)
   function mostrar() {
-    detalhes.hidden = item.promoData == null
+    detalhes.hidden = !marcar.checked
     lista.value = item.promoData && daLista() ? item.promoData : OUTRO
     outro.hidden = lista.value !== OUTRO
     iDia.value = item.promoData && !daLista() ? item.promoData : ''
     passou.hidden = !(item.promoData && item.promoData < hojeEmSaoPaulo())
   }
   marcar.addEventListener('change', () => { item.promoData = marcar.checked ? (datas[0]?.data ?? '') : null; mostrar() })
+  // uma promoção de fora da faixa fica como estava até o cliente mexer (não aparece aqui)
   lista.addEventListener('change', () => { item.promoData = lista.value === OUTRO ? '' : lista.value; mostrar(); if (lista.value === OUTRO) iDia.focus() })
   iDia.addEventListener('change', () => { item.promoData = iDia.value || ''; passou.hidden = !(item.promoData && item.promoData < hojeEmSaoPaulo()) })
   mostrar()
@@ -210,10 +230,10 @@ function camposDoPreco(item) {
 
 // Preço, data da promoção e (Turismo) detalhes do pacote, com o preço dentro deles; nos outros ramos, "Ocultar preço".
 // Usado no cadastro dos itens e no "Refazer este post". Ramos sem preço: nada.
-export function camposDePrecoDoItem(item, ramo, datas) {
+export function camposDePrecoDoItem(item, ramo, datas, faixa) {
   if (ramo.noPromo) return []
-  if (ramo.id === 'turismo') return [caixaDaData(item, datas), caixaDoPacote(item, camposDoPreco(item))]
-  return [camposDoPreco(item), caixaDaData(item, datas), caixaOcultarPreco(item)]
+  if (ramo.id === 'turismo') return [caixaDaData(item, datas, faixa), caixaDoPacote(item, camposDoPreco(item))]
+  return [camposDoPreco(item), caixaDaData(item, datas, faixa), caixaOcultarPreco(item)]
 }
 
 // WhatsApp da empresa (opcional): aparece nas artes de pacote e nas legendas.
@@ -224,13 +244,15 @@ function campoWhatsApp(estado) {
 }
 
 const BLOCOS = {
-  itens: ({ ramo, estado, supabase, fotosInfo }) => {
+  itens: ({ ramo, estado, supabase, fotosInfo, alvo }) => {
     const lista = el('div', { class: 'itens' })
     let urls = [] // miniaturas temporárias; liberadas a cada redesenho
     const sugestoes = el('div', { class: 'chips' })
     const adicionar = el('button', { type: 'button', class: 'secundario', texto: t('quiz.item.adicionar') })
     const novo = (nome = '') => ({ id: crypto.randomUUID(), nome, descricao: '', precoTexto: '', promoTexto: '', promoData: null, fotos: [] })
-    const datas = ramo.noPromo ? [] : datasParaPromocao(hojeEmSaoPaulo(), ramo)
+    // gerando um mês (alvo): só as datas dele; senão, de hoje em diante
+    const datas = datasDaCaixa(ramo, hojeEmSaoPaulo(), alvo)
+    const faixa = faixaDaCaixa(hojeEmSaoPaulo(), alvo)
     adicionar.addEventListener('click', () => { estado.itens.push(novo()); redesenhar(); lista.querySelector('fieldset:last-child input')?.focus() })
 
     const editor = (item, i) => {
@@ -241,7 +263,7 @@ const BLOCOS = {
       const desc = el('textarea', { id: idDesc, rows: 2, maxlength: 300 })
       desc.value = item.descricao
       desc.addEventListener('input', () => { item.descricao = desc.value })
-      const preco = camposDePrecoDoItem(item, ramo, datas)
+      const preco = camposDePrecoDoItem(item, ramo, datas, faixa)
       const selos = el('span', { class: 'selos-item' })
       const remover = el('button', { type: 'button', class: 'secundario pequeno', texto: t('quiz.item.remover') })
       remover.addEventListener('click', () => { estado.itens.splice(estado.itens.indexOf(item), 1); redesenhar() })
