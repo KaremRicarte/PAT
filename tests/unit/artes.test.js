@@ -240,7 +240,9 @@ describe('marca d\'água da logo (todos os ramos)', () => {
       for (const forma of formas) {
         const { ctx, desenhos } = comLogo()
         desenharArte(ctx, { pecas: pecas(true), look: LOOKS.varejo, cores: { cor1: '#1D4E89', cor2: '#FFFFFF' }, logo, ...forma, arte })
-        expect(desenhos.length).toBe(1)
+        // a logo é desenhada 2 vezes no mesmo lugar (sombra fininha e brilho)
+        expect(desenhos.length).toBeGreaterThan(0)
+        for (const o of desenhos) expect([o.x, o.y, o.w, o.h]).toEqual([desenhos[0].x, desenhos[0].y, desenhos[0].w, desenhos[0].h])
         const d = desenhos[0]
         expect(d.w).toBeLessThanOrEqual(forma.W * 0.14)
         expect(d.alfa).toBeLessThan(1)

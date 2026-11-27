@@ -216,12 +216,17 @@ export function marcaDagua(ctx, logo, dir, base, u) {
   const [lw, lh] = dimensoes(logo)
   if (!lw || !lh) return 0
   const k = Math.min(12 * u / lw, 5.5 * u / lh), w = lw * k, h = lh * k
+  const branca = logoBranca(logo)
   ctx.save()
-  // branca (mesmo que a logo seja colorida), com uma sombra leve para não sumir em fundo claro
-  ctx.globalAlpha = 0.75
-  ctx.shadowColor = 'rgba(0,0,0,.35)'
-  ctx.shadowBlur = 1.2 * u
-  ctx.drawImage(logoBranca(logo), dir - w, base - h, w, h)
+  // branca e forte (mesmo que a logo seja colorida): uma sombra fininha para destacar em fundo claro
+  // e, por cima, um brilho branco suave
+  ctx.globalAlpha = 0.95
+  ctx.shadowColor = 'rgba(0,0,0,.45)'
+  ctx.shadowBlur = 0.8 * u
+  ctx.drawImage(branca, dir - w, base - h, w, h)
+  ctx.shadowColor = 'rgba(255,255,255,.7)'
+  ctx.shadowBlur = 1.6 * u
+  ctx.drawImage(branca, dir - w, base - h, w, h)
   ctx.restore()
   return w
 }
