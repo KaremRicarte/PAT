@@ -212,9 +212,9 @@ const circulo = (ctx, x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI
 const dimensoes = (img) => [img.naturalWidth || img.width, img.naturalHeight || img.height]
 
 // Logo como marca d'água: pequena, branca e transparente, com o canto de baixo à direita em (dir, base). Devolve a largura.
-export function marcaDagua(ctx, logo, dir, base, u) {
-  // a logo branca, recortada em volta do nome: o tamanho vem dela
-  const branca = logoBranca(logo)
+export function marcaDagua(ctx, logo, dir, base, u, cor = null) {
+  // a logo branca (ou na cor pedida, em fundo claro), recortada em volta do nome: o tamanho vem dela
+  const branca = cor ? logoNaCor(logo, cor) : logoBranca(logo)
   const [lw, lh] = dimensoes(branca)
   if (!lw || !lh) return 0
   const k = Math.min(15 * u / lw, 6 * u / lh), w = lw * k, h = lh * k

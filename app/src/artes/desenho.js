@@ -5,6 +5,7 @@ import { corTexto, contrasteBom, quebrarLinhas, encaixarTexto } from './texto.js
 import { t } from '../textos.js'
 import { desenharDaFamilia, marcaDagua } from './familia.js'
 import { logoNaCor } from './logoBranca.js'
+import { arteTipografica } from './tipografica.js'
 import { faixaDaData } from './temas.js'
 
 // ---------- peças básicas ----------
@@ -238,7 +239,7 @@ const ICONES = {
 const VERDE = '#25D366'
 const caminhos = new Map()
 
-function desenharIcone(ctx, nome, x, y, tam, cor) {
+export function desenharIcone(ctx, nome, x, y, tam, cor) {
   ctx.save()
   ctx.fillStyle = cor
   if (typeof Path2D === 'function' && ctx.translate) {
@@ -473,11 +474,12 @@ export function enfeiteSuave(f) {
 
 // Assinatura no canto de baixo (wmk): o texto embaixo e o logo acima dele.
 // Assinatura: a logo como marca d'água no canto de baixo à direita e o @ ao lado dela.
-export function assinar(f, assinatura, logo, cor) {
+// corDaLogo: a marca d'água nessa cor (fundo claro, onde a branca sumiria); sem ela, branca.
+export function assinar(f, assinatura, logo, cor, corDaLogo = null) {
   const { ctx, W, H, u, look } = f
   const recuo = look.center ? 8 * u : 0, dir = W - (recuo || 5 * u)
   const base = H - (recuo || 6.5 * u)
-  const larguraLogo = assinatura?.logo && logo ? marcaDagua(ctx, logo, dir, base, u) : 0
+  const larguraLogo = assinatura?.logo && logo ? marcaDagua(ctx, logo, dir, base, u, corDaLogo) : 0
   if (assinatura?.texto) {
     const folga = larguraLogo ? larguraLogo + 2.5 * u : 0
     ctx.save()
@@ -609,8 +611,16 @@ function paginaDoCarrossel(f, { pecas, foto, logo, pagina }) {
 // `pecas.assinatura` já deve vir pronta (assinaturaDaArte).
 // `arte`: id da família de artes (familia.js). Posts com preço seguem a composição de antes (o selo de preço mora nela).
 export function desenharArte(ctx, { pecas, look, cores, foto = null, logo = null, W, H, pagina = 1, paginas = 1, capaDeVideo = false, arte = null }) {
-  // o cartão do pacote (Turismo) também segue essa composição, mesmo sem preço (Ocultar preço)
-  if (arte && !pecas.preco && !pecas.pacote) {
+  // Turismo sem foto: a arte tipográfica (a palavra-tema ao fundo e o título num balão), no lugar das formas abstratas
+  const tipografica = !foto && pecas.palavra && !pecas.preco && !pecas.pacote && (paginas <= 1 || pagina === 1)
+  if (tipografica) {
+    const f = folha(ctx, { look, cores, W, H })
+    ctx.save()
+    ctx.clearRect(0, 0, W, H)
+    arteTipografica(f, { pecas, logo, rotuloTexto: paginas > 1 ? `1/${paginas}` : null })
+    ctx.restore()
+  } else if (arte && !pecas.preco && !pecas.pacote) {
+    // o cartão do pacote (Turismo) também segue a composição de preço, mesmo sem preço (Ocultar preço)
     const tipo = paginas > 1 ? 'car' : capaDeVideo ? 'capa' : H > W ? 'stories' : 'feed'
     desenharDaFamilia(ctx, { arte, estilo: nomeDoEstilo(look), pecas, cores, foto, logo, W, H, tipo, pagina, paginas })
   } else {

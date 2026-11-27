@@ -6,6 +6,7 @@ import { diaMes } from '../../../supabase/functions/_shared/modelos/datas.ts'
 import { indiceDoRevezamento } from '../../../supabase/functions/_shared/modelos/revezamento.ts'
 import { pacoteAtivo, noitesDoPacote, textoDasRefeicoes } from '../../../supabase/functions/_shared/modelos/pacote.ts'
 import { formatarWhatsApp } from '../contato.js'
+import { palavraDoFundo } from '../artes/tipografica.js'
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
@@ -221,6 +222,8 @@ export function pecasDaArte(post, negocio, ramo, produtos = []) {
     },
     // pacote de viagem (Turismo): só quando há cartão, para as outras artes ficarem iguais
     ...(pacote ? { pacote } : {}),
+    // Turismo: a palavra-tema da arte tipográfica (usada quando o post não tem foto)
+    ...(ramo?.id === 'turismo' ? { palavra: palavraDoFundo(post, { enquete }) } : {}),
   }
 }
 
