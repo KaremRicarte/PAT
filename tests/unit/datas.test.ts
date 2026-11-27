@@ -86,9 +86,11 @@ describe('promoção com data (vale só perto da data)', () => {
     expect(bf.titulo.startsWith('Oferta de Black Friday: ')).toBe(true)
     valido(p, gerarMes(p))
   })
-  test('promoção marcada para outro mês: o item fica com o preço normal o mês todo', () => {
+  test('promoção marcada para o mês seguinte: só as chamadas "Vem aí" têm o preço da promoção; o resto, o preço normal', () => {
     const posts = gerarMes(pacote({ produtos: comData('2027-01-10') }))
-    expect(posts.filter((x) => x.produto_id === 'g' && x.preco_de != null)).toEqual([])
+    const comPromo = posts.filter((x) => x.produto_id === 'g' && x.preco_de != null)
+    expect(comPromo.length).toBeGreaterThan(0)
+    expect(comPromo.every((x) => x.ocasiao?.data === '2027-01-10' && x.ocasiao?.fase === 'aquecimento')).toBe(true)
     expect(posts.some((x) => x.produto_id === 'g' && x.preco_por === 2199)).toBe(true)
   })
   test('data sem promoção vira post de tema (Natal), também em psicologia', () => {

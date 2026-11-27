@@ -73,6 +73,8 @@ export type ItemComPreco = ItemDoMes & { trat: Tratamento }
 
 // Promoção com data: vale do 7º dia antes até o próprio dia.
 const JANELA_DIAS = 7
+// Promoção de um mês seguinte: os meses antes dela já fazem a chamada, se ela estiver a até tantos dias do mês gerado.
+const ANTECEDENCIA_DIAS = 120
 export const pertoDaData = (data: string, alvo: string) =>
   data <= alvo && (Date.parse(`${alvo}T00:00:00Z`) - Date.parse(`${data}T00:00:00Z`)) / 86400000 <= JANELA_DIAS
 
@@ -244,6 +246,24 @@ export function gerarMes(p: Pacote): PostGerado[] {
     if (!vagas.has(dia)) vagas.set(dia, { x: item, ocasiao: { nome, data: dia, fase: 'dia' } })
     agenda.feed.filter((d) => d < dia && pertoDaData(d, dia) && !vagas.has(d) && !temas.has(d)).slice(-2)
       .forEach((d) => vagas.set(d, { x: item, ocasiao: { nome, data: dia, fase: 'aquecimento' } }))
+  }
+  // Promoção marcada para um mês seguinte (até ANTECEDENCIA_DIAS): o mês já faz a chamada ("Vem aí"), em 2 dias de
+  // feed livres (um no meio e um no fim do mês). No máximo 2 promoções assim por mês, para não tomar o feed.
+  if (!ramo.noPromo) {
+    const fimDoMes = `${p.anoMes}-31`
+    const futuras = itens.filter((x) => x.pr.promo_data && x.pr.promo_data > fimDoMes &&
+      (Date.parse(`${x.pr.promo_data}T00:00:00Z`) - Date.parse(`${p.inicio}T00:00:00Z`)) / 86400000 <= ANTECEDENCIA_DIAS)
+      .sort((a, b) => a.pr.promo_data!.localeCompare(b.pr.promo_data!)).slice(0, 2)
+    futuras.forEach((x, k) => {
+      const dia = x.pr.promo_data!
+      const nome = datasDoMes(dia.slice(0, 7), ramo).find((d) => d.data === dia)?.nome ?? null
+      const item = { ...x, trat: tratamentoDoItem(x.pr, ramo, dia) }
+      const livres = agenda.feed.filter((d) => !vagas.has(d) && !temas.has(d))
+      if (!livres.length) return
+      const escolhas = [Math.floor(livres.length * (0.35 + 0.1 * k)), Math.floor(livres.length * (0.8 + 0.1 * k))]
+        .map((i) => livres[Math.min(i, livres.length - 1)])
+      for (const d of new Set(escolhas)) vagas.set(d, { x: item, ocasiao: { nome, data: dia, fase: 'aquecimento' } })
+    })
   }
   // pacote de viagem (Turismo): os detalhes vão junto do preço; sem preço, no fim do meio
   const comPacote = (pr: ItemDoMes['pr'], texto: string) => {
